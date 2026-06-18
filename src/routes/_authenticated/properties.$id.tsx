@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
+import { ConfirmButton } from "@/components/confirm-button";
 
 export const Route = createFileRoute("/_authenticated/properties/$id")({
   component: EditProperty,
@@ -67,9 +68,18 @@ function EditProperty() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link>
         </Button>
-        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}>
+        <ConfirmButton
+          variant="destructive"
+          size="sm"
+          className="hidden md:inline-flex"
+          destructive
+          title="Удалить объект?"
+          description="Объект будет удалён вместе со связанными данными. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
+        >
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
-        </Button>
+        </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
       <MobileCollapsible title="Данные объекта">
@@ -87,14 +97,18 @@ function EditProperty() {
       </MobileCollapsible>
 
       <MobileActionBar>
-        <Button
+        <ConfirmButton
           variant="destructive"
           size="lg"
           className="flex-1 min-h-11"
-          onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}
+          destructive
+          title="Удалить объект?"
+          description="Объект будет удалён вместе со связанными данными. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
         >
           <Trash2 className="h-4 w-4 mr-1" /> Удалить
-        </Button>
+        </ConfirmButton>
         <Button
           type="submit"
           form="property-form"
