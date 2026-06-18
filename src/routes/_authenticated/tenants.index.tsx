@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Search } from "lucide-react";
 import { useState } from "react";
 import { TENANT_KIND_LABELS } from "@/lib/format";
+import { PageHeader } from "@/components/page-header";
 
 export const Route = createFileRoute("/_authenticated/tenants/")({
   component: TenantsList,
@@ -37,16 +38,16 @@ function TenantsList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Арендаторы</h1>
-          <p className="text-muted-foreground text-sm">База контактов арендаторов</p>
-        </div>
-        <Button asChild>
-          <Link to="/tenants/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link>
-        </Button>
-      </div>
-      <div className="relative max-w-md">
+      <PageHeader
+        title="Арендаторы"
+        description="База контактов арендаторов"
+        action={
+          <Button asChild size="sm">
+            <Link to="/tenants/new"><Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Добавить</span></Link>
+          </Button>
+        }
+      />
+      <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Поиск по имени, ИНН, телефону, email" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>

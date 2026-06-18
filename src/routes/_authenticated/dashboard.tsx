@@ -57,11 +57,11 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Дашборд</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Дашборд</h1>
         <p className="text-muted-foreground text-sm">Обзор вашей аренды</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard icon={Building2} label="Объектов" value={total} sub={`Занято: ${occupied} · Свободно: ${free}`} />
         <StatCard icon={Users} label="Арендаторов" value={d.tenantsCount} />
         <StatCard icon={Calendar} label="Начислено всего" value={formatMoney(totalBilled)} />
@@ -120,12 +120,12 @@ function Dashboard() {
 function StatCard({ icon: Icon, label, value, sub, accent }: any) {
   return (
     <Card>
-      <CardContent className="pt-5">
+      <CardContent className="pt-4 sm:pt-5 px-3 sm:px-6 pb-4">
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <Icon className="h-4 w-4" />
-          {label}
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
         </div>
-        <div className={"text-2xl font-bold mt-1 " + (accent === "destructive" ? "text-destructive" : "")}>{value}</div>
+        <div className={"text-lg sm:text-2xl font-bold mt-1 break-words " + (accent === "destructive" ? "text-destructive" : "")}>{value}</div>
         {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
       </CardContent>
     </Card>

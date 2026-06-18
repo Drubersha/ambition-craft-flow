@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Building2, Search } from "lucide-react";
 import { useState } from "react";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney } from "@/lib/format";
+import { PageHeader } from "@/components/page-header";
 
 export const Route = createFileRoute("/_authenticated/properties/")({
   component: PropertiesList,
@@ -36,17 +37,17 @@ function PropertiesList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Объекты</h1>
-          <p className="text-muted-foreground text-sm">Помещения и здания в аренде</p>
-        </div>
-        <Button asChild>
-          <Link to="/properties/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Объекты"
+        description="Помещения и здания в аренде"
+        action={
+          <Button asChild size="sm">
+            <Link to="/properties/new"><Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Добавить</span></Link>
+          </Button>
+        }
+      />
 
-      <div className="relative max-w-md">
+      <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Поиск по названию, адресу, кадастру" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
