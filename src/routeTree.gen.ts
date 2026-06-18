@@ -15,10 +15,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTenantsIndexRouteImport } from './routes/_authenticated/tenants.index'
 import { Route as AuthenticatedPropertiesIndexRouteImport } from './routes/_authenticated/properties.index'
+import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
 import { Route as AuthenticatedTenantsNewRouteImport } from './routes/_authenticated/tenants.new'
 import { Route as AuthenticatedTenantsIdRouteImport } from './routes/_authenticated/tenants.$id'
 import { Route as AuthenticatedPropertiesNewRouteImport } from './routes/_authenticated/properties.new'
 import { Route as AuthenticatedPropertiesIdRouteImport } from './routes/_authenticated/properties.$id'
+import { Route as AuthenticatedContractsNewRouteImport } from './routes/_authenticated/contracts.new'
+import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -51,6 +54,12 @@ const AuthenticatedPropertiesIndexRoute =
     path: '/properties/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedContractsIndexRoute =
+  AuthenticatedContractsIndexRouteImport.update({
+    id: '/contracts/',
+    path: '/contracts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTenantsNewRoute = AuthenticatedTenantsNewRouteImport.update({
   id: '/tenants/new',
   path: '/tenants/new',
@@ -73,15 +82,30 @@ const AuthenticatedPropertiesIdRoute =
     path: '/properties/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedContractsNewRoute =
+  AuthenticatedContractsNewRouteImport.update({
+    id: '/contracts/new',
+    path: '/contracts/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedContractsIdRoute =
+  AuthenticatedContractsIdRouteImport.update({
+    id: '/contracts/$id',
+    path: '/contracts/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/tenants/': typeof AuthenticatedTenantsIndexRoute
 }
@@ -89,10 +113,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/contracts': typeof AuthenticatedContractsIndexRoute
   '/properties': typeof AuthenticatedPropertiesIndexRoute
   '/tenants': typeof AuthenticatedTenantsIndexRoute
 }
@@ -102,10 +129,13 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/_authenticated/contracts/new': typeof AuthenticatedContractsNewRoute
   '/_authenticated/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/_authenticated/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/_authenticated/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/_authenticated/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/_authenticated/tenants/': typeof AuthenticatedTenantsIndexRoute
 }
@@ -115,10 +145,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/contracts/$id'
+    | '/contracts/new'
     | '/properties/$id'
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/contracts/'
     | '/properties/'
     | '/tenants/'
   fileRoutesByTo: FileRoutesByTo
@@ -126,10 +159,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/contracts/$id'
+    | '/contracts/new'
     | '/properties/$id'
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/contracts'
     | '/properties'
     | '/tenants'
   id:
@@ -138,10 +174,13 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/contracts/$id'
+    | '/_authenticated/contracts/new'
     | '/_authenticated/properties/$id'
     | '/_authenticated/properties/new'
     | '/_authenticated/tenants/$id'
     | '/_authenticated/tenants/new'
+    | '/_authenticated/contracts/'
     | '/_authenticated/properties/'
     | '/_authenticated/tenants/'
   fileRoutesById: FileRoutesById
@@ -196,6 +235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPropertiesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contracts/': {
+      id: '/_authenticated/contracts/'
+      path: '/contracts'
+      fullPath: '/contracts/'
+      preLoaderRoute: typeof AuthenticatedContractsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/tenants/new': {
       id: '/_authenticated/tenants/new'
       path: '/tenants/new'
@@ -224,25 +270,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPropertiesIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contracts/new': {
+      id: '/_authenticated/contracts/new'
+      path: '/contracts/new'
+      fullPath: '/contracts/new'
+      preLoaderRoute: typeof AuthenticatedContractsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contracts/$id': {
+      id: '/_authenticated/contracts/$id'
+      path: '/contracts/$id'
+      fullPath: '/contracts/$id'
+      preLoaderRoute: typeof AuthenticatedContractsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
+  AuthenticatedContractsNewRoute: typeof AuthenticatedContractsNewRoute
   AuthenticatedPropertiesIdRoute: typeof AuthenticatedPropertiesIdRoute
   AuthenticatedPropertiesNewRoute: typeof AuthenticatedPropertiesNewRoute
   AuthenticatedTenantsIdRoute: typeof AuthenticatedTenantsIdRoute
   AuthenticatedTenantsNewRoute: typeof AuthenticatedTenantsNewRoute
+  AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
   AuthenticatedPropertiesIndexRoute: typeof AuthenticatedPropertiesIndexRoute
   AuthenticatedTenantsIndexRoute: typeof AuthenticatedTenantsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
+  AuthenticatedContractsNewRoute: AuthenticatedContractsNewRoute,
   AuthenticatedPropertiesIdRoute: AuthenticatedPropertiesIdRoute,
   AuthenticatedPropertiesNewRoute: AuthenticatedPropertiesNewRoute,
   AuthenticatedTenantsIdRoute: AuthenticatedTenantsIdRoute,
   AuthenticatedTenantsNewRoute: AuthenticatedTenantsNewRoute,
+  AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
   AuthenticatedPropertiesIndexRoute: AuthenticatedPropertiesIndexRoute,
   AuthenticatedTenantsIndexRoute: AuthenticatedTenantsIndexRoute,
 }
