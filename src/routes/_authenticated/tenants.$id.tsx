@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, FileText, Search } from "lucide-react";
 import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
+import { ConfirmButton } from "@/components/confirm-button";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/tenants/$id")({
   component: EditTenant,
@@ -19,6 +22,7 @@ function EditTenant() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [contractQuery, setContractQuery] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["tenant", id],
     queryFn: async () => {
@@ -67,13 +71,31 @@ function EditTenant() {
 
   if (isLoading || !data) return <div>Загрузка...</div>;
 
+  const filteredContracts = (contracts ?? []).filter((c: any) => {
+    if (!contractQuery) return true;
+    const s = contractQuery.toLowerCase();
+    return (
+      c.number.toLowerCase().includes(s) ||
+      (c.property?.name ?? "").toLowerCase().includes(s)
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}>
+        <ConfirmButton
+          variant="destructive"
+          size="sm"
+          className="hidden md:inline-flex"
+          destructive
+          title="Удалить арендатора?"
+          description="Арендатор и связанные договоры будут удалены. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
+        >
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
-        </Button>
+        </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
       <MobileCollapsible title="Данные арендатора">
@@ -100,7 +122,22 @@ function EditTenant() {
           <p className="text-sm text-muted-foreground text-center py-4">Договоров пока нет.</p>
         ) : (
           <div className="space-y-2">
-            {contracts.map((c: any) => (
+            {contracts.length > 3 && (
+              <div className="relative">
+                <Search aria-hidden="true" className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  aria-label="Быстрый поиск по договорам"
+                  placeholder="Поиск по номеру или объекту"
+                  className="pl-9"
+                  value={contractQuery}
+                  onChange={(e) => setContractQuery(e.target.value)}
+                />
+              </div>
+            )}
+            {filteredContracts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">Ничего не найдено.</p>
+            ) : filteredContracts.map((c: any) => (
               <Link key={c.id} to="/contracts/$id" params={{ id: c.id }}>
                 <Card className="p-3 hover:border-primary transition-colors">
                   <div className="min-w-0">
@@ -121,14 +158,18 @@ function EditTenant() {
       </MobileCollapsible>
 
       <MobileActionBar>
-        <Button
+        <ConfirmButton
           variant="destructive"
           size="lg"
           className="flex-1 min-h-11"
-          onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}
+          destructive
+          title="Удалить арендатора?"
+          description="Арендатор и связанные договоры будут удалены. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
         >
           <Trash2 className="h-4 w-4 mr-1" /> Удалить
-        </Button>
+        </ConfirmButton>
         <Button
           type="submit"
           form="tenant-form"

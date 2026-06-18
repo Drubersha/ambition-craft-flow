@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -21,14 +21,20 @@ export function MobileCollapsible({
   className?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <div className="flex items-center gap-2 px-4 py-3 md:border-b">
+      <div className="flex items-center gap-2 px-4 py-2 md:py-3 md:border-b">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="flex items-center gap-2 font-semibold text-base flex-1 min-w-0 text-left md:cursor-default min-h-11 md:min-h-0"
+          aria-controls={panelId}
+          className={cn(
+            "flex items-center gap-2 font-semibold text-base flex-1 min-w-0 text-left",
+            "min-h-11 md:min-h-0 rounded-md -mx-2 px-2 py-1",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          )}
         >
           <ChevronDown
             aria-hidden="true"
@@ -41,7 +47,14 @@ export function MobileCollapsible({
         </button>
         {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className={cn("px-4 pb-4", !open && "hidden md:block")}>{children}</div>
+      <div
+        id={panelId}
+        role="region"
+        aria-hidden={!open ? true : undefined}
+        className={cn("px-4 pb-4", !open && "hidden md:block")}
+      >
+        {children}
+      </div>
     </Card>
   );
 }
