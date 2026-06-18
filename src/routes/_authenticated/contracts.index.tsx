@@ -1,0 +1,84 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, FileText, Search } from "lucide-react";
+import { useState } from "react";
+import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+
+export const Route = createFileRoute("/_authenticated/contracts/")({
+  component: ContractsList,
+});
+
+function ContractsList() {
+  const [q, setQ] = useState("");
+  const { data, isLoading } = useQuery({
+    queryKey: ["contracts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("contracts")
+        .select("*, tenant:tenants(name), property:properties(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const filtered = (data ?? []).filter((c: any) => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return c.number.toLowerCase().includes(s) || c.tenant?.name.toLowerCase().includes(s) || c.property?.name.toLowerCase().includes(s);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Договоры</h1>
+          <p className="text-muted-foreground text-sm">Все договоры аренды</p>
+        </div>
+        <Button asChild><Link to="/contracts/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link></Button>
+      </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input className="pl-9" placeholder="Поиск по номеру, арендатору, объекту" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      {isLoading ? <div>Загрузка...</div> : filtered.length === 0 ? (
+        <Card className="p-12 text-center">
+          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+          <h3 className="font-semibold">Договоров нет</h3>
+          <p className="text-sm text-muted-foreground mb-4">Создайте первый договор.</p>
+          <Button asChild><Link to="/contracts/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link></Button>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((c: any) => (
+            <Link key={c.id} to="/contracts/$id" params={{ id: c.id }}>
+              <Card className="p-4 hover:border-primary transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">№ {c.number}</span>
+                      <Badge variant={c.status === "active" ? "default" : "secondary"}>
+                        {CONTRACT_STATUS_LABELS[c.status]}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {c.tenant?.name} · {c.property?.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {formatDate(c.start_date)} → {formatDate(c.end_date)} · {c.area ?? "—"} м²
+                    </div>
+                  </div>
+                  <div className="text-right font-semibold">{formatMoney(c.rate, c.currency)}</div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
