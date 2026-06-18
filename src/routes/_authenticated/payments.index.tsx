@@ -22,7 +22,7 @@ function PaymentsList() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Платежи</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">Платежи</h1>
       {isLoading ? <div>Загрузка...</div> : !data || data.length === 0 ? (
         <Card className="p-12 text-center">
           <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
@@ -33,10 +33,10 @@ function PaymentsList() {
         <div className="space-y-2">
           {data.map((p: any) => (
             <Link key={p.id} to="/charges/$id" params={{ id: p.charge_id }}>
-              <Card className="p-3 hover:border-primary flex items-center justify-between gap-2">
-                <div>
+              <Card className="p-3 hover:border-primary flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm">{formatMoney(p.amount, p.charge?.contract?.currency)}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground break-words">
                     {formatDate(p.paid_at)} · {p.charge?.contract?.tenant?.name} · № {p.charge?.contract?.number}
                     {p.method ? ` · ${p.method}` : ""}
                   </div>

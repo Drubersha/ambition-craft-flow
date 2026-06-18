@@ -70,10 +70,10 @@ function EditTenant() {
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
         <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}>
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
-      <h1 className="text-2xl font-bold">{data.name}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
       <TenantForm
         initial={{
           name: data.name, kind: data.kind,
@@ -94,14 +94,14 @@ function EditTenant() {
           <div className="space-y-2">
             {contracts.map((c: any) => (
               <Link key={c.id} to="/contracts/$id" params={{ id: c.id }}>
-                <Card className="p-3 hover:border-primary transition-colors flex items-center justify-between gap-2">
+                <Card className="p-3 hover:border-primary transition-colors">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">№ {c.number}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium break-all">№ {c.number}</span>
                       <Badge variant="secondary">{CONTRACT_STATUS_LABELS[c.status]}</Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs text-muted-foreground mt-1 break-words">
                       {c.property?.name} · {c.area ?? "—"} м² · {formatMoney(c.rate, c.currency)} · {formatDate(c.start_date)} → {formatDate(c.end_date)}
                     </div>
                   </div>

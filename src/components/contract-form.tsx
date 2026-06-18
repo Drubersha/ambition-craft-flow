@@ -105,7 +105,7 @@ export function ContractForm({ initial, onSubmit, submitting }: {
         </Select>
       </F>
       <F label="Заметки"><Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} /></F>
-      <Button type="submit" disabled={submitting}>{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
     </form>
   );
 }

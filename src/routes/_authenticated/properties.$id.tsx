@@ -66,10 +66,10 @@ function EditProperty() {
           <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link>
         </Button>
         <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}>
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
-      <h1 className="text-2xl font-bold">{data.name}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
       <PropertyForm
         initial={{
           name: data.name, address: data.address, type: data.type, cadastral_no: data.cadastral_no ?? "",
