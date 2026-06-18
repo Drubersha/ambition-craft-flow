@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Search } from "lucide-react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
+import { ConfirmButton } from "@/components/confirm-button";
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   component: EditContract,
@@ -23,6 +24,7 @@ function EditContract() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [chargeQuery, setChargeQuery] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["contract", id],
     queryFn: async () => {
@@ -72,13 +74,30 @@ function EditContract() {
 
   if (isLoading || !data) return <div>Загрузка...</div>;
 
+  const filteredCharges = (charges ?? []).filter((c: any) => {
+    if (!chargeQuery) return true;
+    const s = chargeQuery.toLowerCase();
+    return (
+      formatDate(c.period_start).toLowerCase().includes(s) ||
+      formatDate(c.period_end).toLowerCase().includes(s) ||
+      String(c.total).includes(s) ||
+      (CHARGE_STATUS_LABELS[c.status] ?? "").toLowerCase().includes(s)
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/contracts"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}>
+        <ConfirmButton
+          variant="destructive" size="sm" className="hidden md:inline-flex" destructive
+          title="Удалить договор?"
+          description="Договор и связанные начисления будут удалены. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
+        >
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
-        </Button>
+        </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">Договор № {data.number}</h1>
       <MobileCollapsible title="Данные договора">
@@ -102,7 +121,22 @@ function EditContract() {
           <p className="text-sm text-muted-foreground text-center py-4">Начислений нет.</p>
         ) : (
           <div className="space-y-2">
-            {charges.map((c) => (
+            {charges.length > 3 && (
+              <div className="relative">
+                <Search aria-hidden="true" className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  aria-label="Быстрый поиск по начислениям"
+                  placeholder="Поиск по периоду, сумме, статусу"
+                  className="pl-9"
+                  value={chargeQuery}
+                  onChange={(e) => setChargeQuery(e.target.value)}
+                />
+              </div>
+            )}
+            {filteredCharges.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">Ничего не найдено.</p>
+            ) : filteredCharges.map((c: any) => (
               <Link key={c.id} to="/charges/$id" params={{ id: c.id }}>
                 <Card className="p-3 hover:border-primary flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -122,14 +156,15 @@ function EditContract() {
       </MobileCollapsible>
 
       <MobileActionBar>
-        <Button
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
-          onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}
+        <ConfirmButton
+          variant="destructive" size="lg" className="flex-1 min-h-11" destructive
+          title="Удалить договор?"
+          description="Договор и связанные начисления будут удалены. Действие необратимо."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
         >
           <Trash2 className="h-4 w-4 mr-1" /> Удалить
-        </Button>
+        </ConfirmButton>
         <Button
           type="submit"
           form="contract-form"
