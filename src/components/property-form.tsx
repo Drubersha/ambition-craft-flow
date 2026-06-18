@@ -90,7 +90,7 @@ export function PropertyForm({
         <Field label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></Field>
       </div>
       <Field label="Описание"><Textarea rows={3} value={v.description} onChange={(e) => set("description", e.target.value)} /></Field>
-      <Button type="submit" disabled={submitting}>{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
     </form>
   );
 }
