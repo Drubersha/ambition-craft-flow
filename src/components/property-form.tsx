@@ -25,10 +25,14 @@ export function PropertyForm({
   initial,
   onSubmit,
   submitting,
+  formId,
+  hideSubmit,
 }: {
   initial?: Partial<PropertyFormValues>;
   onSubmit: (v: PropertyFormValues) => void;
   submitting?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
 }) {
   const [v, setV] = useState<PropertyFormValues>({
     name: initial?.name ?? "",
@@ -50,6 +54,7 @@ export function PropertyForm({
 
   return (
     <form
+      id={formId}
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit(v);
@@ -90,7 +95,9 @@ export function PropertyForm({
         <Field label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></Field>
       </div>
       <Field label="Описание"><Textarea rows={3} value={v.description} onChange={(e) => set("description", e.target.value)} /></Field>
-      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      {!hideSubmit && (
+        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      )}
     </form>
   );
 }

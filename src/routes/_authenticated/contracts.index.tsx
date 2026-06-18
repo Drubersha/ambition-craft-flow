@@ -46,7 +46,7 @@ function ContractsList() {
       />
       <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Поиск по номеру, арендатору, объекту" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input className="pl-9" aria-label="Поиск договоров" type="search" placeholder="Поиск по номеру, арендатору, объекту" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {isLoading ? <div>Загрузка...</div> : filtered.length === 0 ? (
         <Card className="p-12 text-center">

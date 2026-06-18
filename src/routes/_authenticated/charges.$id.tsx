@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
+import { MobileCollapsible } from "@/components/mobile-collapsible";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const Route = createFileRoute("/_authenticated/charges/$id")({
   component: ChargeDetail,
@@ -70,15 +72,14 @@ function ChargeDetail() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild><Link to="/charges"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}>
+        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}>
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold">Начисление</h1>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Сводка</CardTitle></CardHeader>
-        <CardContent className="space-y-1 text-sm">
+      <MobileCollapsible title="Сводка">
+        <div className="space-y-1 text-sm">
           <Row label="Арендатор" value={charge.contract?.tenant?.name} />
           <Row label="Договор" value={`№ ${charge.contract?.number}`} />
           <Row label="Объект" value={charge.contract?.property?.name} />
@@ -87,23 +88,23 @@ function ChargeDetail() {
           <Row label="Сумма" value={formatMoney(charge.total, currency)} />
           <Row label="Оплачено" value={formatMoney(charge.paid_total, currency)} />
           <Row label="Остаток" value={formatMoney(remaining, currency)} highlight={remaining > 0} />
-          <div className="flex justify-between pt-2">
+          <div className="flex justify-between pt-2 gap-3">
             <span className="text-muted-foreground">Статус</span>
             <Badge variant={charge.status === "paid" ? "default" : charge.status === "overdue" ? "destructive" : "secondary"}>
               {CHARGE_STATUS_LABELS[charge.status]}
             </Badge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </MobileCollapsible>
 
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Платежи</h2>
-        <AddPaymentDialog chargeId={id} suggested={Math.max(0, remaining)} currency={currency} />
-      </div>
-      {!payments || payments.length === 0 ? (
-        <Card className="p-6 text-sm text-muted-foreground text-center">Платежей ещё нет.</Card>
-      ) : (
-        <div className="space-y-2">
+      <MobileCollapsible
+        title="Платежи"
+        action={<AddPaymentDialog chargeId={id} suggested={Math.max(0, remaining)} currency={currency} />}
+      >
+        {!payments || payments.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Платежей ещё нет.</p>
+        ) : (
+          <div className="space-y-2">
           {payments.map((p) => (
             <Card key={p.id} className="p-3 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -112,13 +113,25 @@ function ChargeDetail() {
                   {formatDate(p.paid_at)}{p.method ? ` · ${p.method}` : ""}{p.comment ? ` · ${p.comment}` : ""}
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { if (confirm("Удалить платёж?")) delPayment.mutate(p.id); }}>
+              <Button variant="ghost" size="icon" aria-label="Удалить платёж" className="shrink-0 min-h-11 min-w-11" onClick={() => { if (confirm("Удалить платёж?")) delPayment.mutate(p.id); }}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </Card>
           ))}
-        </div>
-      )}
+          </div>
+        )}
+      </MobileCollapsible>
+
+      <MobileActionBar>
+        <Button
+          variant="destructive"
+          size="lg"
+          className="flex-1 min-h-11"
+          onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить начисление
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

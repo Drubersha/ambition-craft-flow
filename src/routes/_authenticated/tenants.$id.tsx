@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, FileText } from "lucide-react";
 import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { MobileCollapsible } from "@/components/mobile-collapsible";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const Route = createFileRoute("/_authenticated/tenants/$id")({
   component: EditTenant,
@@ -69,27 +71,33 @@ function EditTenant() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}>
+        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}>
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
-      <TenantForm
-        initial={{
-          name: data.name, kind: data.kind,
-          inn: data.inn ?? "", phone: data.phone ?? "", email: data.email ?? "",
-          contact_person: data.contact_person ?? "", notes: data.notes ?? "",
-        }}
-        onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
-      />
+      <MobileCollapsible title="Данные арендатора">
+        <TenantForm
+          formId="tenant-form"
+          initial={{
+            name: data.name, kind: data.kind,
+            inn: data.inn ?? "", phone: data.phone ?? "", email: data.email ?? "",
+            contact_person: data.contact_person ?? "", notes: data.notes ?? "",
+          }}
+          onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
+        />
+      </MobileCollapsible>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold">Договоры арендатора</h2>
-          <Button size="sm" asChild><Link to="/contracts/new" search={{ tenant: id } as any}>Новый договор</Link></Button>
-        </div>
+      <MobileCollapsible
+        title="Договоры арендатора"
+        action={
+          <Button size="sm" asChild>
+            <Link to="/contracts/new" search={{ tenant: id } as any}>Новый</Link>
+          </Button>
+        }
+      >
         {(!contracts || contracts.length === 0) ? (
-          <Card className="p-6 text-sm text-muted-foreground text-center">Договоров пока нет.</Card>
+          <p className="text-sm text-muted-foreground text-center py-4">Договоров пока нет.</p>
         ) : (
           <div className="space-y-2">
             {contracts.map((c: any) => (
@@ -110,7 +118,27 @@ function EditTenant() {
             ))}
           </div>
         )}
-      </div>
+      </MobileCollapsible>
+
+      <MobileActionBar>
+        <Button
+          variant="destructive"
+          size="lg"
+          className="flex-1 min-h-11"
+          onClick={() => { if (confirm("Удалить арендатора?")) del.mutate(); }}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+        </Button>
+        <Button
+          type="submit"
+          form="tenant-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
+          {mut.isPending ? "Сохранение..." : "Сохранить"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

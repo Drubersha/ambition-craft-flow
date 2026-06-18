@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyForm, type PropertyFormValues } from "@/components/property-form";
 import { toast } from "sonner";
+import { MobileActionBar } from "@/components/mobile-action-bar";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/properties/new")({
   component: NewProperty,
@@ -46,8 +48,13 @@ function NewProperty() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Новый объект</h1>
-      <PropertyForm onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <h1 className="text-xl sm:text-2xl font-bold">Новый объект</h1>
+      <PropertyForm formId="property-new-form" onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <MobileActionBar>
+        <Button type="submit" form="property-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+          {mut.isPending ? "Сохранение..." : "Создать объект"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

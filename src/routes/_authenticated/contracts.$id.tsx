@@ -12,6 +12,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileCollapsible } from "@/components/mobile-collapsible";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   component: EditContract,
@@ -74,28 +76,30 @@ function EditContract() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/contracts"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}>
+        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}>
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">Договор № {data.number}</h1>
-      <ContractForm
-        initial={{
-          tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
-          cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
-          rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
-          start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
-        }}
-        onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
-      />
+      <MobileCollapsible title="Данные договора">
+        <ContractForm
+          formId="contract-form"
+          initial={{
+            tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
+            cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
+            rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
+            start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
+          }}
+          onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
+        />
+      </MobileCollapsible>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold">Начисления по договору</h2>
-          <NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} />
-        </div>
+      <MobileCollapsible
+        title="Начисления по договору"
+        action={<NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} />}
+      >
         {(!charges || charges.length === 0) ? (
-          <Card className="p-6 text-sm text-muted-foreground text-center">Начислений нет.</Card>
+          <p className="text-sm text-muted-foreground text-center py-4">Начислений нет.</p>
         ) : (
           <div className="space-y-2">
             {charges.map((c) => (
@@ -115,7 +119,27 @@ function EditContract() {
             ))}
           </div>
         )}
-      </div>
+      </MobileCollapsible>
+
+      <MobileActionBar>
+        <Button
+          variant="destructive"
+          size="lg"
+          className="flex-1 min-h-11"
+          onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+        </Button>
+        <Button
+          type="submit"
+          form="contract-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
+          {mut.isPending ? "Сохранение..." : "Сохранить"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

@@ -23,10 +23,12 @@ export type ContractFormValues = {
   notes: string;
 };
 
-export function ContractForm({ initial, onSubmit, submitting }: {
+export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit }: {
   initial?: Partial<ContractFormValues>;
   onSubmit: (v: ContractFormValues) => void;
   submitting?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
 }) {
   const [v, setV] = useState<ContractFormValues>({
     tenant_id: initial?.tenant_id ?? "",
@@ -64,7 +66,7 @@ export function ContractForm({ initial, onSubmit, submitting }: {
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(v); }} className="space-y-4 max-w-2xl">
+    <form id={formId} onSubmit={(e) => { e.preventDefault(); onSubmit(v); }} className="space-y-4 max-w-2xl">
       <div className="grid sm:grid-cols-2 gap-3">
         <F label="Арендатор *">
           <Select value={v.tenant_id} onValueChange={(x) => set("tenant_id", x)}>
@@ -105,7 +107,9 @@ export function ContractForm({ initial, onSubmit, submitting }: {
         </Select>
       </F>
       <F label="Заметки"><Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} /></F>
-      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      {!hideSubmit && (
+        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      )}
     </form>
   );
 }

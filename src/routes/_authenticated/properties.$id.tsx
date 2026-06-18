@@ -5,6 +5,8 @@ import { PropertyForm, type PropertyFormValues } from "@/components/property-for
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
+import { MobileCollapsible } from "@/components/mobile-collapsible";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const Route = createFileRoute("/_authenticated/properties/$id")({
   component: EditProperty,
@@ -65,21 +67,44 @@ function EditProperty() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link>
         </Button>
-        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}>
+        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}>
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
-      <PropertyForm
-        initial={{
-          name: data.name, address: data.address, type: data.type, cadastral_no: data.cadastral_no ?? "",
-          area_total: String(data.area_total ?? ""), area_usable: data.area_usable ? String(data.area_usable) : "",
-          floor: data.floor ?? "", room_no: data.room_no ?? "", status: data.status,
-          base_rate: data.base_rate ? String(data.base_rate) : "", currency: data.currency, description: data.description ?? "",
-        }}
-        onSubmit={(v) => mut.mutate(v)}
-        submitting={mut.isPending}
-      />
+      <MobileCollapsible title="Данные объекта">
+        <PropertyForm
+          formId="property-form"
+          initial={{
+            name: data.name, address: data.address, type: data.type, cadastral_no: data.cadastral_no ?? "",
+            area_total: String(data.area_total ?? ""), area_usable: data.area_usable ? String(data.area_usable) : "",
+            floor: data.floor ?? "", room_no: data.room_no ?? "", status: data.status,
+            base_rate: data.base_rate ? String(data.base_rate) : "", currency: data.currency, description: data.description ?? "",
+          }}
+          onSubmit={(v) => mut.mutate(v)}
+          submitting={mut.isPending}
+        />
+      </MobileCollapsible>
+
+      <MobileActionBar>
+        <Button
+          variant="destructive"
+          size="lg"
+          className="flex-1 min-h-11"
+          onClick={() => { if (confirm("Удалить объект?")) del.mutate(); }}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+        </Button>
+        <Button
+          type="submit"
+          form="property-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
+          {mut.isPending ? "Сохранение..." : "Сохранить"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

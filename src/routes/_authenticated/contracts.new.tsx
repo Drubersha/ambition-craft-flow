@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { MobileActionBar } from "@/components/mobile-action-bar";
+import { Button } from "@/components/ui/button";
 
 const search = z.object({ tenant: z.string().optional(), property: z.string().optional() });
 
@@ -41,11 +43,17 @@ function NewContract() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Новый договор</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">Новый договор</h1>
       <ContractForm
+        formId="contract-new-form"
         initial={{ tenant_id: sp.tenant ?? "", property_id: sp.property ?? "" }}
         onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
       />
+      <MobileActionBar>
+        <Button type="submit" form="contract-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+          {mut.isPending ? "Сохранение..." : "Создать договор"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }
