@@ -16,10 +16,12 @@ export type TenantFormValues = {
   notes: string;
 };
 
-export function TenantForm({ initial, onSubmit, submitting }: {
+export function TenantForm({ initial, onSubmit, submitting, formId, hideSubmit }: {
   initial?: Partial<TenantFormValues>;
   onSubmit: (v: TenantFormValues) => void;
   submitting?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
 }) {
   const [v, setV] = useState<TenantFormValues>({
     name: initial?.name ?? "", kind: initial?.kind ?? "company",
@@ -28,7 +30,7 @@ export function TenantForm({ initial, onSubmit, submitting }: {
   });
   const set = <K extends keyof TenantFormValues>(k: K, val: TenantFormValues[K]) => setV((p) => ({ ...p, [k]: val }));
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(v); }} className="space-y-4 max-w-2xl">
+    <form id={formId} onSubmit={(e) => { e.preventDefault(); onSubmit(v); }} className="space-y-4 max-w-2xl">
       <F label="Название / ФИО *"><Input required value={v.name} onChange={(e) => set("name", e.target.value)} /></F>
       <F label="Тип">
         <Select value={v.kind} onValueChange={(x) => set("kind", x)}>
@@ -45,7 +47,9 @@ export function TenantForm({ initial, onSubmit, submitting }: {
         <F label="Email"><Input type="email" value={v.email} onChange={(e) => set("email", e.target.value)} /></F>
       </div>
       <F label="Заметки"><Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} /></F>
-      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      {!hideSubmit && (
+        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+      )}
     </form>
   );
 }
