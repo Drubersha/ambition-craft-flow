@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
 import { toast } from "sonner";
+import { MobileActionBar } from "@/components/mobile-action-bar";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/tenants/new")({
   component: NewTenant,
@@ -32,8 +34,13 @@ function NewTenant() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Новый арендатор</h1>
-      <TenantForm onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <h1 className="text-xl sm:text-2xl font-bold">Новый арендатор</h1>
+      <TenantForm formId="tenant-new-form" onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <MobileActionBar>
+        <Button type="submit" form="tenant-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+          {mut.isPending ? "Сохранение..." : "Создать арендатора"}
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }
