@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import { useState } from "react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
+import { ConfirmButton } from "@/components/confirm-button";
 
 export const Route = createFileRoute("/_authenticated/charges/$id")({
   component: ChargeDetail,
@@ -22,6 +23,7 @@ function ChargeDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [paymentQuery, setPaymentQuery] = useState("");
 
   const { data: charge } = useQuery({
     queryKey: ["charge", id],
@@ -68,13 +70,30 @@ function ChargeDetail() {
   const currency = charge.contract?.currency ?? "RUB";
   const remaining = Number(charge.total) - Number(charge.paid_total);
 
+  const filteredPayments = (payments ?? []).filter((p: any) => {
+    if (!paymentQuery) return true;
+    const s = paymentQuery.toLowerCase();
+    return (
+      String(p.amount).includes(s) ||
+      formatDate(p.paid_at).toLowerCase().includes(s) ||
+      (p.method ?? "").toLowerCase().includes(s) ||
+      (p.comment ?? "").toLowerCase().includes(s)
+    );
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild><Link to="/charges"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <Button variant="destructive" size="sm" className="hidden md:inline-flex" onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}>
+        <ConfirmButton
+          variant="destructive" size="sm" className="hidden md:inline-flex" destructive
+          title="Удалить начисление?"
+          description="Начисление и связанные платежи будут удалены."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
+        >
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
-        </Button>
+        </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold">Начисление</h1>
 
@@ -105,7 +124,22 @@ function ChargeDetail() {
           <p className="text-sm text-muted-foreground text-center py-4">Платежей ещё нет.</p>
         ) : (
           <div className="space-y-2">
-          {payments.map((p) => (
+          {payments.length > 3 && (
+            <div className="relative">
+              <Search aria-hidden="true" className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                aria-label="Быстрый поиск по платежам"
+                placeholder="Поиск по сумме, дате, способу"
+                className="pl-9"
+                value={paymentQuery}
+                onChange={(e) => setPaymentQuery(e.target.value)}
+              />
+            </div>
+          )}
+          {filteredPayments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">Ничего не найдено.</p>
+          ) : filteredPayments.map((p: any) => (
             <Card key={p.id} className="p-3 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{formatMoney(p.amount, currency)}</div>
@@ -113,9 +147,19 @@ function ChargeDetail() {
                   {formatDate(p.paid_at)}{p.method ? ` · ${p.method}` : ""}{p.comment ? ` · ${p.comment}` : ""}
                 </div>
               </div>
-              <Button variant="ghost" size="icon" aria-label="Удалить платёж" className="shrink-0 min-h-11 min-w-11" onClick={() => { if (confirm("Удалить платёж?")) delPayment.mutate(p.id); }}>
+              <ConfirmButton
+                variant="ghost"
+                size="icon"
+                aria-label="Удалить платёж"
+                className="shrink-0 min-h-11 min-w-11"
+                destructive
+                title="Удалить платёж?"
+                description={`Платёж на ${formatMoney(p.amount, currency)} от ${formatDate(p.paid_at)}.`}
+                confirmText="Удалить"
+                onConfirm={() => delPayment.mutate(p.id)}
+              >
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </ConfirmButton>
             </Card>
           ))}
           </div>
@@ -123,14 +167,15 @@ function ChargeDetail() {
       </MobileCollapsible>
 
       <MobileActionBar>
-        <Button
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
-          onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}
+        <ConfirmButton
+          variant="destructive" size="lg" className="flex-1 min-h-11" destructive
+          title="Удалить начисление?"
+          description="Начисление и связанные платежи будут удалены."
+          confirmText="Удалить"
+          onConfirm={() => del.mutate()}
         >
           <Trash2 className="h-4 w-4 mr-1" /> Удалить начисление
-        </Button>
+        </ConfirmButton>
       </MobileActionBar>
     </div>
   );
