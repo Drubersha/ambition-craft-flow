@@ -1,0 +1,170 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ContractForm, type ContractFormValues } from "@/components/contract-form";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { ArrowLeft, Trash2, Plus } from "lucide-react";
+import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export const Route = createFileRoute("/_authenticated/contracts/$id")({
+  component: EditContract,
+});
+
+function EditContract() {
+  const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["contract", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("contracts").select("*").eq("id", id).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: charges } = useQuery({
+    queryKey: ["contract-charges", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("charges").select("*").eq("contract_id", id).order("period_start", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mut = useMutation({
+    mutationFn: async (v: ContractFormValues) => {
+      const { error } = await supabase.from("contracts").update({
+        tenant_id: v.tenant_id, property_id: v.property_id,
+        number: v.number, cadastral_no: v.cadastral_no || null,
+        area: v.area ? Number(v.area) : null,
+        rate: Number(v.rate) || 0, currency: v.currency || "RUB",
+        payment_period: v.payment_period as any, status: v.status as any,
+        start_date: v.start_date, end_date: v.end_date || null,
+        notes: v.notes || null,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contract", id] });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      toast.success("Сохранено");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("contracts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["contracts"] }); toast.success("Удалено"); navigate({ to: "/contracts" }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (isLoading || !data) return <div>Загрузка...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" asChild><Link to="/contracts"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
+        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}>
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+        </Button>
+      </div>
+      <h1 className="text-2xl font-bold">Договор № {data.number}</h1>
+      <ContractForm
+        initial={{
+          tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
+          cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
+          rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
+          start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
+        }}
+        onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
+      />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold">Начисления по договору</h2>
+          <NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} />
+        </div>
+        {(!charges || charges.length === 0) ? (
+          <Card className="p-6 text-sm text-muted-foreground text-center">Начислений нет.</Card>
+        ) : (
+          <div className="space-y-2">
+            {charges.map((c) => (
+              <Link key={c.id} to="/charges/$id" params={{ id: c.id }}>
+                <Card className="p-3 hover:border-primary flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-sm">{formatDate(c.period_start)} — {formatDate(c.period_end)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Оплачено {formatMoney(c.paid_total, data.currency)} из {formatMoney(c.total, data.currency)}
+                    </div>
+                  </div>
+                  <Badge variant={c.status === "paid" ? "default" : c.status === "overdue" ? "destructive" : "secondary"}>
+                    {CHARGE_STATUS_LABELS[c.status]}
+                  </Badge>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NewChargeDialog({ contractId, rate, currency }: { contractId: string; rate: number; currency: string }) {
+  const [open, setOpen] = useState(false);
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const [periodStart, setPeriodStart] = useState(firstDay);
+  const [periodEnd, setPeriodEnd] = useState(lastDay);
+  const [dueDate, setDueDate] = useState(lastDay);
+  const [total, setTotal] = useState(String(rate));
+  const qc = useQueryClient();
+  const mut = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase.from("charges").insert({
+        owner_id: u.user!.id, contract_id: contractId,
+        period_start: periodStart, period_end: periodEnd, due_date: dueDate,
+        total: Number(total) || 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contract-charges", contractId] });
+      qc.invalidateQueries({ queryKey: ["charges"] });
+      toast.success("Начисление создано");
+      setOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" /> Начислить</Button></DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Новое начисление</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label>Период с</Label><Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} /></div>
+            <div className="space-y-1"><Label>Период по</Label><Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} /></div>
+          </div>
+          <div className="space-y-1"><Label>Срок оплаты</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+          <div className="space-y-1"><Label>Сумма, {currency}</Label><Input type="number" step="0.01" value={total} onChange={(e) => setTotal(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>Создать</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

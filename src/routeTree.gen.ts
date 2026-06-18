@@ -13,7 +13,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedTenantsIndexRouteImport } from './routes/_authenticated/tenants.index'
 import { Route as AuthenticatedPropertiesIndexRouteImport } from './routes/_authenticated/properties.index'
+import { Route as AuthenticatedTenantsNewRouteImport } from './routes/_authenticated/tenants.new'
+import { Route as AuthenticatedTenantsIdRouteImport } from './routes/_authenticated/tenants.$id'
 import { Route as AuthenticatedPropertiesNewRouteImport } from './routes/_authenticated/properties.new'
 import { Route as AuthenticatedPropertiesIdRouteImport } from './routes/_authenticated/properties.$id'
 
@@ -36,12 +39,28 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTenantsIndexRoute =
+  AuthenticatedTenantsIndexRouteImport.update({
+    id: '/tenants/',
+    path: '/tenants/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPropertiesIndexRoute =
   AuthenticatedPropertiesIndexRouteImport.update({
     id: '/properties/',
     path: '/properties/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTenantsNewRoute = AuthenticatedTenantsNewRouteImport.update({
+  id: '/tenants/new',
+  path: '/tenants/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTenantsIdRoute = AuthenticatedTenantsIdRouteImport.update({
+  id: '/tenants/$id',
+  path: '/tenants/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPropertiesNewRoute =
   AuthenticatedPropertiesNewRouteImport.update({
     id: '/properties/new',
@@ -61,7 +80,10 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
+  '/tenants/$id': typeof AuthenticatedTenantsIdRoute
+  '/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/properties/': typeof AuthenticatedPropertiesIndexRoute
+  '/tenants/': typeof AuthenticatedTenantsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,7 +91,10 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
+  '/tenants/$id': typeof AuthenticatedTenantsIdRoute
+  '/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/properties': typeof AuthenticatedPropertiesIndexRoute
+  '/tenants': typeof AuthenticatedTenantsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,7 +104,10 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties/$id': typeof AuthenticatedPropertiesIdRoute
   '/_authenticated/properties/new': typeof AuthenticatedPropertiesNewRoute
+  '/_authenticated/tenants/$id': typeof AuthenticatedTenantsIdRoute
+  '/_authenticated/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/_authenticated/properties/': typeof AuthenticatedPropertiesIndexRoute
+  '/_authenticated/tenants/': typeof AuthenticatedTenantsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,7 +117,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/properties/$id'
     | '/properties/new'
+    | '/tenants/$id'
+    | '/tenants/new'
     | '/properties/'
+    | '/tenants/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -97,7 +128,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/properties/$id'
     | '/properties/new'
+    | '/tenants/$id'
+    | '/tenants/new'
     | '/properties'
+    | '/tenants'
   id:
     | '__root__'
     | '/'
@@ -106,7 +140,10 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/properties/$id'
     | '/_authenticated/properties/new'
+    | '/_authenticated/tenants/$id'
+    | '/_authenticated/tenants/new'
     | '/_authenticated/properties/'
+    | '/_authenticated/tenants/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,11 +182,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tenants/': {
+      id: '/_authenticated/tenants/'
+      path: '/tenants'
+      fullPath: '/tenants/'
+      preLoaderRoute: typeof AuthenticatedTenantsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/properties/': {
       id: '/_authenticated/properties/'
       path: '/properties'
       fullPath: '/properties/'
       preLoaderRoute: typeof AuthenticatedPropertiesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tenants/new': {
+      id: '/_authenticated/tenants/new'
+      path: '/tenants/new'
+      fullPath: '/tenants/new'
+      preLoaderRoute: typeof AuthenticatedTenantsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tenants/$id': {
+      id: '/_authenticated/tenants/$id'
+      path: '/tenants/$id'
+      fullPath: '/tenants/$id'
+      preLoaderRoute: typeof AuthenticatedTenantsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/properties/new': {
@@ -173,14 +231,20 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesIdRoute: typeof AuthenticatedPropertiesIdRoute
   AuthenticatedPropertiesNewRoute: typeof AuthenticatedPropertiesNewRoute
+  AuthenticatedTenantsIdRoute: typeof AuthenticatedTenantsIdRoute
+  AuthenticatedTenantsNewRoute: typeof AuthenticatedTenantsNewRoute
   AuthenticatedPropertiesIndexRoute: typeof AuthenticatedPropertiesIndexRoute
+  AuthenticatedTenantsIndexRoute: typeof AuthenticatedTenantsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesIdRoute: AuthenticatedPropertiesIdRoute,
   AuthenticatedPropertiesNewRoute: AuthenticatedPropertiesNewRoute,
+  AuthenticatedTenantsIdRoute: AuthenticatedTenantsIdRoute,
+  AuthenticatedTenantsNewRoute: AuthenticatedTenantsNewRoute,
   AuthenticatedPropertiesIndexRoute: AuthenticatedPropertiesIndexRoute,
+  AuthenticatedTenantsIndexRoute: AuthenticatedTenantsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
