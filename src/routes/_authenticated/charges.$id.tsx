@@ -71,10 +71,10 @@ function ChargeDetail() {
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild><Link to="/charges"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
         <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить начисление?")) del.mutate(); }}>
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
-      <h1 className="text-2xl font-bold">Начисление</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">Начисление</h1>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Сводка</CardTitle></CardHeader>
@@ -105,14 +105,14 @@ function ChargeDetail() {
       ) : (
         <div className="space-y-2">
           {payments.map((p) => (
-            <Card key={p.id} className="p-3 flex items-center justify-between gap-2">
-              <div>
+            <Card key={p.id} className="p-3 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{formatMoney(p.amount, currency)}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground break-words">
                   {formatDate(p.paid_at)}{p.method ? ` · ${p.method}` : ""}{p.comment ? ` · ${p.comment}` : ""}
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => { if (confirm("Удалить платёж?")) delPayment.mutate(p.id); }}>
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { if (confirm("Удалить платёж?")) delPayment.mutate(p.id); }}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </Card>
@@ -125,9 +125,9 @@ function ChargeDetail() {
 
 function Row({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={highlight ? "font-semibold text-destructive" : "font-medium"}>{value ?? "—"}</span>
+    <div className="flex justify-between gap-3">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className={"text-right break-words " + (highlight ? "font-semibold text-destructive" : "font-medium")}>{value ?? "—"}</span>
     </div>
   );
 }

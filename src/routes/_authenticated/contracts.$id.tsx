@@ -75,10 +75,10 @@ function EditContract() {
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/contracts"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
         <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить договор?")) del.mutate(); }}>
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </Button>
       </div>
-      <h1 className="text-2xl font-bold">Договор № {data.number}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold break-words">Договор № {data.number}</h1>
       <ContractForm
         initial={{
           tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
@@ -100,14 +100,14 @@ function EditContract() {
           <div className="space-y-2">
             {charges.map((c) => (
               <Link key={c.id} to="/charges/$id" params={{ id: c.id }}>
-                <Card className="p-3 hover:border-primary flex items-center justify-between gap-2">
-                  <div>
+                <Card className="p-3 hover:border-primary flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm">{formatDate(c.period_start)} — {formatDate(c.period_end)}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground break-words">
                       Оплачено {formatMoney(c.paid_total, data.currency)} из {formatMoney(c.total, data.currency)}
                     </div>
                   </div>
-                  <Badge variant={c.status === "paid" ? "default" : c.status === "overdue" ? "destructive" : "secondary"}>
+                  <Badge className="shrink-0 whitespace-nowrap" variant={c.status === "paid" ? "default" : c.status === "overdue" ? "destructive" : "secondary"}>
                     {CHARGE_STATUS_LABELS[c.status]}
                   </Badge>
                 </Card>
