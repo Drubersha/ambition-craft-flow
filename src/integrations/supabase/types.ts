@@ -14,16 +14,421 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      charge_items: {
+        Row: {
+          amount: number
+          charge_id: string
+          created_at: string
+          description: string | null
+          id: string
+          kind: string
+          owner_id: string
+        }
+        Insert: {
+          amount?: number
+          charge_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          owner_id: string
+        }
+        Update: {
+          amount?: number
+          charge_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charge_items_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      charges: {
+        Row: {
+          contract_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          owner_id: string
+          paid_total: number
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["charge_status"]
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          owner_id: string
+          paid_total?: number
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["charge_status"]
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          paid_total?: number
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["charge_status"]
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          area: number | null
+          cadastral_no: string | null
+          created_at: string
+          currency: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          number: string
+          owner_id: string
+          payment_period: Database["public"]["Enums"]["payment_period"]
+          property_id: string
+          rate: number
+          start_date: string
+          status: Database["public"]["Enums"]["contract_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          area?: number | null
+          cadastral_no?: string | null
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          number: string
+          owner_id: string
+          payment_period?: Database["public"]["Enums"]["payment_period"]
+          property_id: string
+          rate?: number
+          start_date: string
+          status?: Database["public"]["Enums"]["contract_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          area?: number | null
+          cadastral_no?: string | null
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          number?: string
+          owner_id?: string
+          payment_period?: Database["public"]["Enums"]["payment_period"]
+          property_id?: string
+          rate?: number
+          start_date?: string
+          status?: Database["public"]["Enums"]["contract_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          mime_type: string | null
+          owner_id: string
+          owner_kind: Database["public"]["Enums"]["document_owner_kind"]
+          ref_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          mime_type?: string | null
+          owner_id: string
+          owner_kind: Database["public"]["Enums"]["document_owner_kind"]
+          ref_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          mime_type?: string | null
+          owner_id?: string
+          owner_kind?: Database["public"]["Enums"]["document_owner_kind"]
+          ref_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          charge_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          method: string | null
+          owner_id: string
+          paid_at: string
+        }
+        Insert: {
+          amount: number
+          charge_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          method?: string | null
+          owner_id: string
+          paid_at?: string
+        }
+        Update: {
+          amount?: number
+          charge_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          method?: string | null
+          owner_id?: string
+          paid_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          area_total: number
+          area_usable: number | null
+          base_rate: number | null
+          cadastral_no: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          floor: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          room_no: string | null
+          status: Database["public"]["Enums"]["property_status"]
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          area_total?: number
+          area_usable?: number | null
+          base_rate?: number | null
+          cadastral_no?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          floor?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          room_no?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          area_total?: number
+          area_usable?: number | null
+          base_rate?: number | null
+          cadastral_no?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          floor?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          room_no?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inn: string | null
+          kind: Database["public"]["Enums"]["tenant_kind"]
+          name: string
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          kind?: Database["public"]["Enums"]["tenant_kind"]
+          name: string
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          kind?: Database["public"]["Enums"]["tenant_kind"]
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      recalc_charge: { Args: { _charge_id: string }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "manager"
+      charge_status: "unpaid" | "partial" | "paid" | "overdue"
+      contract_status: "draft" | "active" | "finished" | "terminated"
+      document_owner_kind: "property" | "tenant" | "contract"
+      payment_period: "monthly" | "quarterly" | "yearly" | "one_time"
+      property_status:
+        | "free"
+        | "occupied"
+        | "partial"
+        | "maintenance"
+        | "archived"
+      property_type:
+        | "office"
+        | "warehouse"
+        | "retail"
+        | "production"
+        | "coworking"
+        | "other"
+      tenant_kind: "person" | "company"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +555,28 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "manager"],
+      charge_status: ["unpaid", "partial", "paid", "overdue"],
+      contract_status: ["draft", "active", "finished", "terminated"],
+      document_owner_kind: ["property", "tenant", "contract"],
+      payment_period: ["monthly", "quarterly", "yearly", "one_time"],
+      property_status: [
+        "free",
+        "occupied",
+        "partial",
+        "maintenance",
+        "archived",
+      ],
+      property_type: [
+        "office",
+        "warehouse",
+        "retail",
+        "production",
+        "coworking",
+        "other",
+      ],
+      tenant_kind: ["person", "company"],
+    },
   },
 } as const
