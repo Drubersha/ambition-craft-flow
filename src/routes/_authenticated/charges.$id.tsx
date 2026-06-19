@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import { useState } from "react";
@@ -194,7 +195,7 @@ function AddPaymentDialog({ chargeId, suggested, currency }: { chargeId: string;
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(suggested));
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
-  const [method, setMethod] = useState("Банковский перевод");
+  const [method, setMethod] = useState("Наличные");
   const [comment, setComment] = useState("");
   const qc = useQueryClient();
   const mut = useMutation({
@@ -225,7 +226,18 @@ function AddPaymentDialog({ chargeId, suggested, currency }: { chargeId: string;
         <div className="space-y-3">
           <div className="space-y-1"><Label>Сумма, {currency}</Label><Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
           <div className="space-y-1"><Label>Дата</Label><Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} /></div>
-          <div className="space-y-1"><Label>Способ</Label><Input value={method} onChange={(e) => setMethod(e.target.value)} /></div>
+          <div className="space-y-1">
+            <Label>Способ оплаты</Label>
+            <Select value={method} onValueChange={setMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Наличные">Наличные</SelectItem>
+                <SelectItem value="Банковский перевод">Банковский перевод</SelectItem>
+                <SelectItem value="Карта">Карта</SelectItem>
+                <SelectItem value="Другое">Другое</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1"><Label>Комментарий</Label><Input value={comment} onChange={(e) => setComment(e.target.value)} /></div>
         </div>
         <DialogFooter><Button onClick={() => mut.mutate()} disabled={mut.isPending}>Сохранить</Button></DialogFooter>

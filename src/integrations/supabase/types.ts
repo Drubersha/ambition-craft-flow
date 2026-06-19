@@ -111,6 +111,8 @@ export type Database = {
           cadastral_no: string | null
           created_at: string
           currency: string
+          deposit_amount: number | null
+          deposit_percent: number | null
           end_date: string | null
           id: string
           notes: string | null
@@ -122,6 +124,7 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["contract_status"]
           tenant_id: string
+          termination_terms: string | null
           updated_at: string
         }
         Insert: {
@@ -129,6 +132,8 @@ export type Database = {
           cadastral_no?: string | null
           created_at?: string
           currency?: string
+          deposit_amount?: number | null
+          deposit_percent?: number | null
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -140,6 +145,7 @@ export type Database = {
           start_date: string
           status?: Database["public"]["Enums"]["contract_status"]
           tenant_id: string
+          termination_terms?: string | null
           updated_at?: string
         }
         Update: {
@@ -147,6 +153,8 @@ export type Database = {
           cadastral_no?: string | null
           created_at?: string
           currency?: string
+          deposit_amount?: number | null
+          deposit_percent?: number | null
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -158,6 +166,7 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["contract_status"]
           tenant_id?: string
+          termination_terms?: string | null
           updated_at?: string
         }
         Relationships: [

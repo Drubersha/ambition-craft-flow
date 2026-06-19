@@ -67,3 +67,30 @@ export const TENANT_KIND_LABELS: Record<string, string> = {
   person: "Физлицо",
   company: "Компания",
 };
+
+export function monthlyFromRate(rate: number, period: string): number {
+  switch (period) {
+    case "quarterly": return rate / 3;
+    case "yearly": return rate / 12;
+    default: return rate;
+  }
+}
+
+export function computeDeposit(rate: number, period: string, percent: number): number {
+  return Math.round(monthlyFromRate(rate, period) * (percent || 0)) / 100;
+}
+
+/** Number of months covered by an inclusive date range (min 1). */
+export function monthsInRange(start: string, end: string): number {
+  if (!start || !end) return 1;
+  const s = new Date(start);
+  const e = new Date(end);
+  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+  return Math.max(1, months);
+}
+
+export function chargeTotalForPeriod(rate: number, period: string, start: string, end: string): number {
+  const monthly = monthlyFromRate(rate, period);
+  if (period === "one_time") return rate;
+  return Math.round(monthly * monthsInRange(start, end) * 100) / 100;
+}

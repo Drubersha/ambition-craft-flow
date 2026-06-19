@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Search } from "lucide-react";
-import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { CHARGE_STATUS_LABELS, formatDate, formatMoney, computeDeposit, chargeTotalForPeriod, monthsInRange } from "@/lib/format";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,11 @@ function EditContract() {
         payment_period: v.payment_period as any, status: v.status as any,
         start_date: v.start_date, end_date: v.end_date || null,
         notes: v.notes || null,
+        termination_terms: v.termination_terms || null,
+        deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
+        deposit_amount: v.deposit_percent
+          ? computeDeposit(Number(v.rate) || 0, v.payment_period, Number(v.deposit_percent))
+          : null,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -108,6 +113,8 @@ function EditContract() {
             cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
             rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
             start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
+            termination_terms: (data as any).termination_terms ?? "",
+            deposit_percent: (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
           }}
           onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
         />
@@ -115,7 +122,7 @@ function EditContract() {
 
       <MobileCollapsible
         title="Начисления по договору"
-        action={<NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} />}
+        action={<NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} period={data.payment_period} />}
       >
         {(!charges || charges.length === 0) ? (
           <p className="text-sm text-muted-foreground text-center py-4">Начислений нет.</p>
@@ -179,15 +186,26 @@ function EditContract() {
   );
 }
 
-function NewChargeDialog({ contractId, rate, currency }: { contractId: string; rate: number; currency: string }) {
+function NewChargeDialog({ contractId, rate, currency, period }: { contractId: string; rate: number; currency: string; period: string }) {
   const [open, setOpen] = useState(false);
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const lastDay = (() => {
+    let monthsAhead = 1;
+    if (period === "quarterly") monthsAhead = 3;
+    if (period === "yearly") monthsAhead = 12;
+    return new Date(today.getFullYear(), today.getMonth() + monthsAhead, 0).toISOString().slice(0, 10);
+  })();
   const [periodStart, setPeriodStart] = useState(firstDay);
   const [periodEnd, setPeriodEnd] = useState(lastDay);
   const [dueDate, setDueDate] = useState(lastDay);
-  const [total, setTotal] = useState(String(rate));
+  const [total, setTotal] = useState(String(chargeTotalForPeriod(rate, period, firstDay, lastDay)));
+  const [autoCalc, setAutoCalc] = useState(true);
+
+  function recalcOnDates(start: string, end: string) {
+    if (autoCalc) setTotal(String(chargeTotalForPeriod(rate, period, start, end)));
+  }
+
   const qc = useQueryClient();
   const mut = useMutation({
     mutationFn: async () => {
@@ -214,11 +232,25 @@ function NewChargeDialog({ contractId, rate, currency }: { contractId: string; r
         <DialogHeader><DialogTitle>Новое начисление</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Период с</Label><Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} /></div>
-            <div className="space-y-1"><Label>Период по</Label><Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} /></div>
+            <div className="space-y-1"><Label>Период с</Label><Input type="date" value={periodStart} onChange={(e) => { setPeriodStart(e.target.value); recalcOnDates(e.target.value, periodEnd); }} /></div>
+            <div className="space-y-1"><Label>Период по</Label><Input type="date" value={periodEnd} onChange={(e) => { setPeriodEnd(e.target.value); recalcOnDates(periodStart, e.target.value); }} /></div>
           </div>
           <div className="space-y-1"><Label>Срок оплаты</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
-          <div className="space-y-1"><Label>Сумма, {currency}</Label><Input type="number" step="0.01" value={total} onChange={(e) => setTotal(e.target.value)} /></div>
+          <div className="space-y-1">
+            <Label>Сумма, {currency}</Label>
+            <Input
+              type="number" step="0.01" value={total}
+              onChange={(e) => { setAutoCalc(false); setTotal(e.target.value); }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Авторасчёт: {monthsInRange(periodStart, periodEnd)} мес. × {formatMoney(chargeTotalForPeriod(rate, period, periodStart, periodEnd) / monthsInRange(periodStart, periodEnd), currency)}
+              {!autoCalc && (
+                <button type="button" className="ml-2 underline" onClick={() => { setAutoCalc(true); setTotal(String(chargeTotalForPeriod(rate, period, periodStart, periodEnd))); }}>
+                  пересчитать
+                </button>
+              )}
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>Создать</Button>
