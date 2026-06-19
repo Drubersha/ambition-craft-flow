@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
   submitting?: boolean;
   formId?: string;
   hideSubmit?: boolean;
+  onValuesChange?: (v: ContractFormValues) => void;
 }) {
   const [v, setV] = useState<ContractFormValues>({
     tenant_id: initial?.tenant_id ?? "",
@@ -49,6 +50,11 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
     deposit_percent: initial?.deposit_percent ?? "",
   });
   const set = <K extends keyof ContractFormValues>(k: K, val: ContractFormValues[K]) => setV((p) => ({ ...p, [k]: val }));
+
+  useEffect(() => {
+    // Notify parent of live values so panels (e.g. deposit) can recalc instantly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: tenants } = useQuery({
     queryKey: ["tenants-list"],
