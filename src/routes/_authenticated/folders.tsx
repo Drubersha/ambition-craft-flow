@@ -39,7 +39,7 @@ function FoldersPage() {
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["folders"] });
       setSelectedId(d.id);
-      if (d.parent_id) setExpanded((s) => new Set(s).add(d.parent_id));
+      if (d.parent_id) setExpanded((s) => new Set(s).add(d.parent_id!));
       toast.success("Папка создана");
     },
     onError: (e: any) => toast.error(e.message),

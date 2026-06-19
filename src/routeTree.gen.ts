@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedFoldersRouteImport } from './routes/_authenticated/folders'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTenantsIndexRouteImport } from './routes/_authenticated/tenants.index'
 import { Route as AuthenticatedPropertiesIndexRouteImport } from './routes/_authenticated/properties.index'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedFoldersRoute = AuthenticatedFoldersRouteImport.update({
+  id: '/folders',
+  path: '/folders',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/folders': typeof AuthenticatedFoldersRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/folders': typeof AuthenticatedFoldersRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/folders': typeof AuthenticatedFoldersRoute
   '/_authenticated/charges/$id': typeof AuthenticatedChargesIdRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/_authenticated/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/folders'
     | '/charges/$id'
     | '/contracts/$id'
     | '/contracts/new'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/folders'
     | '/charges/$id'
     | '/contracts/$id'
     | '/contracts/new'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/folders'
     | '/_authenticated/charges/$id'
     | '/_authenticated/contracts/$id'
     | '/_authenticated/contracts/new'
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/folders': {
+      id: '/_authenticated/folders'
+      path: '/folders'
+      fullPath: '/folders'
+      preLoaderRoute: typeof AuthenticatedFoldersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -348,6 +367,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFoldersRoute: typeof AuthenticatedFoldersRoute
   AuthenticatedChargesIdRoute: typeof AuthenticatedChargesIdRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
   AuthenticatedContractsNewRoute: typeof AuthenticatedContractsNewRoute
@@ -364,6 +384,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFoldersRoute: AuthenticatedFoldersRoute,
   AuthenticatedChargesIdRoute: AuthenticatedChargesIdRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
   AuthenticatedContractsNewRoute: AuthenticatedContractsNewRoute,
