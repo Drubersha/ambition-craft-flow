@@ -1,0 +1,244 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import type { PlanOverlayCtx } from "@/components/plan-viewer";
+import type { Marking, MarkingShape } from "@/lib/markings";
+
+export type PropertyLite = {
+  id: string;
+  name: string;
+  address: string;
+  area_total: number;
+  base_rate: number | null;
+  currency: string;
+};
+
+export type ActiveContractLite = {
+  id: string;
+  rate: number;
+  currency: string;
+  payment_period: "monthly" | "quarterly" | "yearly" | "one_time";
+  area: number | null;
+};
+
+const PERIOD_LABEL: Record<ActiveContractLite["payment_period"], string> = {
+  monthly: "/мес",
+  quarterly: "/кв",
+  yearly: "/год",
+  one_time: " (разово)",
+};
+
+const DEFAULT_COLOR = "hsl(217 91% 60%)";
+const DRAFT_COLOR = "hsl(142 71% 45%)";
+
+function fmt(n: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+  } catch {
+    return `${Math.round(n)} ${currency}`;
+  }
+}
+
+function shapeToPath(m: Marking, ctx: PlanOverlayCtx): { d?: string; circle?: { cx: number; cy: number; r: number }; point?: { cx: number; cy: number } } {
+  if (m.shape === "polygon") {
+    const pts = (m.coords as any).points as [number, number][];
+    if (!pts || pts.length < 2) return {};
+    const d = pts.map(([x, y], i) => {
+      const p = ctx.toPx(x, y);
+      return `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+    }).join(" ") + " Z";
+    return { d };
+  }
+  if (m.shape === "circle") {
+    const c = m.coords as any;
+    const cp = ctx.toPx(c.cx, c.cy);
+    const r = c.r * Math.min(ctx.width, ctx.height);
+    return { circle: { cx: cp.x, cy: cp.y, r } };
+  }
+  const p = m.coords as any;
+  const cp = ctx.toPx(p.cx, p.cy);
+  return { point: { cx: cp.x, cy: cp.y } };
+}
+
+export type EditState =
+  | { mode: "view" }
+  | { mode: "draw"; tool: MarkingShape; propertyId: string; draft: [number, number][] };
+
+export function PlanMarkup({
+  ctx,
+  markings,
+  properties,
+  contractsByProp,
+  edit,
+  onAddPoint,
+  onFinishPolygon,
+  onPlacePoint,
+}: {
+  ctx: PlanOverlayCtx;
+  markings: Marking[];
+  properties: PropertyLite[];
+  contractsByProp: Record<string, ActiveContractLite | undefined>;
+  edit: EditState;
+  onAddPoint?: (n: { x: number; y: number }) => void;
+  onFinishPolygon?: () => void;
+  onPlacePoint?: (n: { x: number; y: number }) => void;
+}) {
+  const navigate = useNavigate();
+  const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
+  const propsById = useMemo(() => Object.fromEntries(properties.map((p) => [p.id, p])), [properties]);
+  const isDrawing = edit.mode === "draw";
+
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isDrawing) return;
+    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+    const n = ctx.toNorm(e.clientX - rect.left, e.clientY - rect.top);
+    if (edit.tool === "polygon") onAddPoint?.(n);
+    else onPlacePoint?.(n);
+  };
+
+  const handleSvgDouble = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isDrawing && edit.tool === "polygon" && edit.draft.length >= 3) {
+      e.stopPropagation();
+      onFinishPolygon?.();
+    }
+  };
+
+  return (
+    <>
+      <svg
+        width={ctx.width}
+        height={ctx.height}
+        viewBox={`0 0 ${ctx.width} ${ctx.height}`}
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: isDrawing ? "auto" : "auto",
+          cursor: isDrawing ? "crosshair" : "default",
+        }}
+        onClick={handleSvgClick}
+        onDoubleClick={handleSvgDouble}
+        onMouseLeave={() => setHover(null)}
+      >
+        {markings.map((m) => {
+          const s = shapeToPath(m, ctx);
+          const color = m.color || DEFAULT_COLOR;
+          const common = {
+            fill: color,
+            fillOpacity: 0.18,
+            stroke: color,
+            strokeWidth: 2,
+            style: { cursor: isDrawing ? "crosshair" : "pointer", pointerEvents: "all" as const },
+            onMouseEnter: (e: React.MouseEvent) => {
+              const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+            },
+            onMouseMove: (e: React.MouseEvent) => {
+              const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+            },
+            onClick: (e: React.MouseEvent) => {
+              if (isDrawing) return;
+              e.stopPropagation();
+              navigate({ to: "/properties/$id", params: { id: m.property_id } });
+            },
+          };
+          if (s.d) return <path key={m.id} d={s.d} {...common} />;
+          if (s.circle) return <circle key={m.id} {...s.circle} {...common} />;
+          if (s.point) return (
+            <g key={m.id} {...common}>
+              <circle cx={s.point.cx} cy={s.point.cy} r={10} fill={color} fillOpacity={0.9} stroke="white" strokeWidth={2} />
+              <circle cx={s.point.cx} cy={s.point.cy} r={3} fill="white" />
+            </g>
+          );
+          return null;
+        })}
+
+        {/* Draft */}
+        {isDrawing && edit.tool === "polygon" && edit.draft.length > 0 && (
+          <g>
+            <polyline
+              points={edit.draft.map(([x, y]) => { const p = ctx.toPx(x, y); return `${p.x},${p.y}`; }).join(" ")}
+              fill="none"
+              stroke={DRAFT_COLOR}
+              strokeWidth={2}
+              strokeDasharray="4 4"
+            />
+            {edit.draft.map(([x, y], i) => {
+              const p = ctx.toPx(x, y);
+              return <circle key={i} cx={p.x} cy={p.y} r={4} fill={DRAFT_COLOR} />;
+            })}
+          </g>
+        )}
+      </svg>
+
+      {hover && propsById[hover.id] && (
+        <Tooltip
+          x={hover.x}
+          y={hover.y}
+          containerW={ctx.width}
+          containerH={ctx.height}
+          property={propsById[hover.id]}
+          contract={contractsByProp[hover.id]}
+        />
+      )}
+    </>
+  );
+}
+
+function Tooltip({
+  x, y, containerW, containerH, property, contract,
+}: {
+  x: number; y: number; containerW: number; containerH: number;
+  property: PropertyLite;
+  contract?: ActiveContractLite;
+}) {
+  const W = 240;
+  const left = Math.min(x + 12, containerW - W - 4);
+  const top = Math.min(y + 12, containerH - 140);
+  const area = property.area_total || 0;
+  const baseRate = property.base_rate || 0;
+  const baseTotal = area * baseRate;
+  const conRate = contract?.rate || 0;
+  const conArea = contract?.area ?? area;
+  const conTotal = conRate * conArea;
+
+  return (
+    <div
+      className="absolute z-10 pointer-events-none rounded-md border bg-background/95 backdrop-blur shadow-lg p-3 text-xs space-y-1.5"
+      style={{ left: Math.max(4, left), top: Math.max(4, top), width: W }}
+    >
+      <div className="font-semibold text-sm truncate">{property.name}</div>
+      <div className="text-muted-foreground truncate">{property.address}</div>
+      <div className="flex justify-between gap-2">
+        <span className="text-muted-foreground">Площадь</span>
+        <span className="font-medium">{area} м²</span>
+      </div>
+      {baseRate > 0 && (
+        <>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Базовая ставка</span>
+            <span className="font-medium">{fmt(baseRate, property.currency)}/м²</span>
+          </div>
+          {area > 0 && (
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Базовый платёж</span>
+              <span className="font-medium">{fmt(baseTotal, property.currency)}</span>
+            </div>
+          )}
+        </>
+      )}
+      {contract && (
+        <div className="border-t pt-1.5 mt-1.5 space-y-1">
+          <div className="text-[10px] uppercase tracking-wide text-primary">Активный договор</div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Ставка</span>
+            <span className="font-medium">{fmt(conRate, contract.currency)}/м²</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Платёж</span>
+            <span className="font-medium">{fmt(conTotal, contract.currency)}{PERIOD_LABEL[contract.payment_period]}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
