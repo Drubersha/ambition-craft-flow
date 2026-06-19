@@ -274,6 +274,10 @@ function FolderDetail({
         />
       </Card>
 
+      {folder.plan_path && folder.plan_mime !== "application/pdf" && (
+        <FolderMapMarkup folder={folder} folders={folders} />
+      )}
+
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold">Объекты в папке ({props.length})</h3>
