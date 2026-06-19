@@ -1,18 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2, MapPin, Pentagon, X, Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FolderPicker } from "@/components/folder-picker";
 import { PlanUploader } from "@/components/plan-uploader";
-import { useFolders, buildTree, type FolderNode, type Folder } from "@/lib/folders";
+import { useFolders, buildTree, descendantIds, type FolderNode, type Folder } from "@/lib/folders";
+import { PlanViewer } from "@/components/plan-viewer";
+import { PlanMarkup, type EditState } from "@/components/plan-markup";
+import { useFolderMarkings, useFolderPlanProperties, type Marking, type MarkingShape } from "@/lib/markings";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/folders")({
@@ -268,6 +274,10 @@ function FolderDetail({
         />
       </Card>
 
+      {folder.plan_path && folder.plan_mime !== "application/pdf" && (
+        <FolderMapMarkup folder={folder} folders={folders} />
+      )}
+
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold">Объекты в папке ({props.length})</h3>
@@ -295,5 +305,178 @@ function FolderDetail({
         )}
       </Card>
     </div>
+  );
+}
+
+function FolderMapMarkup({ folder, folders }: { folder: Folder; folders: Folder[] }) {
+  const qc = useQueryClient();
+  const [url, setUrl] = useState<string | null>(null);
+  const [edit, setEdit] = useState<EditState>({ mode: "view" });
+
+  // signed url for plan
+  useEffect(() => {
+    let cancel = false;
+    if (!folder.plan_path) { setUrl(null); return; }
+    (async () => {
+      const { data } = await supabase.storage.from("documents").createSignedUrl(folder.plan_path!, 60 * 60);
+      if (!cancel) setUrl(data?.signedUrl ?? null);
+    })();
+    return () => { cancel = true; };
+  }, [folder.plan_path]);
+
+  // All folder IDs whose properties may be shown on this plan = this folder + descendants
+  const allFolderIds = useMemo(() => Array.from(descendantIds(folders, folder.id)), [folders, folder.id]);
+
+  const { data: markings = [] } = useFolderMarkings(folder.id);
+  const { data: planData } = useFolderPlanProperties(folder.id, allFolderIds);
+  const properties = (planData?.properties ?? []) as any[];
+  const contractsByProp = (planData?.activeContracts ?? {}) as Record<string, any>;
+
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
+
+  const save = useMutation({
+    mutationFn: async (v: { propertyId: string; shape: MarkingShape; coords: any }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase.from("property_markings").upsert({
+        owner_id: u.user!.id,
+        property_id: v.propertyId,
+        folder_id: folder.id,
+        shape: v.shape,
+        coords: v.coords,
+      }, { onConflict: "property_id,folder_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["folder-markings", folder.id] });
+      toast.success("Разметка сохранена");
+      setEdit({ mode: "view" });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const { error } = await supabase.from("property_markings")
+        .delete().eq("property_id", propertyId).eq("folder_id", folder.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["folder-markings", folder.id] });
+      toast.success("Удалено");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const startDraw = (tool: MarkingShape) => {
+    if (!selectedPropertyId) {
+      toast.error("Сначала выберите объект");
+      return;
+    }
+    setEdit({ mode: "draw", tool, propertyId: selectedPropertyId, draft: [] });
+  };
+
+  const finishPolygon = () => {
+    if (edit.mode !== "draw" || edit.tool !== "polygon") return;
+    if (edit.draft.length < 3) { toast.error("Нужно минимум 3 точки"); return; }
+    save.mutate({ propertyId: edit.propertyId, shape: "polygon", coords: { points: edit.draft } });
+  };
+
+  const placePoint = (n: { x: number; y: number }) => {
+    if (edit.mode !== "draw") return;
+    save.mutate({ propertyId: edit.propertyId, shape: "point", coords: { cx: n.x, cy: n.y } });
+  };
+
+  const addPoint = (n: { x: number; y: number }) => {
+    if (edit.mode !== "draw" || edit.tool !== "polygon") return;
+    setEdit({ ...edit, draft: [...edit.draft, [n.x, n.y]] });
+  };
+
+  const existing = markings.find((m) => m.property_id === selectedPropertyId);
+
+  if (!url) return null;
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="font-semibold">Разметка объектов</h3>
+        <div className="text-xs text-muted-foreground">
+          {markings.length > 0 ? `Размечено: ${markings.length}` : "Наведите курсор на фигуру, чтобы увидеть детали"}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+          <SelectTrigger className="w-[260px]">
+            <SelectValue placeholder="Выберите объект..." />
+          </SelectTrigger>
+          <SelectContent>
+            {properties.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">Нет объектов в папке</div>
+            ) : properties.map((p) => {
+              const marked = markings.some((m) => m.property_id === p.id);
+              return (
+                <SelectItem key={p.id} value={p.id}>
+                  {marked ? "● " : ""}{p.name}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        {edit.mode === "view" ? (
+          <>
+            <Button type="button" size="sm" variant="outline" disabled={!selectedPropertyId} onClick={() => startDraw("polygon")}>
+              <Pentagon className="h-4 w-4 mr-1" /> Многоугольник
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={!selectedPropertyId} onClick={() => startDraw("point")}>
+              <MapPin className="h-4 w-4 mr-1" /> Маркер
+            </Button>
+            {existing && (
+              <ConfirmButton
+                variant="outline" size="sm" destructive
+                title="Удалить разметку?"
+                description="Фигура объекта на этом плане будет удалена."
+                confirmText="Удалить"
+                onConfirm={() => del.mutate(selectedPropertyId)}
+              >
+                <Trash2 className="h-4 w-4 mr-1" /> Стереть
+              </ConfirmButton>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="text-xs text-muted-foreground px-2">
+              {edit.tool === "polygon"
+                ? `Кликайте для добавления точек (${edit.draft.length}). Двойной клик — завершить.`
+                : "Кликните на план, чтобы поставить маркер."}
+            </div>
+            {edit.tool === "polygon" && (
+              <Button type="button" size="sm" onClick={finishPolygon} disabled={edit.draft.length < 3}>
+                <Check className="h-4 w-4 mr-1" /> Готово
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEdit({ mode: "view" })}>
+              <X className="h-4 w-4 mr-1" /> Отмена
+            </Button>
+          </>
+        )}
+      </div>
+
+      <PlanViewer
+        src={url}
+        overlay={(ctx) => (
+          <PlanMarkup
+            ctx={ctx}
+            markings={markings as Marking[]}
+            properties={properties as any}
+            contractsByProp={contractsByProp}
+            edit={edit}
+            onAddPoint={addPoint}
+            onFinishPolygon={finishPolygon}
+            onPlacePoint={placePoint}
+          />
+        )}
+      />
+    </Card>
   );
 }

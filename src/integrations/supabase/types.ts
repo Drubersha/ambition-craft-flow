@@ -402,6 +402,57 @@ export type Database = {
           },
         ]
       }
+      property_markings: {
+        Row: {
+          color: string | null
+          coords: Json
+          created_at: string
+          folder_id: string
+          id: string
+          owner_id: string
+          property_id: string
+          shape: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          coords: Json
+          created_at?: string
+          folder_id: string
+          id?: string
+          owner_id: string
+          property_id: string
+          shape: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          coords?: Json
+          created_at?: string
+          folder_id?: string
+          id?: string
+          owner_id?: string
+          property_id?: string
+          shape?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_markings_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_markings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           contact_person: string | null
