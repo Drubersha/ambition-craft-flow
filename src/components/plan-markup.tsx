@@ -127,12 +127,12 @@ export function PlanMarkup({
             stroke: color,
             strokeWidth: 2,
             style: { cursor: isDrawing ? "crosshair" : "pointer", pointerEvents: "all" as const },
-            onMouseEnter: (e: React.MouseEvent) => {
-              const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+            onMouseEnter: (e: React.MouseEvent<SVGElement>) => {
+              const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
               setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
             },
-            onMouseMove: (e: React.MouseEvent) => {
-              const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+            onMouseMove: (e: React.MouseEvent<SVGElement>) => {
+              const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
               setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
             },
             onClick: (e: React.MouseEvent) => {
