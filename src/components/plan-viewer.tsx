@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Maximize2, Minus, Plus, RotateCcw, ExternalLink } from "lucide-react";
@@ -7,24 +7,35 @@ import { cn } from "@/lib/utils";
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 8;
 
+export type PlanOverlayCtx = {
+  /** Normalized (0..1) → CSS pixels within the image element. */
+  toPx: (nx: number, ny: number) => { x: number; y: number };
+  /** CSS pixels within the image element → normalized (0..1). */
+  toNorm: (px: number, py: number) => { x: number; y: number };
+  width: number;
+  height: number;
+};
+
 export function PlanViewer({
   src,
   alt = "План",
   className,
   height = "h-[480px]",
+  overlay,
 }: {
   src: string;
   alt?: string;
   className?: string;
   height?: string;
+  overlay?: (ctx: PlanOverlayCtx) => ReactNode;
 }) {
   const [fullscreen, setFullscreen] = useState(false);
   return (
     <>
-      <Stage src={src} alt={alt} className={cn(height, className)} onFullscreen={() => setFullscreen(true)} />
+      <Stage src={src} alt={alt} className={cn(height, className)} overlay={overlay} onFullscreen={() => setFullscreen(true)} />
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] p-2 sm:p-3">
-          <Stage src={src} alt={alt} className="h-full" />
+          <Stage src={src} alt={alt} overlay={overlay} className="h-full" />
         </DialogContent>
       </Dialog>
     </>
@@ -32,14 +43,15 @@ export function PlanViewer({
 }
 
 function Stage({
-  src, alt, className, onFullscreen,
-}: { src: string; alt: string; className?: string; onFullscreen?: () => void }) {
+  src, alt, className, onFullscreen, overlay,
+}: { src: string; alt: string; className?: string; onFullscreen?: () => void; overlay?: (ctx: PlanOverlayCtx) => ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [imgSize, setImgSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
 
@@ -47,6 +59,17 @@ function Stage({
 
   // Recenter on src change
   useEffect(() => { setLoaded(false); reset(); }, [src, reset]);
+
+  // Track rendered image size so overlay can size to match.
+  useEffect(() => {
+    if (!loaded || !imgRef.current) return;
+    const el = imgRef.current;
+    const update = () => setImgSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [loaded, src]);
 
   const zoomAt = useCallback((nextScale: number, cx?: number, cy?: number) => {
     setScale((prev) => {
@@ -134,23 +157,42 @@ function Stage({
         onDoubleClick={onDoubleClick}
         onKeyDown={onKey}
       >
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt}
-          draggable={false}
-          onLoad={() => setLoaded(true)}
-          className="max-w-none max-h-none will-change-transform"
+        <div
+          className="relative will-change-transform"
           style={{
             transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
             transformOrigin: "center center",
             transition: dragRef.current || pinchRef.current ? "none" : "transform 80ms linear",
             maxWidth: "100%",
             maxHeight: "100%",
-            objectFit: "contain",
             visibility: loaded ? "visible" : "hidden",
+            lineHeight: 0,
           }}
-        />
+        >
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            draggable={false}
+            onLoad={(e) => {
+              setLoaded(true);
+              const el = e.currentTarget;
+              setImgSize({ w: el.clientWidth, h: el.clientHeight });
+            }}
+            className="block max-w-full max-h-full"
+            style={{ objectFit: "contain" }}
+          />
+          {overlay && loaded && imgSize.w > 0 && (
+            <div className="absolute inset-0" style={{ width: imgSize.w, height: imgSize.h }}>
+              {overlay({
+                width: imgSize.w,
+                height: imgSize.h,
+                toPx: (nx, ny) => ({ x: nx * imgSize.w, y: ny * imgSize.h }),
+                toNorm: (px, py) => ({ x: px / imgSize.w, y: py / imgSize.h }),
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="absolute top-2 right-2 flex gap-1 bg-background/80 backdrop-blur rounded-md p-1 shadow">
