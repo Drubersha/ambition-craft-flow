@@ -32,6 +32,7 @@ function NewProperty() {
           base_rate: v.base_rate ? Number(v.base_rate) : null,
           currency: v.currency || "RUB",
           description: v.description || null,
+          folder_id: v.folder_id,
         })
         .select()
         .single();
