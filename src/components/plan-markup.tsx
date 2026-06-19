@@ -111,9 +111,10 @@ export function PlanMarkup({
         style={{
           position: "absolute",
           inset: 0,
-          pointerEvents: isDrawing ? "auto" : "auto",
+          pointerEvents: isDrawing ? "auto" : "none",
           cursor: isDrawing ? "crosshair" : "default",
         }}
+        onPointerDown={(e) => { if (isDrawing) e.stopPropagation(); }}
         onClick={handleSvgClick}
         onDoubleClick={handleSvgDouble}
         onMouseLeave={() => setHover(null)}
@@ -127,6 +128,7 @@ export function PlanMarkup({
             stroke: color,
             strokeWidth: 2,
             style: { cursor: isDrawing ? "crosshair" : "pointer", pointerEvents: "all" as const },
+            onPointerDown: (e: React.PointerEvent) => { e.stopPropagation(); },
             onMouseEnter: (e: React.MouseEvent<SVGElement>) => {
               const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
               setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
