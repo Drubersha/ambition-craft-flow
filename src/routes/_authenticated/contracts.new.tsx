@@ -30,6 +30,11 @@ function NewContract() {
         payment_period: v.payment_period as any, status: v.status as any,
         start_date: v.start_date, end_date: v.end_date || null,
         notes: v.notes || null,
+        termination_terms: v.termination_terms || null,
+        deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
+        deposit_amount: v.deposit_percent
+          ? computeDeposit(Number(v.rate) || 0, v.payment_period, Number(v.deposit_percent))
+          : null,
       }).select().single();
       if (error) throw error;
       return data;
