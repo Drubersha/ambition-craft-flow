@@ -77,7 +77,7 @@ export function monthlyFromRate(rate: number, period: string): number {
 }
 
 export function computeDeposit(rate: number, period: string, percent: number): number {
-  return Math.round(monthlyFromRate(rate, period) * (percent || 0)) / 100 * 100 / 100 * 100;
+  return Math.round(monthlyFromRate(rate, period) * (percent || 0)) / 100;
 }
 
 /** Number of months covered by an inclusive date range (min 1). */
