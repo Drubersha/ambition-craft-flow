@@ -1,18 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2, MapPin, Pentagon, X, Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FolderPicker } from "@/components/folder-picker";
 import { PlanUploader } from "@/components/plan-uploader";
-import { useFolders, buildTree, type FolderNode, type Folder } from "@/lib/folders";
+import { useFolders, buildTree, descendantIds, type FolderNode, type Folder } from "@/lib/folders";
+import { PlanViewer } from "@/components/plan-viewer";
+import { PlanMarkup, type EditState } from "@/components/plan-markup";
+import { useFolderMarkings, useFolderPlanProperties, type Marking, type MarkingShape } from "@/lib/markings";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/folders")({
