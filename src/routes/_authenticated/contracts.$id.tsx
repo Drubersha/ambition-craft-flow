@@ -113,6 +113,23 @@ function EditContract() {
     );
   });
 
+  const depositAmount = computeDepositWithArea(
+    Number(data.rate) || 0,
+    data.payment_period,
+    Number(data.area) || 0,
+    Number((data as any).deposit_percent) || 0,
+  );
+  const totalCharged = (charges ?? []).reduce((s: number, c: any) => s + Number(c.total || 0), 0);
+  const totalPaid = (charges ?? []).reduce((s: number, c: any) => s + Number(c.paid_total || 0), 0);
+  const overpayment = Math.round((totalPaid - totalCharged) * 100) / 100;
+  const depositPercent = Number((data as any).deposit_percent) || 0;
+  const hasDeposit = depositPercent > 0;
+  const overpayColor = !hasDeposit
+    ? "text-foreground"
+    : overpayment >= depositAmount
+      ? "text-green-600 dark:text-green-500"
+      : "text-red-600 dark:text-red-500";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
@@ -141,6 +158,32 @@ function EditContract() {
           }}
           onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
         />
+      </MobileCollapsible>
+
+      <MobileCollapsible title="Обеспечительный платёж">
+        <div className="grid sm:grid-cols-3 gap-3 text-sm">
+          <div>
+            <div className="text-muted-foreground text-xs">Процент</div>
+            <div className="font-medium">{hasDeposit ? `${depositPercent}%` : "—"}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xs">Расчётная сумма</div>
+            <div className="font-medium">{hasDeposit ? formatMoney(depositAmount, data.currency) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xs">Переплата (всего оплачено − начислено)</div>
+            <div className={`font-semibold ${overpayColor}`}>
+              {formatMoney(overpayment, data.currency)}
+            </div>
+          </div>
+        </div>
+        {hasDeposit && (
+          <p className={`text-xs mt-2 ${overpayColor}`}>
+            {overpayment >= depositAmount
+              ? `Обеспечительный платёж покрыт (переплата ≥ ${formatMoney(depositAmount, data.currency)}).`
+              : `Переплата меньше обеспечительного платежа. Не хватает: ${formatMoney(Math.max(0, depositAmount - overpayment), data.currency)}.`}
+          </p>
+        )}
       </MobileCollapsible>
 
       <MobileCollapsible
