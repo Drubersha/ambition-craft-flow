@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.recalc_charge(uuid) FROM authenticated, anon, PUBLIC;
