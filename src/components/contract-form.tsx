@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CONTRACT_STATUS_LABELS, PAYMENT_PERIOD_LABELS, formatMoney } from "@/lib/format";
+import { CONTRACT_STATUS_LABELS, PAYMENT_PERIOD_LABELS, formatMoney, monthlyPayment } from "@/lib/format";
 
 export type ContractFormValues = {
   tenant_id: string;
@@ -69,15 +69,8 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
     }
   }
 
-  const monthlyRate = (() => {
-    const r = Number(v.rate) || 0;
-    switch (v.payment_period) {
-      case "quarterly": return r / 3;
-      case "yearly": return r / 12;
-      default: return r;
-    }
-  })();
-  const depositAmount = monthlyRate * (Number(v.deposit_percent) || 0) / 100;
+  const monthly = monthlyPayment(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0);
+  const depositAmount = monthly * (Number(v.deposit_percent) || 0) / 100;
 
   return (
     <form id={formId} onSubmit={(e) => { e.preventDefault(); onSubmit(v); }} className="space-y-4 max-w-2xl">
@@ -101,7 +94,7 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
         <F label="Площадь, м²"><Input type="number" step="0.01" value={v.area} onChange={(e) => set("area", e.target.value)} /></F>
-        <F label="Ставка *"><Input type="number" step="0.01" required value={v.rate} onChange={(e) => set("rate", e.target.value)} /></F>
+        <F label="Цена за м² *"><Input type="number" step="0.01" required value={v.rate} onChange={(e) => set("rate", e.target.value)} /></F>
         <F label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></F>
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
@@ -131,7 +124,7 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
             aria-describedby="deposit-help"
           />
           <p id="deposit-help" className="text-xs text-muted-foreground">
-            % × ежемесячный платёж ({formatMoney(monthlyRate, v.currency || "RUB")})
+            % × ежемесячный платёж ({formatMoney(monthly, v.currency || "RUB")} = площадь × цена за м²)
           </p>
         </F>
       </div>
