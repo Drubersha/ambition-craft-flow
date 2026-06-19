@@ -65,8 +65,6 @@ function EditProperty() {
 
   if (isLoading || !data) return <div>Загрузка...</div>;
 
-  const folders = (Route as any) && undefined; // placeholder to satisfy linter
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -143,4 +141,12 @@ function EditProperty() {
       </MobileActionBar>
     </div>
   );
+}
+
+function FolderCrumb({ folderId }: { folderId: string | null }) {
+  const { data: folders = [] } = useFolders();
+  if (!folderId) return null;
+  const path = folderBreadcrumb(folders, folderId);
+  if (!path) return null;
+  return <div className="text-sm text-muted-foreground">Папка: {path}</div>;
 }
