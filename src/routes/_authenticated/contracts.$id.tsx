@@ -25,6 +25,7 @@ function EditContract() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [chargeQuery, setChargeQuery] = useState("");
+  const [live, setLive] = useState<{ rate: number; area: number; period: string; depositPercent: number } | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["contract", id],
     queryFn: async () => {
@@ -113,17 +114,22 @@ function EditContract() {
     );
   });
 
-  const depositAmount = computeDepositWithArea(
-    Number(data.rate) || 0,
-    data.payment_period,
-    Number(data.area) || 0,
-    Number((data as any).deposit_percent) || 0,
-  );
+  const liveRate = live?.rate ?? (Number(data.rate) || 0);
+  const liveArea = live?.area ?? (Number(data.area) || 0);
+  const livePeriod = live?.period ?? data.payment_period;
+  const livePct = live?.depositPercent ?? (Number((data as any).deposit_percent) || 0);
+  const depositPctValid = !isNaN(livePct) && livePct >= 0 && livePct <= 1000;
+  const rateValid = !isNaN(liveRate) && liveRate >= 0;
+  const areaValid = !isNaN(liveArea) && liveArea >= 0;
+  const inputsValid = depositPctValid && rateValid && areaValid;
+  const depositAmount = inputsValid
+    ? computeDepositWithArea(liveRate, livePeriod, liveArea, livePct)
+    : 0;
   const totalCharged = (charges ?? []).reduce((s: number, c: any) => s + Number(c.total || 0), 0);
   const totalPaid = (charges ?? []).reduce((s: number, c: any) => s + Number(c.paid_total || 0), 0);
   const overpayment = Math.round((totalPaid - totalCharged) * 100) / 100;
-  const depositPercent = Number((data as any).deposit_percent) || 0;
-  const hasDeposit = depositPercent > 0;
+  const depositPercent = livePct;
+  const hasDeposit = inputsValid && depositPercent > 0;
   const overpayColor = !hasDeposit
     ? "text-foreground"
     : overpayment >= depositAmount
@@ -156,11 +162,22 @@ function EditContract() {
             termination_terms: (data as any).termination_terms ?? "",
             deposit_percent: (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
           }}
+          onValuesChange={(v) => setLive({
+            rate: Number(v.rate) || 0,
+            area: Number(v.area) || 0,
+            period: v.payment_period,
+            depositPercent: v.deposit_percent === "" ? 0 : Number(v.deposit_percent),
+          })}
           onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
         />
       </MobileCollapsible>
 
       <MobileCollapsible title="Обеспечительный платёж">
+        {!inputsValid && (
+          <p className="text-xs text-destructive mb-2">
+            Проверьте поля: площадь, цена и процент должны быть неотрицательными, процент ≤ 1000.
+          </p>
+        )}
         <div className="grid sm:grid-cols-3 gap-3 text-sm">
           <div>
             <div className="text-muted-foreground text-xs">Процент</div>
