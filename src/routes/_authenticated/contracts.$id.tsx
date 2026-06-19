@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Search } from "lucide-react";
-import { CHARGE_STATUS_LABELS, formatDate, formatMoney, computeDeposit, chargeTotalForPeriod, monthsInRange } from "@/lib/format";
+import { CHARGE_STATUS_LABELS, formatDate, formatMoney, computeDepositWithArea, chargeTotalForPeriod, monthsInRange } from "@/lib/format";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,7 @@ function EditContract() {
         termination_terms: v.termination_terms || null,
         deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
         deposit_amount: v.deposit_percent
-          ? computeDeposit(Number(v.rate) || 0, v.payment_period, Number(v.deposit_percent))
+          ? computeDepositWithArea(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0, Number(v.deposit_percent))
           : null,
       }).eq("id", id);
       if (error) throw error;
@@ -122,7 +122,7 @@ function EditContract() {
 
       <MobileCollapsible
         title="Начисления по договору"
-        action={<NewChargeDialog contractId={id} rate={Number(data.rate)} currency={data.currency} period={data.payment_period} />}
+        action={<NewChargeDialog contractId={id} rate={Number(data.rate)} area={Number(data.area) || 0} currency={data.currency} period={data.payment_period} />}
       >
         {(!charges || charges.length === 0) ? (
           <p className="text-sm text-muted-foreground text-center py-4">Начислений нет.</p>
@@ -186,7 +186,7 @@ function EditContract() {
   );
 }
 
-function NewChargeDialog({ contractId, rate, currency, period }: { contractId: string; rate: number; currency: string; period: string }) {
+function NewChargeDialog({ contractId, rate, area, currency, period }: { contractId: string; rate: number; area: number; currency: string; period: string }) {
   const [open, setOpen] = useState(false);
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
@@ -199,11 +199,11 @@ function NewChargeDialog({ contractId, rate, currency, period }: { contractId: s
   const [periodStart, setPeriodStart] = useState(firstDay);
   const [periodEnd, setPeriodEnd] = useState(lastDay);
   const [dueDate, setDueDate] = useState(lastDay);
-  const [total, setTotal] = useState(String(chargeTotalForPeriod(rate, period, firstDay, lastDay)));
+  const [total, setTotal] = useState(String(chargeTotalForPeriod(rate, period, firstDay, lastDay, area)));
   const [autoCalc, setAutoCalc] = useState(true);
 
   function recalcOnDates(start: string, end: string) {
-    if (autoCalc) setTotal(String(chargeTotalForPeriod(rate, period, start, end)));
+    if (autoCalc) setTotal(String(chargeTotalForPeriod(rate, period, start, end, area)));
   }
 
   const qc = useQueryClient();
@@ -243,9 +243,9 @@ function NewChargeDialog({ contractId, rate, currency, period }: { contractId: s
               onChange={(e) => { setAutoCalc(false); setTotal(e.target.value); }}
             />
             <p className="text-xs text-muted-foreground">
-              Авторасчёт: {monthsInRange(periodStart, periodEnd)} мес. × {formatMoney(chargeTotalForPeriod(rate, period, periodStart, periodEnd) / monthsInRange(periodStart, periodEnd), currency)}
+              Авторасчёт: {area || 0} м² × {formatMoney(rate, currency)}/м² × {monthsInRange(periodStart, periodEnd)} мес.
               {!autoCalc && (
-                <button type="button" className="ml-2 underline" onClick={() => { setAutoCalc(true); setTotal(String(chargeTotalForPeriod(rate, period, periodStart, periodEnd))); }}>
+                <button type="button" className="ml-2 underline" onClick={() => { setAutoCalc(true); setTotal(String(chargeTotalForPeriod(rate, period, periodStart, periodEnd, area))); }}>
                   пересчитать
                 </button>
               )}

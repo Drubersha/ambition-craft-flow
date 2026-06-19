@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
-import { computeDeposit } from "@/lib/format";
+import { computeDepositWithArea } from "@/lib/format";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MobileActionBar } from "@/components/mobile-action-bar";
@@ -34,7 +34,7 @@ function NewContract() {
         termination_terms: v.termination_terms || null,
         deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
         deposit_amount: v.deposit_percent
-          ? computeDeposit(Number(v.rate) || 0, v.payment_period, Number(v.deposit_percent))
+          ? computeDepositWithArea(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0, Number(v.deposit_percent))
           : null,
       }).select().single();
       if (error) throw error;
