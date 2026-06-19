@@ -222,6 +222,47 @@ export type Database = {
         }
         Relationships: []
       }
+      folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          parent_id: string | null
+          plan_mime: string | null
+          plan_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          parent_id?: string | null
+          plan_mime?: string | null
+          plan_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          parent_id?: string | null
+          plan_mime?: string | null
+          plan_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -295,10 +336,13 @@ export type Database = {
           currency: string
           description: string | null
           floor: string | null
+          folder_id: string | null
           id: string
           name: string
           notes: string | null
           owner_id: string
+          plan_mime: string | null
+          plan_path: string | null
           room_no: string | null
           status: Database["public"]["Enums"]["property_status"]
           type: Database["public"]["Enums"]["property_type"]
@@ -314,10 +358,13 @@ export type Database = {
           currency?: string
           description?: string | null
           floor?: string | null
+          folder_id?: string | null
           id?: string
           name: string
           notes?: string | null
           owner_id: string
+          plan_mime?: string | null
+          plan_path?: string | null
           room_no?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           type?: Database["public"]["Enums"]["property_type"]
@@ -333,16 +380,27 @@ export type Database = {
           currency?: string
           description?: string | null
           floor?: string | null
+          folder_id?: string | null
           id?: string
           name?: string
           notes?: string | null
           owner_id?: string
+          plan_mime?: string | null
+          plan_path?: string | null
           room_no?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "properties_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenants: {
         Row: {

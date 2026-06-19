@@ -9,6 +9,8 @@ import { Plus, Building2, Search } from "lucide-react";
 import { useState } from "react";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { FolderPicker } from "@/components/folder-picker";
+import { useFolders, folderBreadcrumb } from "@/lib/folders";
 
 export const Route = createFileRoute("/_authenticated/properties/")({
   component: PropertiesList,
@@ -16,6 +18,9 @@ export const Route = createFileRoute("/_authenticated/properties/")({
 
 function PropertiesList() {
   const [q, setQ] = useState("");
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderFilterEnabled, setFolderFilterEnabled] = useState(false);
+  const { data: folders = [] } = useFolders();
   const { data, isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
@@ -26,6 +31,10 @@ function PropertiesList() {
   });
 
   const filtered = (data ?? []).filter((p) => {
+    if (folderFilterEnabled) {
+      if (folderId === null && p.folder_id !== null) return false;
+      if (folderId !== null && p.folder_id !== folderId) return false;
+    }
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -51,6 +60,24 @@ function PropertiesList() {
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" aria-label="Поиск объектов" type="search" placeholder="Поиск по названию, адресу, кадастру" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="w-full sm:max-w-xs">
+          <FolderPicker
+            value={folderFilterEnabled ? folderId : null}
+            onChange={(id) => { setFolderId(id); setFolderFilterEnabled(true); }}
+            placeholder="Фильтр по папке"
+          />
+        </div>
+        {folderFilterEnabled && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+            onClick={() => { setFolderFilterEnabled(false); setFolderId(null); }}
+          >
+            Сбросить
+          </button>
+        )}
+      </div>
 
       {isLoading ? (
         <div>Загрузка...</div>
@@ -72,6 +99,7 @@ function PropertiesList() {
                   <div>{PROPERTY_TYPE_LABELS[p.type]} · {p.area_total} м²</div>
                   {p.base_rate && <div>Ставка: {formatMoney(p.base_rate, p.currency)}</div>}
                   {p.cadastral_no && <div>Кадастр: {p.cadastral_no}</div>}
+                  {p.folder_id && <div className="truncate">📁 {folderBreadcrumb(folders, p.folder_id)}</div>}
                 </div>
               </Card>
             </Link>

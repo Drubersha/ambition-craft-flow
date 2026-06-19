@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from "@/lib/format";
+import { FolderPicker } from "@/components/folder-picker";
 
 export type PropertyFormValues = {
   name: string;
@@ -19,6 +20,7 @@ export type PropertyFormValues = {
   base_rate: string;
   currency: string;
   description: string;
+  folder_id: string | null;
 };
 
 export function PropertyForm({
@@ -47,6 +49,7 @@ export function PropertyForm({
     base_rate: initial?.base_rate ?? "",
     currency: initial?.currency ?? "RUB",
     description: initial?.description ?? "",
+    folder_id: initial?.folder_id ?? null,
   });
 
   const set = <K extends keyof PropertyFormValues>(k: K, val: PropertyFormValues[K]) =>
@@ -95,6 +98,9 @@ export function PropertyForm({
         <Field label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></Field>
       </div>
       <Field label="Описание"><Textarea rows={3} value={v.description} onChange={(e) => set("description", e.target.value)} /></Field>
+      <Field label="Папка">
+        <FolderPicker value={v.folder_id} onChange={(id) => set("folder_id", id)} />
+      </Field>
       {!hideSubmit && (
         <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
       )}

@@ -10,6 +10,7 @@ import {
   Receipt,
   LogOut,
   Menu,
+  FolderTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -18,6 +19,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 
 const NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { to: "/folders", label: "Папки", icon: FolderTree },
   { to: "/properties", label: "Объекты", icon: Building2 },
   { to: "/tenants", label: "Арендаторы", icon: Users },
   { to: "/contracts", label: "Договоры", icon: FileText },

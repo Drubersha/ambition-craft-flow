@@ -1,0 +1,299 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { ConfirmButton } from "@/components/confirm-button";
+import { FolderPicker } from "@/components/folder-picker";
+import { PlanUploader } from "@/components/plan-uploader";
+import { useFolders, buildTree, type FolderNode, type Folder } from "@/lib/folders";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/_authenticated/folders")({
+  component: FoldersPage,
+});
+
+function FoldersPage() {
+  const qc = useQueryClient();
+  const { data: folders = [], isLoading } = useFolders();
+  const tree = buildTree(folders);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const selected = folders.find((f) => f.id === selectedId) ?? null;
+
+  const create = useMutation({
+    mutationFn: async (v: { name: string; parent_id: string | null }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from("folders").insert({
+        owner_id: u.user!.id, name: v.name, parent_id: v.parent_id,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ["folders"] });
+      setSelectedId(d.id);
+      if (d.parent_id) setExpanded((s) => new Set(s).add(d.parent_id!));
+      toast.success("Папка создана");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const update = useMutation({
+    mutationFn: async (v: Partial<Folder> & { id: string }) => {
+      const { error } = await supabase.from("folders").update(v).eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["folders"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      // Check that no children and no properties reference it
+      const [{ count: childCount }, { count: propCount }] = await Promise.all([
+        supabase.from("folders").select("id", { count: "exact", head: true }).eq("parent_id", id),
+        supabase.from("properties").select("id", { count: "exact", head: true }).eq("folder_id", id),
+      ]);
+      if ((childCount ?? 0) > 0) throw new Error("Сначала удалите вложенные папки");
+      if ((propCount ?? 0) > 0) throw new Error("В папке есть объекты — перенесите их или удалите");
+      const folder = folders.find((f) => f.id === id);
+      if (folder?.plan_path) {
+        await supabase.storage.from("documents").remove([folder.plan_path]);
+      }
+      const { error } = await supabase.from("folders").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["folders"] });
+      setSelectedId(null);
+      toast.success("Папка удалена");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggle = (id: string) =>
+    setExpanded((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Папки"
+        description="Группируйте объекты и храните планы территории"
+        action={
+          <NewFolderButton onCreate={(name) => create.mutate({ name, parent_id: null })} label="Новая папка" />
+        }
+      />
+
+      <div className="grid lg:grid-cols-[320px_1fr] gap-4">
+        <Card className="p-2 max-h-[80vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4 text-sm text-muted-foreground">Загрузка...</div>
+          ) : tree.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground text-center">
+              Папок пока нет.<br />Создайте первую сверху.
+            </div>
+          ) : (
+            <TreeView nodes={tree} expanded={expanded} onToggle={toggle} selectedId={selectedId} onSelect={setSelectedId} />
+          )}
+        </Card>
+
+        <div>
+          {selected ? (
+            <FolderDetail
+              folder={selected}
+              folders={folders}
+              onRename={(name) => update.mutate({ id: selected.id, name })}
+              onMove={(parent_id) => update.mutate({ id: selected.id, parent_id })}
+              onCreateChild={(name) => create.mutate({ name, parent_id: selected.id })}
+              onDelete={() => del.mutate(selected.id)}
+              onPlanChange={async (p) => { await update.mutateAsync({ id: selected.id, plan_path: p.path, plan_mime: p.mime }); }}
+            />
+          ) : (
+            <Card className="p-12 text-center text-muted-foreground">
+              <FolderIcon className="h-12 w-12 mx-auto mb-3" />
+              Выберите папку слева или создайте новую
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TreeView({ nodes, expanded, onToggle, selectedId, onSelect }: {
+  nodes: FolderNode[]; expanded: Set<string>; onToggle: (id: string) => void;
+  selectedId: string | null; onSelect: (id: string) => void;
+}) {
+  return (
+    <ul className="space-y-0.5">
+      {nodes.map((n) => {
+        const open = expanded.has(n.id);
+        const hasChildren = n.children.length > 0;
+        return (
+          <li key={n.id}>
+            <div
+              className={cn(
+                "flex items-center gap-1 rounded px-1 py-1.5 text-sm cursor-pointer min-h-9",
+                selectedId === n.id ? "bg-primary/10 text-primary" : "hover:bg-muted",
+              )}
+              onClick={() => onSelect(n.id)}
+            >
+              <button
+                type="button"
+                className="p-0.5 shrink-0"
+                onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggle(n.id); }}
+                aria-label={open ? "Свернуть" : "Развернуть"}
+              >
+                {hasChildren ? (open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="inline-block w-4" />}
+              </button>
+              <FolderIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{n.name}</span>
+            </div>
+            {open && hasChildren && (
+              <div className="pl-4 border-l ml-3">
+                <TreeView nodes={n.children} expanded={expanded} onToggle={onToggle} selectedId={selectedId} onSelect={onSelect} />
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function NewFolderButton({ onCreate, label, size = "sm" }: { onCreate: (name: string) => void; label: string; size?: "sm" | "default" }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  if (!open) {
+    return (
+      <Button size={size} onClick={() => setOpen(true)}>
+        <FolderPlus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">{label}</span>
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onCreate(name.trim()); setName(""); setOpen(false); } }}
+    >
+      <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Имя папки" className="h-9 w-44" />
+      <Button type="submit" size="sm">OK</Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => { setOpen(false); setName(""); }}>×</Button>
+    </form>
+  );
+}
+
+function FolderDetail({
+  folder, folders,
+  onRename, onMove, onCreateChild, onDelete, onPlanChange,
+}: {
+  folder: Folder; folders: Folder[];
+  onRename: (name: string) => void;
+  onMove: (parent_id: string | null) => void;
+  onCreateChild: (name: string) => void;
+  onDelete: () => void;
+  onPlanChange: (p: { path: string | null; mime: string | null }) => Promise<void> | void;
+}) {
+  const [name, setName] = useState(folder.name);
+  // Reset name when switching folder
+  if (name !== folder.name && document.activeElement?.tagName !== "INPUT") {
+    // noop — relies on React reconciliation; below useState init handles initial value per key
+  }
+  const { data: props = [] } = useQuery({
+    queryKey: ["folder-properties", folder.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("properties").select("id,name,address,status").eq("folder_id", folder.id).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  return (
+    <div className="space-y-4" key={folder.id}>
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <FolderIcon className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold flex-1 min-w-0 truncate">{folder.name}</h2>
+          <NewFolderButton onCreate={onCreateChild} label="Подпапка" />
+          <ConfirmButton
+            variant="outline" size="sm" destructive
+            title="Удалить папку?"
+            description="Папка будет удалена. Объекты внутри нужно сначала перенести."
+            confirmText="Удалить"
+            onConfirm={onDelete}
+          >
+            <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
+          </ConfirmButton>
+        </div>
+
+        <form
+          className="grid sm:grid-cols-2 gap-3"
+          onSubmit={(e) => { e.preventDefault(); if (name.trim() && name !== folder.name) onRename(name.trim()); }}
+        >
+          <div className="space-y-1.5">
+            <Label>Название</Label>
+            <div className="flex gap-2">
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+              <Button type="submit" size="sm" variant="outline" disabled={name === folder.name || !name.trim()}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Родительская папка</Label>
+            <FolderPicker
+              value={folder.parent_id}
+              onChange={(id) => onMove(id)}
+              includeRoot
+              excludeDescendantsOf={folder.id}
+            />
+          </div>
+        </form>
+      </Card>
+
+      <Card className="p-4 space-y-3">
+        <h3 className="font-semibold">План папки</h3>
+        <PlanUploader
+          pathPrefix={`folder-plans/${folder.id}`}
+          currentPath={folder.plan_path}
+          currentMime={folder.plan_mime}
+          onChange={onPlanChange}
+        />
+      </Card>
+
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold">Объекты в папке ({props.length})</h3>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/properties/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link>
+          </Button>
+        </div>
+        {props.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-6 text-center">
+            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            В папке пока нет объектов
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {props.map((p: any) => (
+              <Link key={p.id} to="/properties/$id" params={{ id: p.id }}
+                className="flex items-center justify-between gap-2 rounded border p-2 hover:border-primary">
+                <div className="min-w-0">
+                  <div className="font-medium truncate text-sm">{p.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{p.address}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}

@@ -8,6 +8,8 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
+import { PlanUploader } from "@/components/plan-uploader";
+import { useFolders, folderBreadcrumb } from "@/lib/folders";
 
 export const Route = createFileRoute("/_authenticated/properties/$id")({
   component: EditProperty,
@@ -36,6 +38,7 @@ function EditProperty() {
         floor: v.floor || null, room_no: v.room_no || null,
         base_rate: v.base_rate ? Number(v.base_rate) : null,
         currency: v.currency || "RUB", description: v.description || null,
+        folder_id: v.folder_id,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -82,6 +85,7 @@ function EditProperty() {
         </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
+      <FolderCrumb folderId={data.folder_id} />
       <MobileCollapsible title="Данные объекта">
         <PropertyForm
           formId="property-form"
@@ -90,9 +94,25 @@ function EditProperty() {
             area_total: String(data.area_total ?? ""), area_usable: data.area_usable ? String(data.area_usable) : "",
             floor: data.floor ?? "", room_no: data.room_no ?? "", status: data.status,
             base_rate: data.base_rate ? String(data.base_rate) : "", currency: data.currency, description: data.description ?? "",
+            folder_id: data.folder_id ?? null,
           }}
           onSubmit={(v) => mut.mutate(v)}
           submitting={mut.isPending}
+        />
+      </MobileCollapsible>
+
+      <MobileCollapsible title="План объекта">
+        <PlanUploader
+          pathPrefix={`property-plans/${id}`}
+          currentPath={data.plan_path}
+          currentMime={data.plan_mime}
+          onChange={async (p) => {
+            const { error } = await supabase.from("properties")
+              .update({ plan_path: p.path, plan_mime: p.mime })
+              .eq("id", id);
+            if (error) throw error;
+            qc.invalidateQueries({ queryKey: ["property", id] });
+          }}
         />
       </MobileCollapsible>
 
@@ -121,4 +141,12 @@ function EditProperty() {
       </MobileActionBar>
     </div>
   );
+}
+
+function FolderCrumb({ folderId }: { folderId: string | null }) {
+  const { data: folders = [] } = useFolders();
+  if (!folderId) return null;
+  const path = folderBreadcrumb(folders, folderId);
+  if (!path) return null;
+  return <div className="text-sm text-muted-foreground">Папка: {path}</div>;
 }
