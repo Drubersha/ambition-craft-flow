@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,12 +25,13 @@ export type ContractFormValues = {
   deposit_percent: string;
 };
 
-export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit }: {
+export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit, onValuesChange }: {
   initial?: Partial<ContractFormValues>;
   onSubmit: (v: ContractFormValues) => void;
   submitting?: boolean;
   formId?: string;
   hideSubmit?: boolean;
+  onValuesChange?: (v: ContractFormValues) => void;
 }) {
   const [v, setV] = useState<ContractFormValues>({
     tenant_id: initial?.tenant_id ?? "",
@@ -48,7 +49,25 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
     termination_terms: initial?.termination_terms ?? "",
     deposit_percent: initial?.deposit_percent ?? "",
   });
-  const set = <K extends keyof ContractFormValues>(k: K, val: ContractFormValues[K]) => setV((p) => ({ ...p, [k]: val }));
+  const set = <K extends keyof ContractFormValues>(k: K, val: ContractFormValues[K]) =>
+    setV((p) => {
+      const next = { ...p, [k]: val };
+      onValuesChange?.(next);
+      return next;
+    });
+
+  useEffect(() => {
+    onValuesChange?.(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const areaNum = Number(v.area) || 0;
+  const rateNum = Number(v.rate) || 0;
+  const depositPctNum = Number(v.deposit_percent) || 0;
+  const areaInvalid = v.area !== "" && (isNaN(Number(v.area)) || Number(v.area) < 0);
+  const rateInvalid = v.rate !== "" && (isNaN(Number(v.rate)) || Number(v.rate) < 0);
+  const depositPctInvalid =
+    v.deposit_percent !== "" && (isNaN(depositPctNum) || depositPctNum < 0 || depositPctNum > 1000);
 
   const { data: tenants } = useQuery({
     queryKey: ["tenants-list"],
@@ -93,8 +112,24 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
         <F label="Кадастровый номер"><Input value={v.cadastral_no} onChange={(e) => set("cadastral_no", e.target.value)} /></F>
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
-        <F label="Площадь, м²"><Input type="number" step="0.01" value={v.area} onChange={(e) => set("area", e.target.value)} /></F>
-        <F label="Цена за м² *"><Input type="number" step="0.01" required value={v.rate} onChange={(e) => set("rate", e.target.value)} /></F>
+        <F label="Площадь, м²">
+          <Input
+            type="number" step="0.01" min="0"
+            value={v.area}
+            aria-invalid={areaInvalid || undefined}
+            onChange={(e) => set("area", e.target.value)}
+          />
+          {areaInvalid && <p className="text-xs text-destructive">Площадь не может быть отрицательной.</p>}
+        </F>
+        <F label="Цена за м² *">
+          <Input
+            type="number" step="0.01" min="0" required
+            value={v.rate}
+            aria-invalid={rateInvalid || undefined}
+            onChange={(e) => set("rate", e.target.value)}
+          />
+          {rateInvalid && <p className="text-xs text-destructive">Цена не может быть отрицательной.</p>}
+        </F>
         <F label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></F>
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
@@ -112,9 +147,11 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
           <Input
             type="number" step="0.01" min="0" max="1000"
             value={v.deposit_percent}
+            aria-invalid={depositPctInvalid || undefined}
             onChange={(e) => set("deposit_percent", e.target.value)}
             placeholder="например, 100"
           />
+          {depositPctInvalid && <p className="text-xs text-destructive">Процент должен быть от 0 до 1000.</p>}
         </F>
         <F label="Обеспечительный платёж (расчёт)">
           <Input
