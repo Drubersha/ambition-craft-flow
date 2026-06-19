@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
+import { computeDeposit } from "@/lib/format";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MobileActionBar } from "@/components/mobile-action-bar";
