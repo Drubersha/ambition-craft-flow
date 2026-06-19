@@ -9,6 +9,8 @@ import { Plus, FileText, Search } from "lucide-react";
 import { useState } from "react";
 import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { FolderPicker } from "@/components/folder-picker";
+import { useFolders, descendantIds } from "@/lib/folders";
 
 export const Route = createFileRoute("/_authenticated/contracts/")({
   component: ContractsList,
@@ -16,11 +18,14 @@ export const Route = createFileRoute("/_authenticated/contracts/")({
 
 function ContractsList() {
   const [q, setQ] = useState("");
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderFilterEnabled, setFolderFilterEnabled] = useState(false);
+  const { data: folders = [] } = useFolders();
   const { data, isLoading } = useQuery({
     queryKey: ["contracts"],
     queryFn: async () => {
       const { data, error } = await supabase.from("contracts")
-        .select("*, tenant:tenants(name), property:properties(name)")
+        .select("*, tenant:tenants(name), property:properties(name, folder_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -28,6 +33,16 @@ function ContractsList() {
   });
 
   const filtered = (data ?? []).filter((c: any) => {
+    if (folderFilterEnabled) {
+      const pf = c.property?.folder_id ?? null;
+      if (folderId === null) {
+        if (pf !== null) return false;
+      } else {
+        // include the folder and all of its descendants
+        const allowed = descendantIds(folders, folderId);
+        if (!pf || !allowed.has(pf)) return false;
+      }
+    }
     if (!q) return true;
     const s = q.toLowerCase();
     return c.number.toLowerCase().includes(s) || c.tenant?.name.toLowerCase().includes(s) || c.property?.name.toLowerCase().includes(s);
@@ -47,6 +62,21 @@ function ContractsList() {
       <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" aria-label="Поиск договоров" type="search" placeholder="Поиск по номеру, арендатору, объекту" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="w-full sm:max-w-xs">
+          <FolderPicker
+            value={folderFilterEnabled ? folderId : null}
+            onChange={(id) => { setFolderId(id); setFolderFilterEnabled(true); }}
+            placeholder="Фильтр по папке (вкл. вложенные)"
+          />
+        </div>
+        {folderFilterEnabled && (
+          <button type="button"
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+            onClick={() => { setFolderFilterEnabled(false); setFolderId(null); }}
+          >Сбросить</button>
+        )}
       </div>
       {isLoading ? <div>Загрузка...</div> : filtered.length === 0 ? (
         <Card className="p-12 text-center">
