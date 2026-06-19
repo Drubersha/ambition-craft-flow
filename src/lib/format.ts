@@ -80,6 +80,15 @@ export function computeDeposit(rate: number, period: string, percent: number): n
   return Math.round(monthlyFromRate(rate, period) * (percent || 0)) / 100;
 }
 
+/** Monthly payment = price per sqm (normalized to monthly) × area. */
+export function monthlyPayment(rate: number, period: string, area: number): number {
+  return monthlyFromRate(rate, period) * (area || 0);
+}
+
+export function computeDepositWithArea(rate: number, period: string, area: number, percent: number): number {
+  return Math.round(monthlyPayment(rate, period, area) * (percent || 0)) / 100;
+}
+
 /** Number of months covered by an inclusive date range (min 1). */
 export function monthsInRange(start: string, end: string): number {
   if (!start || !end) return 1;
@@ -89,8 +98,8 @@ export function monthsInRange(start: string, end: string): number {
   return Math.max(1, months);
 }
 
-export function chargeTotalForPeriod(rate: number, period: string, start: string, end: string): number {
-  const monthly = monthlyFromRate(rate, period);
-  if (period === "one_time") return rate;
+export function chargeTotalForPeriod(rate: number, period: string, start: string, end: string, area = 1): number {
+  if (period === "one_time") return Math.round(rate * (area || 1) * 100) / 100;
+  const monthly = monthlyFromRate(rate, period) * (area || 0);
   return Math.round(monthly * monthsInRange(start, end) * 100) / 100;
 }
