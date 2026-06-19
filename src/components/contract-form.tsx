@@ -25,7 +25,7 @@ export type ContractFormValues = {
   deposit_percent: string;
 };
 
-export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit }: {
+export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit, onValuesChange }: {
   initial?: Partial<ContractFormValues>;
   onSubmit: (v: ContractFormValues) => void;
   submitting?: boolean;
