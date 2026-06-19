@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Search } from "lucide-react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney, computeDepositWithArea, chargeTotalForPeriod, monthsInRange } from "@/lib/format";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,26 +44,49 @@ function EditContract() {
 
   const mut = useMutation({
     mutationFn: async (v: ContractFormValues) => {
+      const rateNum = Number(v.rate) || 0;
+      const areaNum = Number(v.area) || 0;
       const { error } = await supabase.from("contracts").update({
         tenant_id: v.tenant_id, property_id: v.property_id,
         number: v.number, cadastral_no: v.cadastral_no || null,
         area: v.area ? Number(v.area) : null,
-        rate: Number(v.rate) || 0, currency: v.currency || "RUB",
+        rate: rateNum, currency: v.currency || "RUB",
         payment_period: v.payment_period as any, status: v.status as any,
         start_date: v.start_date, end_date: v.end_date || null,
         notes: v.notes || null,
         termination_terms: v.termination_terms || null,
         deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
         deposit_amount: v.deposit_percent
-          ? computeDepositWithArea(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0, Number(v.deposit_percent))
+          ? computeDepositWithArea(rateNum, v.payment_period, areaNum, Number(v.deposit_percent))
           : null,
       }).eq("id", id);
       if (error) throw error;
+
+      // Auto-recalculate future unpaid charges so they stay in sync with the contract's price/area.
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: future, error: fErr } = await supabase
+        .from("charges")
+        .select("id, period_start, period_end, paid_total, status")
+        .eq("contract_id", id)
+        .in("status", ["unpaid", "partial", "overdue"])
+        .gte("period_start", today);
+      if (fErr) throw fErr;
+      for (const c of future ?? []) {
+        const newTotal = chargeTotalForPeriod(rateNum, v.payment_period, c.period_start, c.period_end, areaNum);
+        if (Number(c.paid_total) > newTotal) continue; // don't shrink below already paid
+        const { error: uErr } = await supabase.from("charges").update({ total: newTotal }).eq("id", c.id);
+        if (uErr) throw uErr;
+      }
+      return { recalculated: future?.length ?? 0 };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["contract", id] });
       qc.invalidateQueries({ queryKey: ["contracts"] });
-      toast.success("Сохранено");
+      qc.invalidateQueries({ queryKey: ["contract-charges", id] });
+      qc.invalidateQueries({ queryKey: ["charges"] });
+      toast.success(res?.recalculated
+        ? `Сохранено. Пересчитано будущих начислений: ${res.recalculated}`
+        : "Сохранено");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -201,6 +224,12 @@ function NewChargeDialog({ contractId, rate, area, currency, period }: { contrac
   const [dueDate, setDueDate] = useState(lastDay);
   const [total, setTotal] = useState(String(chargeTotalForPeriod(rate, period, firstDay, lastDay, area)));
   const [autoCalc, setAutoCalc] = useState(true);
+
+  // Re-derive total when contract rate/area/period change (e.g. after saving the contract form).
+  useEffect(() => {
+    if (autoCalc) setTotal(String(chargeTotalForPeriod(rate, period, periodStart, periodEnd, area)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rate, area, period]);
 
   function recalcOnDates(start: string, end: string) {
     if (autoCalc) setTotal(String(chargeTotalForPeriod(rate, period, start, end, area)));
