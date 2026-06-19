@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Upload, FileText, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
+import { PlanViewer } from "@/components/plan-viewer";
+import { normalizeToPng } from "@/lib/plan-normalize";
 
 const BUCKET = "documents";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -48,18 +50,20 @@ export function PlanUploader({
     }
     setBusy(true);
     try {
+      // Convert any input to a universal PNG before upload.
+      const { blob, filename } = await normalizeToPng(file);
       // Delete the old file if present
       if (currentPath) {
         await supabase.storage.from(BUCKET).remove([currentPath]);
       }
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+      const safeName = filename.replace(/[^\w.\-]+/g, "_");
       const path = `${pathPrefix}/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type,
+      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+        contentType: "image/png",
         upsert: true,
       });
       if (error) throw error;
-      await onChange({ path, mime: file.type });
+      await onChange({ path, mime: "image/png" });
       toast.success("План загружен");
     } catch (e: any) {
       toast.error(e.message ?? "Ошибка загрузки");
@@ -82,23 +86,23 @@ export function PlanUploader({
     }
   };
 
-  const isPdf = currentMime === "application/pdf";
+  const isLegacyPdf = currentMime === "application/pdf";
 
   return (
     <div className="space-y-3 rounded-md border p-3">
       {currentPath && url ? (
         <div className="space-y-2">
-          {isPdf ? (
+          {isLegacyPdf ? (
             <div className="space-y-2">
-              <iframe src={url} title="План" className="w-full h-[480px] rounded border bg-muted" />
-              <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                <ExternalLink className="h-3.5 w-3.5" /> Открыть PDF в новой вкладке
+              <div className="rounded border bg-muted p-4 text-sm text-muted-foreground">
+                Старый файл в формате PDF. Загрузите его заново — он будет конвертирован в универсальный формат с зумом.
+              </div>
+              <a href={url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                Открыть текущий PDF
               </a>
             </div>
           ) : (
-            <a href={url} target="_blank" rel="noreferrer" className="block">
-              <img src={url} alt="План" className="max-h-[480px] w-full rounded border bg-muted object-contain" />
-            </a>
+            <PlanViewer src={url} />
           )}
           <div className="flex gap-2 flex-wrap">
             <label>
@@ -129,7 +133,7 @@ export function PlanUploader({
             disabled={disabled || busy}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileText className="h-8 w-8" />}
-          <div>{busy ? "Загрузка..." : "Загрузить план (PNG, JPG, WEBP, PDF)"}</div>
+          <div>{busy ? "Обработка..." : "Загрузить план (PNG, JPG, WEBP, PDF)"}</div>
         </label>
       )}
       {/* hidden input for click-anywhere not implemented; using label-based picker above */}
