@@ -73,6 +73,8 @@ export const CHARGE_STATUS_LABELS: Record<string, string> = {
 export const TENANT_KIND_LABELS: Record<string, string> = {
   person: "Физлицо",
   company: "Компания",
+  own_company: "Собственная компания",
+  owner_friends: "Друзья собственника",
 };
 
 export function monthlyFromRate(rate: number, period: string): number {

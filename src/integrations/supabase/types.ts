@@ -556,7 +556,7 @@ export type Database = {
         | "production"
         | "coworking"
         | "other"
-      tenant_kind: "person" | "company"
+      tenant_kind: "person" | "company" | "own_company" | "owner_friends"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -707,7 +707,7 @@ export const Constants = {
         "coworking",
         "other",
       ],
-      tenant_kind: ["person", "company"],
+      tenant_kind: ["person", "company", "own_company", "owner_friends"],
     },
   },
 } as const
