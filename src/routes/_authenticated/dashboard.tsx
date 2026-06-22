@@ -230,7 +230,8 @@ function Dashboard() {
     const ahchArea = activeAhch.reduce((s, c) => s + Number(c.area || 0), 0);
     const ahchShare = totalArea > 0 ? (ahchArea / totalArea) * 100 : 0;
     const leasedArea = activeContracts.reduce((s, c) => s + Number(c.area || 0), 0);
-    const occupancy = totalArea > 0 ? (leasedArea / totalArea) * 100 : 0;
+    const usableArea = totalArea - ahchArea;
+    const occupancy = usableArea > 0 ? (leasedArea / usableArea) * 100 : 0;
 
     const periodPayments = filtered.payments.filter((p) => {
       const d = new Date(p.paid_at);
@@ -299,7 +300,7 @@ function Dashboard() {
   const kpiHints: Record<string, string> = {
     totalArea: `Сумма площадей ${filtered.properties.length} объектов(а) в фильтре.`,
     propsCount: `Количество объектов, попавших под текущие фильтры.`,
-    occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea)} м² общая площадь.`,
+    occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea - kpi.ahchArea)} м² общая без АХЧ.`,
     rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
     avgRate: `Средневзвешенная по площади ставка ${activeContractsForHint.length} активных договоров (₽/м²/мес).`,
