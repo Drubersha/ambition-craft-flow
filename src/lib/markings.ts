@@ -59,7 +59,7 @@ export function useFolderPlanProperties(folderId: string | null | undefined, all
       const ahchByProp: Record<string, any[]> = {};
       for (const c of contracts ?? []) {
         if (c.kind === "ahch") {
-          if (!ahchByProp[c.property_id]) ahchByProp[c.property_id] =- [];
+          if (!ahchByProp[c.property_id]) ahchByProp[c.property_id] = [];
           ahchByProp[c.property_id].push({
             id: c.id,
             rate: c.rate,
