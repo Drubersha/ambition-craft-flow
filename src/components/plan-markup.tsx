@@ -192,11 +192,12 @@ export function PlanMarkup({
 }
 
 function Tooltip({
-  x, y, containerW, containerH, property, contracts = [],
+  x, y, containerW, containerH, property, contracts = [], ahchContracts = [],
 }: {
   x: number; y: number; containerW: number; containerH: number;
   property: PropertyLite;
   contracts?: ActiveContractLite[];
+  ahchContracts?: ActiveContractLite[];
 }) {
   const W = 240;
   const left = Math.min(x + 12, containerW - W - 4);
