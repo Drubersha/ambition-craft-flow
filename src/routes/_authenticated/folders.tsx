@@ -439,6 +439,7 @@ function FolderMapMarkup({
   const { data: planData } = useFolderPlanProperties(folder.id, allFolderIds);
   const properties = (planData?.properties ?? []) as any[];
   const contractsByProp = (planData?.activeContracts ?? {}) as Record<string, any>;
+  const ahchByProp = (planData?.ahchContracts ?? {}) as Record<string, any>;
 
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
 
