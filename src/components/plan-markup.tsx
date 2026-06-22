@@ -18,6 +18,7 @@ export type ActiveContractLite = {
   currency: string;
   payment_period: "monthly" | "quarterly" | "yearly" | "one_time";
   area: number | null;
+  tenantName?: string;
 };
 
 const PERIOD_LABEL: Record<ActiveContractLite["payment_period"], string> = {
@@ -76,7 +77,7 @@ export function PlanMarkup({
   ctx: PlanOverlayCtx;
   markings: Marking[];
   properties: PropertyLite[];
-  contractsByProp: Record<string, ActiveContractLite | undefined>;
+  contractsByProp: Record<string, ActiveContractLite[] | undefined>;
   edit: EditState;
   onAddPoint?: (n: { x: number; y: number }) => void;
   onFinishPolygon?: () => void;
@@ -179,7 +180,7 @@ export function PlanMarkup({
           containerW={ctx.width}
           containerH={ctx.height}
           property={propsById[hover.id]}
-          contract={contractsByProp[hover.id]}
+          contracts={contractsByProp[hover.id]}
         />
       )}
     </>
@@ -187,11 +188,11 @@ export function PlanMarkup({
 }
 
 function Tooltip({
-  x, y, containerW, containerH, property, contract,
+  x, y, containerW, containerH, property, contracts = [],
 }: {
   x: number; y: number; containerW: number; containerH: number;
   property: PropertyLite;
-  contract?: ActiveContractLite;
+  contracts?: ActiveContractLite[];
 }) {
   const W = 240;
   const left = Math.min(x + 12, containerW - W - 4);
@@ -199,8 +200,16 @@ function Tooltip({
   const area = property.area_total || 0;
   const baseRate = property.base_rate || 0;
   const baseTotal = area * baseRate;
-  const conRate = contract?.rate || 0;
-  const conArea = contract?.area ?? area;
+
+  const occupied = contracts.reduce((sum, c) => sum + (c.area ?? area), 0);
+  const free = Math.max(0, area - occupied);
+  const freePct = area > 0 ? Math.round((free / area) * 100) : 0;
+  const singleFull = contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
+  const showOccupancy = contracts.length > 0 && !singleFull;
+
+  const firstContract = contracts[0];
+  const conRate = firstContract?.rate || 0;
+  const conArea = firstContract?.area ?? area;
   const conTotal = conRate * conArea;
 
   return (
@@ -228,17 +237,38 @@ function Tooltip({
           )}
         </>
       )}
-      {contract && (
+      {showOccupancy && (
+        <div className="flex justify-between gap-2 text-[10px]">
+          <span className="text-muted-foreground">Свободно</span>
+          <span className="font-medium">{free} м² ({freePct}%)</span>
+        </div>
+      )}
+      {contracts.length > 0 && !showOccupancy && (
         <div className="border-t pt-1.5 mt-1.5 space-y-1 text-xs">
           <div className="text-[10px] uppercase tracking-wide text-primary">Активный договор</div>
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Ставка</span>
-            <span className="font-medium">{fmt(conRate, contract.currency)}/м²</span>
+            <span className="font-medium">{fmt(conRate, firstContract.currency)}/м²</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Платёж</span>
-            <span className="font-medium">{fmt(conTotal, contract.currency)}{PERIOD_LABEL[contract.payment_period]}</span>
+            <span className="font-medium">{fmt(conTotal, firstContract.currency)}{PERIOD_LABEL[firstContract.payment_period]}</span>
           </div>
+        </div>
+      )}
+      {showOccupancy && (
+        <div className="border-t pt-1.5 mt-1.5 space-y-1">
+          <div className="text-[10px] uppercase tracking-wide text-primary">Активные договоры</div>
+          {contracts.map((c) => {
+            const cArea = c.area ?? area;
+            const pct = area > 0 ? Math.round((cArea / area) * 100) : 0;
+            return (
+              <div key={c.id} className="flex justify-between gap-1 text-[10px]">
+                <span className="truncate text-muted-foreground">{c.tenantName || "—"}</span>
+                <span className="font-medium shrink-0">{cArea} м² ({pct}%)</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
