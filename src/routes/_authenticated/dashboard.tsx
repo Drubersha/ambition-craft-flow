@@ -192,6 +192,7 @@ function Dashboard() {
         contracts: [] as Contract[],
         charges: [] as Charge[],
         payments: [] as Payment[],
+        ahchContracts: [] as Contract[],
       };
     const propIdSet = new Set(
       data.properties
