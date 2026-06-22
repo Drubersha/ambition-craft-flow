@@ -51,14 +51,22 @@ export function useFolderPlanProperties(folderId: string | null | undefined, all
       if (ids.length === 0) return { properties: props ?? [], activeContracts: {} as Record<string, any> };
       const { data: contracts, error: e2 } = await supabase
         .from("contracts")
-        .select("id,property_id,rate,currency,payment_period,area,status,kind")
+        .select("id,property_id,rate,currency,payment_period,area,status,kind,tenant:tenants(name)")
         .in("property_id", ids)
         .eq("status", "active");
       if (e2) throw e2;
-      const byProp: Record<string, any> = {};
+      const byProp: Record<string, any[]> = {};
       for (const c of contracts ?? []) {
         if (c.kind === "ahch") continue;
-        if (!byProp[c.property_id]) byProp[c.property_id] = c;
+        if (!byProp[c.property_id]) byProp[c.property_id] = [];
+        byProp[c.property_id].push({
+          id: c.id,
+          rate: c.rate,
+          currency: c.currency,
+          payment_period: c.payment_period,
+          area: c.area,
+          tenantName: c.tenant?.name ?? "",
+        });
       }
       return { properties: props ?? [], activeContracts: byProp };
     },
