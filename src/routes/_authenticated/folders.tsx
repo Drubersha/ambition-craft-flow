@@ -264,19 +264,7 @@ function FolderDetail({
         </form>
       </Card>
 
-      <Card className="p-4 space-y-3">
-        <h3 className="font-semibold">План папки</h3>
-        <PlanUploader
-          pathPrefix={`folder-plans/${folder.id}`}
-          currentPath={folder.plan_path}
-          currentMime={folder.plan_mime}
-          onChange={onPlanChange}
-        />
-      </Card>
-
-      {folder.plan_path && folder.plan_mime !== "application/pdf" && (
-        <FolderMapMarkup folder={folder} folders={folders} />
-      )}
+      <FolderMapMarkup folder={folder} folders={folders} onPlanChange={onPlanChange} />
 
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -308,7 +296,15 @@ function FolderDetail({
   );
 }
 
-function FolderMapMarkup({ folder, folders }: { folder: Folder; folders: Folder[] }) {
+function FolderMapMarkup({
+  folder,
+  folders,
+  onPlanChange,
+}: {
+  folder: Folder;
+  folders: Folder[];
+  onPlanChange: (p: { path: string | null; mime: string | null }) => Promise<void> | void;
+}) {
   const qc = useQueryClient();
   const [url, setUrl] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState>({ mode: "view" });
@@ -393,6 +389,22 @@ function FolderMapMarkup({ folder, folders }: { folder: Folder; folders: Folder[
 
   const existing = markings.find((m) => m.property_id === selectedPropertyId);
 
+  const hasUsablePlan = !!folder.plan_path && folder.plan_mime !== "application/pdf";
+
+  if (!hasUsablePlan) {
+    return (
+      <Card className="p-4 space-y-3">
+        <h3 className="font-semibold">Разметка объектов</h3>
+        <PlanUploader
+          pathPrefix={`folder-plans/${folder.id}`}
+          currentPath={folder.plan_path}
+          currentMime={folder.plan_mime}
+          onChange={onPlanChange}
+        />
+      </Card>
+    );
+  }
+
   if (!url) return null;
 
   return (
@@ -403,6 +415,13 @@ function FolderMapMarkup({ folder, folders }: { folder: Folder; folders: Folder[
           {markings.length > 0 ? `Размечено: ${markings.length}` : "Наведите курсор на фигуру, чтобы увидеть детали"}
         </div>
       </div>
+
+      <PlanUploader
+        pathPrefix={`folder-plans/${folder.id}`}
+        currentPath={folder.plan_path}
+        currentMime={folder.plan_mime}
+        onChange={onPlanChange}
+      />
 
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
