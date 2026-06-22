@@ -244,22 +244,11 @@ function Tooltip({
           <span className="font-medium">{free} м² ({freePct}%)</span>
         </div>
       )}
-      {contracts.length > 0 && !showOccupancy && (
-        <div className="border-t pt-1.5 mt-1.5 space-y-1 text-xs">
-          <div className="text-[10px] uppercase tracking-wide text-primary">Активный договор</div>
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">Ставка</span>
-            <span className="font-medium">{fmt(conRate, firstContract.currency)}/м²</span>
-          </div>
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">Платёж</span>
-            <span className="font-medium">{fmt(conTotal, firstContract.currency)}{PERIOD_LABEL[firstContract.payment_period]}</span>
-          </div>
-        </div>
-      )}
-      {showOccupancy && (
+      {contracts.length > 0 && (
         <div className="border-t pt-1.5 mt-1.5 space-y-1">
-          <div className="text-[10px] uppercase tracking-wide text-primary">Активные договоры</div>
+          <div className="text-[10px] uppercase tracking-wide text-primary">
+            {contracts.length === 1 ? "Активный договор" : "Активные договоры"}
+          </div>
           {contracts.map((c) => {
             const cArea = c.area ?? area;
             const pct = area > 0 ? Math.round((cArea / area) * 100) : 0;
