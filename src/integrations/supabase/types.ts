@@ -115,6 +115,7 @@ export type Database = {
           deposit_percent: number | null
           end_date: string | null
           id: string
+          kind: Database["public"]["Enums"]["contract_kind"]
           notes: string | null
           number: string
           owner_id: string
@@ -136,6 +137,7 @@ export type Database = {
           deposit_percent?: number | null
           end_date?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["contract_kind"]
           notes?: string | null
           number: string
           owner_id: string
@@ -157,6 +159,7 @@ export type Database = {
           deposit_percent?: number | null
           end_date?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["contract_kind"]
           notes?: string | null
           number?: string
           owner_id?: string
@@ -534,6 +537,7 @@ export type Database = {
     Enums: {
       app_role: "owner" | "manager"
       charge_status: "unpaid" | "partial" | "paid" | "overdue"
+      contract_kind: "rent" | "ahch"
       contract_status: "draft" | "active" | "finished" | "terminated"
       document_owner_kind: "property" | "tenant" | "contract"
       payment_period: "monthly" | "quarterly" | "yearly" | "one_time"
@@ -682,6 +686,7 @@ export const Constants = {
     Enums: {
       app_role: ["owner", "manager"],
       charge_status: ["unpaid", "partial", "paid", "overdue"],
+      contract_kind: ["rent", "ahch"],
       contract_status: ["draft", "active", "finished", "terminated"],
       document_owner_kind: ["property", "tenant", "contract"],
       payment_period: ["monthly", "quarterly", "yearly", "one_time"],

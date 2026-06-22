@@ -74,6 +74,7 @@ type Contract = {
   id: string;
   number: string;
   status: string;
+  kind: string;
   start_date: string;
   end_date: string | null;
   rate: number;
@@ -156,7 +157,7 @@ function Dashboard() {
         supabase
           .from("contracts")
           .select(
-            "id,number,status,start_date,end_date,rate,area,payment_period,currency,property_id,tenant_id,tenant:tenants(id,name),property:properties(id,name,type,area_total)",
+            "id,number,status,kind,start_date,end_date,rate,area,payment_period,currency,property_id,tenant_id,tenant:tenants(id,name),property:properties(id,name,type,area_total)",
           ),
         supabase
           .from("charges")
@@ -191,6 +192,7 @@ function Dashboard() {
         contracts: [] as Contract[],
         charges: [] as Charge[],
         payments: [] as Payment[],
+        ahchContracts: [] as Contract[],
       };
     const propIdSet = new Set(
       data.properties
@@ -203,17 +205,22 @@ function Dashboard() {
         .map((p) => p.id),
     );
     const properties = data.properties.filter((p) => propIdSet.has(p.id));
-    const contracts = data.contracts.filter((c) => propIdSet.has(c.property_id));
+    const allContracts = data.contracts.filter((c) => propIdSet.has(c.property_id));
+    const ahchContracts = allContracts.filter((c) => c.kind === "ahch");
+    const contracts = allContracts.filter((c) => c.kind !== "ahch");
     const contractIdSet = new Set(contracts.map((c) => c.id));
     const charges = data.charges.filter((c) => contractIdSet.has(c.contract_id));
     const chargeIdSet = new Set(charges.map((c) => c.id));
     const payments = data.payments.filter((p) => chargeIdSet.has(p.charge_id));
-    return { properties, contracts, charges, payments };
+    return { properties, contracts, charges, payments, ahchContracts };
   }, [data, selectedProps, selectedTypes, selectedStatuses]);
 
   const kpi = useMemo(() => {
     const totalArea = filtered.properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
     const activeContracts = filtered.contracts.filter((c) => c.status === "active");
+    const activeAhch = filtered.ahchContracts.filter((c) => c.status === "active");
+    const ahchArea = activeAhch.reduce((s, c) => s + Number(c.area || 0), 0);
+    const ahchShare = totalArea > 0 ? (ahchArea / totalArea) * 100 : 0;
     const leasedArea = activeContracts.reduce((s, c) => s + Number(c.area || 0), 0);
     const occupancy = totalArea > 0 ? (leasedArea / totalArea) * 100 : 0;
 
@@ -258,6 +265,8 @@ function Dashboard() {
       avgRate,
       overdueAmt,
       expSoon,
+      ahchArea,
+      ahchShare,
     };
   }, [filtered, periodStart, periodEnd]);
 
@@ -428,6 +437,17 @@ function Dashboard() {
             label="Истекают за 90 дн"
             value={kpi.expSoon}
             tone={kpi.expSoon > 0 ? "warn" : "ok"}
+          />
+          <Kpi
+            icon={Building2}
+            label="Площадь АХЧ"
+            value={`${formatNum(kpi.ahchArea)} м²`}
+          />
+          <Kpi
+            icon={Percent}
+            label="Доля АХЧ"
+            value={`${kpi.ahchShare.toFixed(1)}%`}
+            sub={<Progress value={kpi.ahchShare} className="mt-2 h-1.5" />}
           />
         </div>
       </Section>

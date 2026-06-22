@@ -51,6 +51,11 @@ export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   terminated: "Расторгнут",
 };
 
+export const CONTRACT_KIND_LABELS: Record<string, string> = {
+  rent: "Аренда",
+  ahch: "АХЧ (собств. нужды)",
+};
+
 export const PAYMENT_PERIOD_LABELS: Record<string, string> = {
   monthly: "Ежемесячно",
   quarterly: "Ежеквартально",
