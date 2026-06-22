@@ -1208,6 +1208,42 @@ function FinanceSection({
     }));
   }, [properties, contracts]);
 
+  const areaByType = useMemo(() => {
+    const m = new Map<string, number>();
+    properties.forEach((p) => {
+      m.set(p.type, (m.get(p.type) || 0) + Number(p.area_total || 0));
+    });
+    return Array.from(m.entries())
+      .map(([type, area]) => ({
+        type: PROPERTY_TYPE_LABELS[type] || type,
+        area,
+      }))
+      .sort((a, b) => b.area - a.area);
+  }, [properties]);
+
+  const avgRateByType = useMemo(() => {
+    const m = new Map<string, { num: number; den: number }>();
+    contracts
+      .filter((c) => c.status === "active")
+      .forEach((c) => {
+        const t = c.property?.type;
+        if (!t) return;
+        const monthly = monthlyFromRate(Number(c.rate), c.payment_period);
+        const area = Number(c.area || 0);
+        if (area <= 0) return;
+        const e = m.get(t) || { num: 0, den: 0 };
+        e.num += monthly * area;
+        e.den += area;
+        m.set(t, e);
+      });
+    return Array.from(m.entries())
+      .map(([type, v]) => ({
+        type: PROPERTY_TYPE_LABELS[type] || type,
+        rate: v.den > 0 ? v.num / v.den : 0,
+      }))
+      .sort((a, b) => b.rate - a.rate);
+  }, [contracts]);
+
   return (
     <div className="grid lg:grid-cols-2 gap-4">
       <Card className="lg:col-span-2">
@@ -1255,6 +1291,54 @@ function FinanceSection({
                   <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
                   <RTooltip formatter={(v: any) => `${Number(v).toFixed(1)}%`} />
                   <Bar dataKey="vacancy" fill="var(--warning)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Общая площадь по типам объектов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {areaByType.length === 0 ? (
+            <EmptyText text="Нет данных" />
+          ) : (
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <BarChart data={areaByType} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} unit=" м²" />
+                  <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
+                  <RTooltip formatter={(v: any) => `${formatNum(Number(v))} м²`} />
+                  <Bar dataKey="area" fill="var(--info)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Средняя ставка по типам объектов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {avgRateByType.length === 0 ? (
+            <EmptyText text="Нет активных договоров" />
+          ) : (
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <BarChart data={avgRateByType} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
+                  <RTooltip
+                    formatter={(v: any) => `${formatNum(Number(v))} ₽/м²/мес`}
+                  />
+                  <Bar dataKey="rate" fill="var(--success)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
