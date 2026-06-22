@@ -204,19 +204,20 @@ function Dashboard() {
         .map((p) => p.id),
     );
     const properties = data.properties.filter((p) => propIdSet.has(p.id));
-    const contracts = data.contracts.filter((c) => propIdSet.has(c.property_id));
+    const allContracts = data.contracts.filter((c) => propIdSet.has(c.property_id));
+    const ahchContracts = allContracts.filter((c) => c.kind === "ahch");
+    const contracts = allContracts.filter((c) => c.kind !== "ahch");
     const contractIdSet = new Set(contracts.map((c) => c.id));
     const charges = data.charges.filter((c) => contractIdSet.has(c.contract_id));
     const chargeIdSet = new Set(charges.map((c) => c.id));
     const payments = data.payments.filter((p) => chargeIdSet.has(p.charge_id));
-    return { properties, contracts, charges, payments };
+    return { properties, contracts, charges, payments, ahchContracts };
   }, [data, selectedProps, selectedTypes, selectedStatuses]);
 
   const kpi = useMemo(() => {
     const totalArea = filtered.properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
-    const activeAll = filtered.contracts.filter((c) => c.status === "active");
-    const activeContracts = activeAll.filter((c) => c.kind !== "ahch");
-    const activeAhch = activeAll.filter((c) => c.kind === "ahch");
+    const activeContracts = filtered.contracts.filter((c) => c.status === "active");
+    const activeAhch = filtered.ahchContracts.filter((c) => c.status === "active");
     const ahchArea = activeAhch.reduce((s, c) => s + Number(c.area || 0), 0);
     const ahchShare = totalArea > 0 ? (ahchArea / totalArea) * 100 : 0;
     const leasedArea = activeContracts.reduce((s, c) => s + Number(c.area || 0), 0);
