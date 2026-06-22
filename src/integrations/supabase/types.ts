@@ -543,6 +543,8 @@ export type Database = {
         | "partial"
         | "maintenance"
         | "archived"
+        | "ahch"
+        | "partial_ahch"
       property_type:
         | "office"
         | "warehouse"
@@ -689,6 +691,8 @@ export const Constants = {
         "partial",
         "maintenance",
         "archived",
+        "ahch",
+        "partial_ahch",
       ],
       property_type: [
         "office",

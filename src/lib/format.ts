@@ -40,6 +40,8 @@ export const PROPERTY_STATUS_LABELS: Record<string, string> = {
   partial: "Частично",
   maintenance: "Ремонт",
   archived: "Архив",
+  ahch: "АХЧ",
+  partial_ahch: "Частично АХЧ",
 };
 
 export const CONTRACT_STATUS_LABELS: Record<string, string> = {
