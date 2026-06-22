@@ -526,6 +526,10 @@ export type Database = {
         Returns: boolean
       }
       recalc_charge: { Args: { _charge_id: string }; Returns: undefined }
+      recalc_property_status: {
+        Args: { _property_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "owner" | "manager"
