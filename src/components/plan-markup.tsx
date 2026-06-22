@@ -184,6 +184,7 @@ export function PlanMarkup({
           containerH={ctx.height}
           property={propsById[hover.id]}
           contracts={contractsByProp[hover.id]}
+          ahchContracts={ahchByProp?.[hover.id]}
         />
       )}
     </>
