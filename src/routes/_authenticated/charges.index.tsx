@@ -60,11 +60,25 @@ function ChargesList() {
         <h1 className="text-xl sm:text-2xl font-bold">Начисления</h1>
         <AutoChargesButton />
       </div>
-      {isLoading ? <div>Загрузка...</div> : !data || data.length === 0 ? (
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as "active" | "archive")}>
+        <TabsList>
+          <TabsTrigger value="active">Неоплаченные</TabsTrigger>
+          <TabsTrigger value="archive">Архив</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {isLoading ? (
+        <div>Загрузка...</div>
+      ) : !data || data.length === 0 ? (
         <Card className="p-12 text-center">
           <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-semibold">Начислений нет</h3>
-          <p className="text-sm text-muted-foreground">Создайте начисление из карточки договора.</p>
+          <h3 className="font-semibold">
+            {filter === "archive" ? "В архиве нет начислений" : "Неоплаченных начислений нет"}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {filter === "archive"
+              ? "Оплаченные начисления появятся здесь после поступления платежей."
+              : "Все начисления оплачены."}
+          </p>
         </Card>
       ) : (
         <div className="space-y-2">
