@@ -70,6 +70,7 @@ export function PlanMarkup({
   markings,
   properties,
   contractsByProp,
+  ahchByProp,
   edit,
   onAddPoint,
   onFinishPolygon,
@@ -79,6 +80,7 @@ export function PlanMarkup({
   markings: Marking[];
   properties: PropertyLite[];
   contractsByProp: Record<string, ActiveContractLite[] | undefined>;
+  ahchByProp?: Record<string, ActiveContractLite[] | undefined>;
   edit: EditState;
   onAddPoint?: (n: { x: number; y: number }) => void;
   onFinishPolygon?: () => void;
@@ -182,6 +184,7 @@ export function PlanMarkup({
           containerH={ctx.height}
           property={propsById[hover.id]}
           contracts={contractsByProp[hover.id]}
+          ahchContracts={ahchByProp?.[hover.id]}
         />
       )}
     </>
@@ -189,11 +192,12 @@ export function PlanMarkup({
 }
 
 function Tooltip({
-  x, y, containerW, containerH, property, contracts = [],
+  x, y, containerW, containerH, property, contracts = [], ahchContracts = [],
 }: {
   x: number; y: number; containerW: number; containerH: number;
   property: PropertyLite;
   contracts?: ActiveContractLite[];
+  ahchContracts?: ActiveContractLite[];
 }) {
   const W = 240;
   const left = Math.min(x + 12, containerW - W - 4);
@@ -207,6 +211,8 @@ function Tooltip({
   const freePct = area > 0 ? Math.round((free / area) * 100) : 0;
   const singleFull = contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
   const showOccupancy = contracts.length > 0 && !singleFull;
+  const ahchArea = ahchContracts.reduce((sum, c) => sum + (c.area ?? 0), 0);
+  const ahchPct = area > 0 ? Math.round((ahchArea / area) * 100) : 0;
 
   const firstContract = contracts[0];
   const conRate = firstContract?.rate || 0;
@@ -242,6 +248,12 @@ function Tooltip({
         <div className="flex justify-between gap-2 text-[10px]">
           <span className="text-muted-foreground">Свободно</span>
           <span className="font-medium">{free} м² ({freePct}%)</span>
+        </div>
+      )}
+      {ahchArea > 0 && (
+        <div className="flex justify-between gap-2 text-[10px]">
+          <span className="text-muted-foreground">АХЧ</span>
+          <span className="font-medium">{ahchArea} м² ({ahchPct}%)</span>
         </div>
       )}
       {contracts.length > 0 && (
