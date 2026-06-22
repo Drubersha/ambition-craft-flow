@@ -266,6 +266,135 @@ export type Database = {
           },
         ]
       }
+      lead_events: {
+        Row: {
+          comment: string | null
+          created_at: string
+          from_stage: Database["public"]["Enums"]["lead_stage"] | null
+          id: string
+          lead_id: string
+          owner_id: string
+          passed: boolean
+          to_stage: Database["public"]["Enums"]["lead_stage"] | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["lead_stage"] | null
+          id?: string
+          lead_id: string
+          owner_id: string
+          passed: boolean
+          to_stage?: Database["public"]["Enums"]["lead_stage"] | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["lead_stage"] | null
+          id?: string
+          lead_id?: string
+          owner_id?: string
+          passed?: boolean
+          to_stage?: Database["public"]["Enums"]["lead_stage"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          archived_at: string | null
+          archived_reason: string | null
+          budget: number | null
+          contract_id: string | null
+          created_at: string
+          desired_area: number | null
+          email: string | null
+          full_name: string
+          id: string
+          inn: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          property_id: string
+          source: Database["public"]["Enums"]["lead_source"]
+          stage: Database["public"]["Enums"]["lead_stage"]
+          status: Database["public"]["Enums"]["lead_status"]
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_reason?: string | null
+          budget?: number | null
+          contract_id?: string | null
+          created_at?: string
+          desired_area?: number | null
+          email?: string | null
+          full_name: string
+          id?: string
+          inn?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          property_id: string
+          source?: Database["public"]["Enums"]["lead_source"]
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_reason?: string | null
+          budget?: number | null
+          contract_id?: string | null
+          created_at?: string
+          desired_area?: number | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          inn?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          property_id?: string
+          source?: Database["public"]["Enums"]["lead_source"]
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -540,6 +669,20 @@ export type Database = {
       contract_kind: "rent" | "ahch"
       contract_status: "draft" | "active" | "finished" | "terminated"
       document_owner_kind: "property" | "tenant" | "contract"
+      lead_source:
+        | "avito"
+        | "cian"
+        | "yandex"
+        | "referral"
+        | "website"
+        | "other"
+      lead_stage:
+        | "inquiry"
+        | "viewing"
+        | "documents"
+        | "contract_sent"
+        | "signed"
+      lead_status: "active" | "archived" | "won"
       payment_period: "monthly" | "quarterly" | "yearly" | "one_time"
       property_status:
         | "free"
@@ -689,6 +832,15 @@ export const Constants = {
       contract_kind: ["rent", "ahch"],
       contract_status: ["draft", "active", "finished", "terminated"],
       document_owner_kind: ["property", "tenant", "contract"],
+      lead_source: ["avito", "cian", "yandex", "referral", "website", "other"],
+      lead_stage: [
+        "inquiry",
+        "viewing",
+        "documents",
+        "contract_sent",
+        "signed",
+      ],
+      lead_status: ["active", "archived", "won"],
       payment_period: ["monthly", "quarterly", "yearly", "one_time"],
       property_status: [
         "free",
