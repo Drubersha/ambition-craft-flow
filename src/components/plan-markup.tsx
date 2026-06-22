@@ -70,6 +70,7 @@ export function PlanMarkup({
   markings,
   properties,
   contractsByProp,
+  ahchByProp,
   edit,
   onAddPoint,
   onFinishPolygon,
@@ -79,6 +80,7 @@ export function PlanMarkup({
   markings: Marking[];
   properties: PropertyLite[];
   contractsByProp: Record<string, ActiveContractLite[] | undefined>;
+  ahchByProp?: Record<string, ActiveContractLite[] | undefined>;
   edit: EditState;
   onAddPoint?: (n: { x: number; y: number }) => void;
   onFinishPolygon?: () => void;
