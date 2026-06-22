@@ -1,0 +1,14 @@
+node_modules
+.output
+.vinxi
+dist
+.git
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.lovable
+supabase/.branches
+supabase/.temp
+/tmp
