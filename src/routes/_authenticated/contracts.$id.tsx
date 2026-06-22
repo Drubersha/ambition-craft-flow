@@ -49,7 +49,7 @@ function EditContract() {
       const areaNum = Number(v.area) || 0;
       const { error } = await supabase.from("contracts").update({
         tenant_id: v.tenant_id, property_id: v.property_id,
-        number: v.number, cadastral_no: v.cadastral_no || null,
+        number: v.number || null, cadastral_no: v.cadastral_no || null,
         area: v.area ? Number(v.area) : null,
         rate: rateNum, currency: v.currency || "RUB",
         payment_period: v.payment_period as any, status: v.status as any,
@@ -151,12 +151,12 @@ function EditContract() {
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </ConfirmButton>
       </div>
-      <h1 className="text-xl sm:text-2xl font-bold break-words">Договор № {data.number}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold break-words">{data.number ? `Договор № ${data.number}` : "Договор без номера"}</h1>
       <MobileCollapsible title="Данные договора">
         <ContractForm
           formId="contract-form"
           initial={{
-            tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
+            tenant_id: data.tenant_id, property_id: data.property_id, number: data.number ?? "",
             cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
             rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
             start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",

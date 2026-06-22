@@ -1,0 +1,1 @@
+ALTER TABLE public.contracts ALTER COLUMN number DROP NOT NULL;

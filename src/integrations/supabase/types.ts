@@ -117,7 +117,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["contract_kind"]
           notes: string | null
-          number: string
+          number: string | null
           owner_id: string
           payment_period: Database["public"]["Enums"]["payment_period"]
           property_id: string
@@ -139,7 +139,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["contract_kind"]
           notes?: string | null
-          number: string
+          number?: string | null
           owner_id: string
           payment_period?: Database["public"]["Enums"]["payment_period"]
           property_id: string
@@ -161,7 +161,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["contract_kind"]
           notes?: string | null
-          number?: string
+          number?: string | null
           owner_id?: string
           payment_period?: Database["public"]["Enums"]["payment_period"]
           property_id?: string
