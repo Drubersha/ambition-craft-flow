@@ -759,6 +759,14 @@ function PropertiesTable({
                 0,
               ) / leased
             : Number(p.base_rate || 0);
+        // Статус, вычисленный по фактическим активным договорам аренды,
+        // имеет приоритет над сохранённым в БД (он может быть устаревшим).
+        let derivedStatus = p.status;
+        if (occ >= 99.5) derivedStatus = "occupied";
+        else if (occ > 0) derivedStatus = "partial";
+        else if (p.status !== "ahch" && p.status !== "partial_ahch" && p.status !== "maintenance" && p.status !== "archived") {
+          derivedStatus = "free";
+        }
         return {
           id: p.id,
           name: p.name,
@@ -767,7 +775,7 @@ function PropertiesTable({
           occ,
           rate: avgRate,
           income: monthlyIncome,
-          status: p.status,
+          status: derivedStatus,
         };
       });
   }, [properties, contracts, query]);
