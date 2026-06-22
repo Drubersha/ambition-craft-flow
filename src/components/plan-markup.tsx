@@ -18,6 +18,7 @@ export type ActiveContractLite = {
   currency: string;
   payment_period: "monthly" | "quarterly" | "yearly" | "one_time";
   area: number | null;
+  tenantName?: string;
 };
 
 const PERIOD_LABEL: Record<ActiveContractLite["payment_period"], string> = {
