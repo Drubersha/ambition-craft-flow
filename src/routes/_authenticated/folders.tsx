@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2, MapPin, Pentagon, X, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderPlus, Folder as FolderIcon, Plus, Pencil, Trash2, Building2, MapPin, Pentagon, X, Check, Upload, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FolderPicker } from "@/components/folder-picker";
@@ -16,6 +16,7 @@ import { useFolders, buildTree, descendantIds, type FolderNode, type Folder } fr
 import { PlanViewer } from "@/components/plan-viewer";
 import { PlanMarkup, type EditState } from "@/components/plan-markup";
 import { useFolderMarkings, useFolderPlanProperties, type Marking, type MarkingShape } from "@/lib/markings";
+import { normalizeToPng } from "@/lib/plan-normalize";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -416,10 +417,11 @@ function FolderMapMarkup({
         </div>
       </div>
 
-      <PlanUploader
+      <PlanFileControls
         pathPrefix={`folder-plans/${folder.id}`}
         currentPath={folder.plan_path}
         currentMime={folder.plan_mime}
+        signedUrl={url}
         onChange={onPlanChange}
       />
 
