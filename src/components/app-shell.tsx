@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   FolderTree,
+  Kanban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/contracts", label: "Договоры", icon: FileText },
   { to: "/charges", label: "Начисления", icon: Receipt },
   { to: "/payments", label: "Платежи", icon: Wallet },
+  { to: "/leads", label: "Воронка", icon: Kanban },
 ] as const;
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
