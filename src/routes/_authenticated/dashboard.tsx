@@ -24,6 +24,7 @@ import {
   formatDate,
   daysUntil,
   monthlyFromRate,
+  monthlyPayment,
   PROPERTY_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
