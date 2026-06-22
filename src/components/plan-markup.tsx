@@ -77,7 +77,7 @@ export function PlanMarkup({
   ctx: PlanOverlayCtx;
   markings: Marking[];
   properties: PropertyLite[];
-  contractsByProp: Record<string, ActiveContractLite | undefined>;
+  contractsByProp: Record<string, ActiveContractLite[] | undefined>;
   edit: EditState;
   onAddPoint?: (n: { x: number; y: number }) => void;
   onFinishPolygon?: () => void;
