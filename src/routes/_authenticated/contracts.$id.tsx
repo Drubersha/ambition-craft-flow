@@ -151,7 +151,7 @@ function EditContract() {
           <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
         </ConfirmButton>
       </div>
-      <h1 className="text-xl sm:text-2xl font-bold break-words">Договор № {data.number}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold break-words">{data.number ? `Договор № ${data.number}` : "Договор без номера"}</h1>
       <MobileCollapsible title="Данные договора">
         <ContractForm
           formId="contract-form"
