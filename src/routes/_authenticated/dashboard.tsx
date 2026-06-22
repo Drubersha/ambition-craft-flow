@@ -427,6 +427,7 @@ function Dashboard() {
             sub={<Progress value={kpi.occupancy} className="mt-2 h-1.5" />}
           />
           <Kpi icon={Wallet} label="Арендный доход" value={formatMoney(kpi.rentIncome)} />
+          <Kpi icon={Wallet} label="Месячные платежи" value={formatMoney(kpi.monthlyIncome)} />
           <Kpi
             icon={TrendingUp}
             label="Средняя ставка"
