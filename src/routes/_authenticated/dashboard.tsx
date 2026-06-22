@@ -300,7 +300,7 @@ function Dashboard() {
     totalArea: `Сумма площадей ${filtered.properties.length} объектов(а) в фильтре.`,
     propsCount: `Количество объектов, попавших под текущие фильтры.`,
     occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea)} м² общая площадь.`,
-    rentIncome: `Сумма ${periPaymentsCountSafe(periodPaymentsHint.length)} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
+    rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
     avgRate: `Средневзвешенная по площади ставка ${activeContractsForHint.length} активных договоров (₽/м²/мес).`,
     overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
