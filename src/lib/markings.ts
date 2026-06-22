@@ -56,8 +56,20 @@ export function useFolderPlanProperties(folderId: string | null | undefined, all
         .eq("status", "active");
       if (e2) throw e2;
       const byProp: Record<string, any[]> = {};
+      const ahchByProp: Record<string, any[]> = {};
       for (const c of contracts ?? []) {
-        if (c.kind === "ahch") continue;
+        if (c.kind === "ahch") {
+          if (!ahchByProp[c.property_id]) ahchByProp[c.property_id] =- [];
+          ahchByProp[c.property_id].push({
+            id: c.id,
+            rate: c.rate,
+            currency: c.currency,
+            payment_period: c.payment_period,
+            area: c.area,
+            tenantName: c.tenant?.name ?? "",
+          });
+          continue;
+        }
         if (!byProp[c.property_id]) byProp[c.property_id] = [];
         byProp[c.property_id].push({
           id: c.id,
@@ -68,7 +80,7 @@ export function useFolderPlanProperties(folderId: string | null | undefined, all
           tenantName: c.tenant?.name ?? "",
         });
       }
-      return { properties: props ?? [], activeContracts: byProp };
+      return { properties: props ?? [], activeContracts: byProp, ahchContracts: ahchByProp };
     },
   });
 }
