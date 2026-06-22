@@ -180,7 +180,7 @@ export function PlanMarkup({
           containerW={ctx.width}
           containerH={ctx.height}
           property={propsById[hover.id]}
-          contract={contractsByProp[hover.id]}
+          contracts={contractsByProp[hover.id]}
         />
       )}
     </>
