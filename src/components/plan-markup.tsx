@@ -250,6 +250,12 @@ function Tooltip({
           <span className="font-medium">{free} м² ({freePct}%)</span>
         </div>
       )}
+      {ahchArea > 0 && (
+        <div className="flex justify-between gap-2 text-[10px]">
+          <span className="text-muted-foreground">АХЧ</span>
+          <span className="font-medium">{ahchArea} м² ({ahchPct}%)</span>
+        </div>
+      )}
       {contracts.length > 0 && (
         <div className="border-t pt-1.5 mt-1.5 space-y-1">
           <div className="text-[10px] uppercase tracking-wide text-primary">
