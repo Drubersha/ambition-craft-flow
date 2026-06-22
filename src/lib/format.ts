@@ -112,3 +112,64 @@ export function chargeTotalForPeriod(rate: number, period: string, start: string
   const monthly = monthlyFromRate(rate, period) * (area || 0);
   return Math.round(monthly * monthsInRange(start, end) * 100) / 100;
 }
+
+function toISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Разбивает интервал [startDate; today] на отрезки по payment_period:
+ *  - monthly   → календарные месяцы
+ *  - quarterly → календарные кварталы
+ *  - yearly    → календарные годы
+ *  - one_time  → один отрезок [start; endDate ?? today]
+ * Если endDate задана и попадает внутрь отрезка, period_end подрезается.
+ * Возвращает массив {period_start, period_end} в формате YYYY-MM-DD.
+ */
+export function splitContractPeriods(
+  startDate: string,
+  endDate: string | null | undefined,
+  period: string,
+  today: Date = new Date(),
+): { period_start: string; period_end: string }[] {
+  if (!startDate) return [];
+  const start = new Date(startDate);
+  const hardEnd = endDate ? new Date(endDate) : null;
+  const upTo = hardEnd && hardEnd < today ? hardEnd : today;
+  if (start > upTo) return [];
+
+  if (period === "one_time") {
+    return [{ period_start: toISO(start), period_end: toISO(hardEnd ?? today) }];
+  }
+
+  const out: { period_start: string; period_end: string }[] = [];
+  let cursor: Date;
+  let step: (d: Date) => Date;
+  let periodEnd: (d: Date) => Date;
+
+  if (period === "yearly") {
+    cursor = new Date(start.getFullYear(), 0, 1);
+    step = (d) => new Date(d.getFullYear() + 1, 0, 1);
+    periodEnd = (d) => new Date(d.getFullYear(), 11, 31);
+  } else if (period === "quarterly") {
+    const q = Math.floor(start.getMonth() / 3);
+    cursor = new Date(start.getFullYear(), q * 3, 1);
+    step = (d) => new Date(d.getFullYear(), d.getMonth() + 3, 1);
+    periodEnd = (d) => new Date(d.getFullYear(), d.getMonth() + 3, 0);
+  } else {
+    // monthly
+    cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    step = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    periodEnd = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  }
+
+  while (cursor <= upTo) {
+    let ps = cursor < start ? start : cursor;
+    let pe = periodEnd(cursor);
+    if (hardEnd && pe > hardEnd) pe = hardEnd;
+    if (pe > upTo) pe = upTo;
+    if (ps <= pe) out.push({ period_start: toISO(ps), period_end: toISO(pe) });
+    cursor = step(cursor);
+  }
+  return out;
+}
