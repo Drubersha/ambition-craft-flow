@@ -205,11 +205,11 @@ function Tooltip({
 
   return (
     <div
-      className="absolute z-10 pointer-events-none rounded-md border bg-background/95 backdrop-blur shadow-lg p-3 text-xs space-y-1.5"
+      className="absolute z-10 pointer-events-none rounded-md border bg-background/95 backdrop-blur shadow-lg p-2.5 text-[10px] leading-tight space-y-1"
       style={{ left: Math.max(4, left), top: Math.max(4, top), width: W }}
     >
-      <div className="font-semibold text-sm truncate">{property.name}</div>
-      <div className="text-muted-foreground truncate">{property.address}</div>
+      <div className="font-semibold text-xs truncate">{property.name}</div>
+      <div className="text-muted-foreground truncate text-[10px]">{property.address}</div>
       <div className="flex justify-between gap-2">
         <span className="text-muted-foreground">Площадь</span>
         <span className="font-medium">{area} м²</span>
@@ -229,7 +229,7 @@ function Tooltip({
         </>
       )}
       {contract && (
-        <div className="border-t pt-1.5 mt-1.5 space-y-1">
+        <div className="border-t pt-1.5 mt-1.5 space-y-1 text-xs">
           <div className="text-[10px] uppercase tracking-wide text-primary">Активный договор</div>
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Ставка</span>
