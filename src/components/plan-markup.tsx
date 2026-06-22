@@ -211,6 +211,8 @@ function Tooltip({
   const freePct = area > 0 ? Math.round((free / area) * 100) : 0;
   const singleFull = contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
   const showOccupancy = contracts.length > 0 && !singleFull;
+  const ahchArea = ahchContracts.reduce((sum, c) => sum + (c.area ?? 0), 0);
+  const ahchPct = area > 0 ? Math.round((ahchArea / area) * 100) : 0;
 
   const firstContract = contracts[0];
   const conRate = firstContract?.rate || 0;
