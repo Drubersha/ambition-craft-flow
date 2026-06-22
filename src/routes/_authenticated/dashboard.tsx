@@ -20,6 +20,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   formatMoney,
   formatDate,
   daysUntil,
@@ -147,6 +153,7 @@ function Dashboard() {
   const [propsQuery, setPropsQuery] = useState("");
   const [sortKey, setSortKey] = useState<string>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [showKpiHints, setShowKpiHints] = useState(true);
 
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-raw"],
@@ -282,6 +289,26 @@ function Dashboard() {
   const allTypes = Array.from(new Set(data.properties.map((p) => p.type)));
   const allStatuses = Array.from(new Set(data.properties.map((p) => p.status)));
 
+  const activeContractsForHint = filtered.contracts.filter((c) => c.status === "active");
+  const activeAhchForHint = filtered.ahchContracts.filter((c) => c.status === "active");
+  const leasedAreaHint = activeContractsForHint.reduce((s, c) => s + Number(c.area || 0), 0);
+  const periodPaymentsHint = filtered.payments.filter((p) => {
+    const d = new Date(p.paid_at);
+    return d >= periodStart && d <= periodEnd;
+  });
+  const kpiHints: Record<string, string> = {
+    totalArea: `Сумма площадей ${filtered.properties.length} объектов(а) в фильтре.`,
+    propsCount: `Количество объектов, попавших под текущие фильтры.`,
+    occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea)} м² общая площадь.`,
+    rentIncome: `Сумма ${periPaymentsCountSafe(periodPaymentsHint.length)} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
+    monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
+    avgRate: `Средневзвешенная по площади ставка ${activeContractsForHint.length} активных договоров (₽/м²/мес).`,
+    overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
+    expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
+    ahchArea: `Сумма площадей по ${activeAhchForHint.length} активным договорам АХЧ.`,
+    ahchShare: `${formatNum(kpi.ahchArea)} м² АХЧ / ${formatNum(kpi.totalArea)} м² общая площадь.`,
+  };
+
   const resetFilters = () => {
     setPeriod("month");
     setCustomFrom("");
@@ -415,46 +442,64 @@ function Dashboard() {
       </Card>
 
       {/* Block 1: Portfolio KPI */}
-      <Section title="Портфель — ключевые показатели">
+      <Section
+        title="Портфель — ключевые показатели"
+        right={
+          <label className="flex items-center gap-2 text-xs font-normal normal-case tracking-normal text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showKpiHints}
+              onChange={(e) => setShowKpiHints(e.target.checked)}
+            />
+            Подсказки при наведении
+          </label>
+        }
+      >
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Kpi icon={Building2} label="Общая площадь" value={`${formatNum(kpi.totalArea)} м²`} />
-          <Kpi icon={Building2} label="Объектов" value={kpi.propsCount} />
+          <Kpi icon={Building2} label="Общая площадь" value={`${formatNum(kpi.totalArea)} м²`} hint={showKpiHints ? kpiHints.totalArea : undefined} />
+          <Kpi icon={Building2} label="Объектов" value={kpi.propsCount} hint={showKpiHints ? kpiHints.propsCount : undefined} />
           <Kpi
             icon={Percent}
             label="Занятость"
             value={`${kpi.occupancy.toFixed(1)}%`}
             tone={occupancyTone(kpi.occupancy)}
             sub={<Progress value={kpi.occupancy} className="mt-2 h-1.5" />}
+            hint={showKpiHints ? kpiHints.occupancy : undefined}
           />
-          <Kpi icon={Wallet} label="Арендный доход" value={formatMoney(kpi.rentIncome)} />
-          <Kpi icon={Wallet} label="Месячные платежи" value={formatMoney(kpi.monthlyIncome)} />
+          <Kpi icon={Wallet} label="Арендный доход" value={formatMoney(kpi.rentIncome)} hint={showKpiHints ? kpiHints.rentIncome : undefined} />
+          <Kpi icon={Wallet} label="Месячные платежи" value={formatMoney(kpi.monthlyIncome)} hint={showKpiHints ? kpiHints.monthlyIncome : undefined} />
           <Kpi
             icon={TrendingUp}
             label="Средняя ставка"
             value={`${formatNum(kpi.avgRate)} ₽/м²/мес`}
+            hint={showKpiHints ? kpiHints.avgRate : undefined}
           />
           <Kpi
             icon={AlertTriangle}
             label="Дебиторка > 30 дн"
             value={formatMoney(kpi.overdueAmt)}
             tone={kpi.overdueAmt > 0 ? "danger" : "ok"}
+            hint={showKpiHints ? kpiHints.overdueAmt : undefined}
           />
           <Kpi
             icon={CalendarClock}
             label="Истекают за 90 дн"
             value={kpi.expSoon}
             tone={kpi.expSoon > 0 ? "warn" : "ok"}
+            hint={showKpiHints ? kpiHints.expSoon : undefined}
           />
           <Kpi
             icon={Building2}
             label="Площадь АХЧ"
             value={`${formatNum(kpi.ahchArea)} м²`}
+            hint={showKpiHints ? kpiHints.ahchArea : undefined}
           />
           <Kpi
             icon={Percent}
             label="Доля АХЧ"
             value={`${kpi.ahchShare.toFixed(1)}%`}
             sub={<Progress value={kpi.ahchShare} className="mt-2 h-1.5" />}
+            hint={showKpiHints ? kpiHints.ahchShare : undefined}
           />
         </div>
       </Section>
@@ -548,12 +593,23 @@ function toneClass(t?: "ok" | "warn" | "danger") {
   return "";
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  right,
+}: {
+  title: string;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h2>
+        {right}
+      </div>
       {children}
     </section>
   );
@@ -565,15 +621,17 @@ function Kpi({
   value,
   sub,
   tone,
+  hint,
 }: {
   icon: any;
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
   tone?: "ok" | "warn" | "danger";
+  hint?: string;
 }) {
-  return (
-    <Card>
+  const card = (
+    <Card className={hint ? "cursor-help" : undefined}>
       <CardContent className="p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Icon className="h-4 w-4" />
@@ -585,6 +643,17 @@ function Kpi({
         {sub}
       </CardContent>
     </Card>
+  );
+  if (!hint) return card;
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>{card}</div>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs leading-relaxed">{hint}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
