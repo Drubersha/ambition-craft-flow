@@ -49,7 +49,7 @@ function EditContract() {
       const areaNum = Number(v.area) || 0;
       const { error } = await supabase.from("contracts").update({
         tenant_id: v.tenant_id, property_id: v.property_id,
-        number: v.number, cadastral_no: v.cadastral_no || null,
+        number: v.number || null, cadastral_no: v.cadastral_no || null,
         area: v.area ? Number(v.area) : null,
         rate: rateNum, currency: v.currency || "RUB",
         payment_period: v.payment_period as any, status: v.status as any,
