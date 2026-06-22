@@ -24,6 +24,7 @@ import {
   formatDate,
   daysUntil,
   monthlyFromRate,
+  monthlyPayment,
   PROPERTY_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -257,6 +258,10 @@ function Dashboard() {
       return d !== null && d >= 0 && d <= 90;
     }).length;
 
+    const monthlyIncome = activeContracts.reduce((s, c) => {
+      return s + monthlyPayment(Number(c.rate), c.payment_period, Number(c.area || 0));
+    }, 0);
+
     return {
       totalArea,
       propsCount: filtered.properties.length,
@@ -265,6 +270,7 @@ function Dashboard() {
       avgRate,
       overdueAmt,
       expSoon,
+      monthlyIncome,
       ahchArea,
       ahchShare,
     };
@@ -421,6 +427,7 @@ function Dashboard() {
             sub={<Progress value={kpi.occupancy} className="mt-2 h-1.5" />}
           />
           <Kpi icon={Wallet} label="Арендный доход" value={formatMoney(kpi.rentIncome)} />
+          <Kpi icon={Wallet} label="Месячные платежи" value={formatMoney(kpi.monthlyIncome)} />
           <Kpi
             icon={TrendingUp}
             label="Средняя ставка"
