@@ -45,7 +45,7 @@ function ContractsList() {
     }
     if (!q) return true;
     const s = q.toLowerCase();
-    return c.number.toLowerCase().includes(s) || c.tenant?.name.toLowerCase().includes(s) || c.property?.name.toLowerCase().includes(s);
+    return (c.number?.toLowerCase() || "").includes(s) || c.tenant?.name.toLowerCase().includes(s) || c.property?.name.toLowerCase().includes(s);
   });
 
   return (
