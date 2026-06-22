@@ -26,6 +26,117 @@ export const Route = createFileRoute("/_authenticated/folders")({
   component: FoldersPage,
 });
 
+const PLAN_BUCKET = "documents";
+const PLAN_MAX_BYTES = 25 * 1024 * 1024;
+const PLAN_ALLOWED = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
+
+function PlanFileControls({
+  pathPrefix,
+  currentPath,
+  currentMime,
+  signedUrl,
+  onChange,
+}: {
+  pathPrefix: string;
+  currentPath: string | null;
+  currentMime: string | null;
+  signedUrl: string | null;
+  onChange: (next: { path: string | null; mime: string | null }) => Promise<void> | void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!PLAN_ALLOWED.includes(file.type)) {
+      toast.error("Допустимы PNG, JPG, WEBP или PDF");
+      return;
+    }
+    if (file.size > PLAN_MAX_BYTES) {
+      toast.error("Файл не должен превышать 25 МБ");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { blob, filename } = await normalizeToPng(file);
+      if (currentPath) {
+        await supabase.storage.from(PLAN_BUCKET).remove([currentPath]);
+      }
+      const safeName = filename.replace(/[^\w.\-]+/g, "_");
+      const path = `${pathPrefix}/${Date.now()}_${safeName}`;
+      const { error } = await supabase.storage.from(PLAN_BUCKET).upload(path, blob, {
+        contentType: "image/png",
+        upsert: true,
+      });
+      if (error) throw error;
+      await onChange({ path, mime: "image/png" });
+      toast.success("План загружен");
+    } catch (e: any) {
+      toast.error(e.message ?? "Ошибка загрузки");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currentPath) return;
+    setBusy(true);
+    try {
+      await supabase.storage.from(PLAN_BUCKET).remove([currentPath]);
+      await onChange({ path: null, mime: null });
+      toast.success("План удалён");
+    } catch (e: any) {
+      toast.error(e.message ?? "Ошибка удаления");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,application/pdf"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+        />
+        <Button type="button" variant="outline" size="sm" disabled={busy} asChild>
+          <span>
+            {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+            {currentPath ? "Заменить план" : "Загрузить план"}
+          </span>
+        </Button>
+      </label>
+      {currentPath && signedUrl && (
+        <Button type="button" variant="outline" size="sm" asChild>
+          <a href={signedUrl} target="_blank" rel="noreferrer" download>
+            Скачать
+          </a>
+        </Button>
+      )}
+      {currentPath && (
+        <ConfirmButton
+          variant="outline"
+          size="sm"
+          destructive
+          title="Удалить план?"
+          description="Файл будет удалён из хранилища."
+          confirmText="Удалить"
+          onConfirm={handleDelete}
+          disabled={busy}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Удалить план
+        </ConfirmButton>
+      )}
+      {currentMime === "application/pdf" && (
+        <span className="text-xs text-muted-foreground">
+          Старый PDF — загрузите заново, чтобы включить разметку.
+        </span>
+      )}
+    </div>
+  );
+}
+
 function FoldersPage() {
   const qc = useQueryClient();
   const { data: folders = [], isLoading } = useFolders();
