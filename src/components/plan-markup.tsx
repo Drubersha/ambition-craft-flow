@@ -1,3 +1,4 @@
+import { monthlyPayment } from "@/lib/format";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { PlanOverlayCtx } from "@/components/plan-viewer";
