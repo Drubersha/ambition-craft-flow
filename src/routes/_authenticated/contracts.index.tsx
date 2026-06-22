@@ -93,7 +93,7 @@ function ContractsList() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium break-all">№ {c.number}</span>
+                      <span className="font-medium break-all">{c.number ? `№ ${c.number}` : "Без номера"}</span>
                       <Badge variant={c.status === "active" ? "default" : "secondary"}>
                         {CONTRACT_STATUS_LABELS[c.status]}
                       </Badge>
