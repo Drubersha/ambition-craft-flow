@@ -156,7 +156,7 @@ function EditContract() {
         <ContractForm
           formId="contract-form"
           initial={{
-            tenant_id: data.tenant_id, property_id: data.property_id, number: data.number,
+            tenant_id: data.tenant_id, property_id: data.property_id, number: data.number ?? "",
             cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
             rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
             start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
