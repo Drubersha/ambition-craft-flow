@@ -263,10 +263,17 @@ function Tooltip({
           {contracts.map((c) => {
             const cArea = c.area ?? area;
             const pct = area > 0 ? Math.round((cArea / area) * 100) : 0;
+            const monthPay = monthlyPayment(c.rate, c.payment_period, cArea);
             return (
-              <div key={c.id} className="flex justify-between gap-1 text-[10px]">
-                <span className="truncate text-muted-foreground">{c.tenantName || "—"}</span>
-                <span className="font-medium shrink-0">{cArea} м² ({pct}%)</span>
+              <div key={c.id} className="space-y-0.5">
+                <div className="flex justify-between gap-1 text-[10px]">
+                  <span className="truncate text-muted-foreground">{c.tenantName || "—"}</span>
+                  <span className="font-medium shrink-0">{cArea} м² ({pct}%)</span>
+                </div>
+                <div className="flex justify-between gap-1 text-[10px]">
+                  <span className="text-muted-foreground">Месячный платёж</span>
+                  <span className="font-medium shrink-0">{fmt(monthPay, c.currency)}</span>
+                </div>
               </div>
             );
           })}
