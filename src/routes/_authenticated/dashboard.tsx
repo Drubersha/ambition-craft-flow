@@ -258,6 +258,10 @@ function Dashboard() {
       return d !== null && d >= 0 && d <= 90;
     }).length;
 
+    const monthlyIncome = activeContracts.reduce((s, c) => {
+      return s + monthlyPayment(Number(c.rate), c.payment_period, Number(c.area || 0));
+    }, 0);
+
     return {
       totalArea,
       propsCount: filtered.properties.length,
@@ -266,6 +270,7 @@ function Dashboard() {
       avgRate,
       overdueAmt,
       expSoon,
+      monthlyIncome,
       ahchArea,
       ahchShare,
     };
