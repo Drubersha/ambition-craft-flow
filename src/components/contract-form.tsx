@@ -110,7 +110,7 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
         </F>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <F label="Номер договора *"><Input required value={v.number} onChange={(e) => set("number", e.target.value)} /></F>
+        <F label="Номер договора"><Input value={v.number} onChange={(e) => set("number", e.target.value)} /></F>
         <F label="Кадастровый номер"><Input value={v.cadastral_no} onChange={(e) => set("cadastral_no", e.target.value)} /></F>
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
