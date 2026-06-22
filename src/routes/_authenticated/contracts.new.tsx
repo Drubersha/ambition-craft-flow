@@ -29,6 +29,7 @@ function NewContract() {
         area: v.area ? Number(v.area) : null,
         rate: Number(v.rate) || 0, currency: v.currency || "RUB",
         payment_period: v.payment_period as any, status: v.status as any,
+        kind: v.kind as any,
         start_date: v.start_date, end_date: v.end_date || null,
         notes: v.notes || null,
         termination_terms: v.termination_terms || null,

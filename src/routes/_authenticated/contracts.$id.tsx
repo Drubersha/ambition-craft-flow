@@ -53,6 +53,7 @@ function EditContract() {
         area: v.area ? Number(v.area) : null,
         rate: rateNum, currency: v.currency || "RUB",
         payment_period: v.payment_period as any, status: v.status as any,
+        kind: v.kind as any,
         start_date: v.start_date, end_date: v.end_date || null,
         notes: v.notes || null,
         termination_terms: v.termination_terms || null,
@@ -159,6 +160,7 @@ function EditContract() {
             cadastral_no: data.cadastral_no ?? "", area: data.area ? String(data.area) : "",
             rate: String(data.rate), currency: data.currency, payment_period: data.payment_period,
             start_date: data.start_date, end_date: data.end_date ?? "", status: data.status, notes: data.notes ?? "",
+            kind: (data as any).kind ?? "rent",
             termination_terms: (data as any).termination_terms ?? "",
             deposit_percent: (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
           }}

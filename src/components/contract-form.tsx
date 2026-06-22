@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CONTRACT_STATUS_LABELS, PAYMENT_PERIOD_LABELS, formatMoney, monthlyPayment } from "@/lib/format";
+import { CONTRACT_STATUS_LABELS, CONTRACT_KIND_LABELS, PAYMENT_PERIOD_LABELS, formatMoney, monthlyPayment } from "@/lib/format";
 
 export type ContractFormValues = {
   tenant_id: string;
@@ -20,6 +20,7 @@ export type ContractFormValues = {
   start_date: string;
   end_date: string;
   status: string;
+  kind: string;
   notes: string;
   termination_terms: string;
   deposit_percent: string;
@@ -45,6 +46,7 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
     start_date: initial?.start_date ?? new Date().toISOString().slice(0, 10),
     end_date: initial?.end_date ?? "",
     status: initial?.status ?? "active",
+    kind: initial?.kind ?? "rent",
     notes: initial?.notes ?? "",
     termination_terms: initial?.termination_terms ?? "",
     deposit_percent: initial?.deposit_percent ?? "",
@@ -165,12 +167,20 @@ export function ContractForm({ initial, onSubmit, submitting, formId, hideSubmit
           </p>
         </F>
       </div>
-      <F label="Статус">
-        <Select value={v.status} onValueChange={(x) => set("status", x)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{Object.entries(CONTRACT_STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-        </Select>
-      </F>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <F label="Статус">
+          <Select value={v.status} onValueChange={(x) => set("status", x)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{Object.entries(CONTRACT_STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
+          </Select>
+        </F>
+        <F label="Тип договора">
+          <Select value={v.kind} onValueChange={(x) => set("kind", x)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{Object.entries(CONTRACT_KIND_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
+          </Select>
+        </F>
+      </div>
       <F label="Условия расторжения договора">
         <Textarea
           rows={3}
