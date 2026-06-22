@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calculator, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,12 +32,23 @@ export const Route = createFileRoute("/_authenticated/charges/")({
 });
 
 function ChargesList() {
+  const [filter, setFilter] = useState<"active" | "archive">("active");
+
   const { data, isLoading } = useQuery({
-    queryKey: ["charges"],
+    queryKey: ["charges", filter],
     queryFn: async () => {
-      const { data, error } = await supabase.from("charges")
-        .select("*, contract:contracts(number, currency, tenant:tenants(name), property:properties(name))")
+      let q = supabase
+        .from("charges")
+        .select(
+          "*, contract:contracts(number, currency, tenant:tenants(name), property:properties(name))",
+        )
         .order("period_start", { ascending: false });
+      if (filter === "active") {
+        q = q.neq("status", "paid");
+      } else {
+        q = q.eq("status", "paid");
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
