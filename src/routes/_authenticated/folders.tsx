@@ -603,6 +603,7 @@ function FolderMapMarkup({
             markings={markings as Marking[]}
             properties={properties as any}
             contractsByProp={contractsByProp}
+            ahchByProp={ahchByProp}
             edit={edit}
             onAddPoint={addPoint}
             onFinishPolygon={finishPolygon}
