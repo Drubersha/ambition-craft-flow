@@ -173,8 +173,10 @@ export const updateTaskStatus = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => UpdateStatusInput.parse(d))
   .handler(async ({ data }) => {
     const sb = await admin();
-    const patch: Record<string, unknown> = { status: data.status };
-    if (typeof data.position === "number") patch.position = data.position;
+    const patch =
+      typeof data.position === "number"
+        ? { status: data.status, position: data.position }
+        : { status: data.status };
     await sb.from("tasks").update(patch).eq("id", data.id);
     return { ok: true };
   });
