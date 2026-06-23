@@ -14,6 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_categories: {
+        Row: {
+          created_at: string
+          id: string
+          limit_amount: number
+          name: string
+          owner_id: string
+          plan_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          name: string
+          owner_id: string
+          plan_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          name?: string
+          owner_id?: string
+          plan_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_categories_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "budget_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_expenses: {
+        Row: {
+          amount: number
+          archived: boolean
+          category_id: string
+          created_at: string
+          id: string
+          note: string | null
+          owner_id: string
+          period_end: string
+          period_start: string
+          plan_id: string
+          spent_at: string
+        }
+        Insert: {
+          amount?: number
+          archived?: boolean
+          category_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id: string
+          period_end: string
+          period_start: string
+          plan_id: string
+          spent_at?: string
+        }
+        Update: {
+          amount?: number
+          archived?: boolean
+          category_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id?: string
+          period_end?: string
+          period_start?: string
+          plan_id?: string
+          spent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "budget_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_expenses_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "budget_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          folder_id: string
+          id: string
+          owner_id: string
+          reset_day: number
+          updated_at: string
+          warning_percent: number
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          folder_id: string
+          id?: string
+          owner_id: string
+          reset_day?: number
+          updated_at?: string
+          warning_percent?: number
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          folder_id?: string
+          id?: string
+          owner_id?: string
+          reset_day?: number
+          updated_at?: string
+          warning_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_plans_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: true
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       charge_items: {
         Row: {
           amount: number
