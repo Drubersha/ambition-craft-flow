@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send, FileText, Download } from "lucide-react";
+import { Paperclip, Send, FileText, Download, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
+import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
 
 type Props = {
   threadId: string;
@@ -38,6 +40,8 @@ function timeLabel(iso: string) {
 
 export function ChatThread({ threadId, myRole, myLabel }: Props) {
   const qc = useQueryClient();
+  const analyze = useServerFn(analyzeMessage);
+  const manualTask = useServerFn(createManualTaskFromMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -146,6 +150,13 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       qc.invalidateQueries({ queryKey: ["chat-messages", threadId] });
       qc.invalidateQueries({ queryKey: ["chat-attachments", threadId] });
       qc.invalidateQueries({ queryKey: ["chat-threads"] });
+
+      // Auto-analyze tenant messages
+      if (myRole === "tenant") {
+        analyze({ data: { messageId: msg.id } })
+          .then(() => qc.invalidateQueries({ queryKey: ["task-suggestions"] }))
+          .catch((err) => console.error("[analyze]", err));
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Не удалось отправить");
     } finally {
@@ -166,9 +177,10 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
           const atts = (attachments ?? []).filter((a) => a.message_id === m.id);
           return (
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div
+              <div className="flex flex-col items-stretch gap-1 max-w-[80%]">
+                <div
                 className={cn(
-                  "max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                  "rounded-lg px-3 py-2 text-sm shadow-sm",
                   mine ? "bg-primary text-primary-foreground" : "bg-muted",
                 )}
               >
@@ -180,6 +192,24 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
                   <AttachmentRow key={a.id} attachment={a} mine={mine} />
                 ))}
                 <div className={cn("text-[10px] mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
+              </div>
+                {myRole !== "tenant" && m.sender_role === "tenant" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await manualTask({ data: { messageId: m.id } });
+                        toast.success("Добавлено в предложения");
+                        qc.invalidateQueries({ queryKey: ["task-suggestions"] });
+                      } catch {
+                        toast.error("Не удалось");
+                      }
+                    }}
+                    className="self-start inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary px-1"
+                  >
+                    <Sparkles className="h-3 w-3" /> В задачи
+                  </button>
+                )}
               </div>
             </div>
           );
