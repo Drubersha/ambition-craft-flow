@@ -1404,19 +1404,169 @@ function FinanceSection({
         </CardContent>
       </Card>
 
-      <PlaceholderCard
-        title="NOI (чистый операционный доход)"
-        text="Нет источника данных об операционных расходах."
-      />
-      <PlaceholderCard
-        title="План vs Факт"
-        text="Плановые показатели не заданы — добавьте источник плана."
-      />
-      <PlaceholderCard
-        title="Структура операционных расходов"
-        text="Нет источника данных о расходах."
-      />
+      <BudgetPlanVsFact />
+      <BudgetExpenseStructure />
     </div>
+  );
+}
+
+function BudgetPlanVsFact() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-budget-pvf"],
+    queryFn: async () => {
+      const [folders, plans, cats, exps] = await Promise.all([
+        supabase.from("folders").select("id, name"),
+        supabase.from("budget_plans").select("id, folder_id"),
+        supabase.from("budget_categories").select("plan_id, limit_amount"),
+        supabase.from("budget_expenses").select("plan_id, amount, spent_at"),
+      ]);
+      if (folders.error) throw folders.error;
+      if (plans.error) throw plans.error;
+      if (cats.error) throw cats.error;
+      if (exps.error) throw exps.error;
+      return {
+        folders: folders.data ?? [],
+        plans: plans.data ?? [],
+        categories: cats.data ?? [],
+        expenses: exps.data ?? [],
+      };
+    },
+  });
+
+  const rows = useMemo(() => {
+    if (!data) return [];
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = (s: string) => {
+      const d = new Date(s);
+      return d.getFullYear() === y && d.getMonth() === m;
+    };
+    const planLimitByPlan = new Map<string, number>();
+    for (const c of data.categories as any[]) {
+      planLimitByPlan.set(c.plan_id, (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0));
+    }
+    const factByPlan = new Map<string, number>();
+    for (const e of data.expenses as any[]) {
+      if (!inMonth(e.spent_at)) continue;
+      factByPlan.set(e.plan_id, (factByPlan.get(e.plan_id) ?? 0) + Number(e.amount || 0));
+    }
+    const folderName = new Map((data.folders as any[]).map((f) => [f.id, f.name]));
+    return (data.plans as any[])
+      .map((p) => ({
+        name: folderName.get(p.folder_id) ?? "—",
+        plan: planLimitByPlan.get(p.id) ?? 0,
+        fact: factByPlan.get(p.id) ?? 0,
+      }))
+      .filter((r) => r.plan > 0 || r.fact > 0)
+      .sort((a, b) => b.plan + b.fact - (a.plan + a.fact));
+  }, [data]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">План vs Факт (текущий месяц)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <EmptyText text="Загрузка…" />
+        ) : rows.length === 0 ? (
+          <EmptyText text="Нет бюджетных планов — создайте их в разделе «Бюджет»." />
+        ) : (
+          <div style={{ width: "100%", height: Math.max(180, rows.length * 48) }}>
+            <ResponsiveContainer>
+              <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={120} />
+                <RTooltip formatter={(v: any) => formatMoney(Number(v))} />
+                <Bar dataKey="plan" name="План" fill="var(--info)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="fact" name="Факт" radius={[0, 4, 4, 0]}>
+                  {rows.map((r, i) => (
+                    <Cell key={i} fill={r.fact > r.plan ? "var(--destructive)" : "var(--success)"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BudgetExpenseStructure() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-budget-structure"],
+    queryFn: async () => {
+      const [cats, exps] = await Promise.all([
+        supabase.from("budget_categories").select("id, name"),
+        supabase.from("budget_expenses").select("category_id, amount, spent_at"),
+      ]);
+      if (cats.error) throw cats.error;
+      if (exps.error) throw exps.error;
+      return { categories: cats.data ?? [], expenses: exps.data ?? [] };
+    },
+  });
+
+  const slices = useMemo(() => {
+    if (!data) return [] as { name: string; value: number }[];
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const nameById = new Map((data.categories as any[]).map((c) => [c.id, c.name]));
+    const sums = new Map<string, number>();
+    for (const e of data.expenses as any[]) {
+      const d = new Date(e.spent_at);
+      if (d.getFullYear() !== y || d.getMonth() !== m) continue;
+      const key = nameById.get(e.category_id) ?? "Без категории";
+      sums.set(key, (sums.get(key) ?? 0) + Number(e.amount || 0));
+    }
+    return Array.from(sums.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [data]);
+
+  const total = slices.reduce((s, r) => s + r.value, 0);
+  const palette = ["var(--info)", "var(--success)", "var(--warning)", "var(--destructive)", "var(--primary)", "var(--accent)"];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Структура операционных расходов (месяц)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <EmptyText text="Загрузка…" />
+        ) : slices.length === 0 ? (
+          <EmptyText text="Нет расходов за текущий месяц." />
+        ) : (
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <RTooltip
+                  formatter={(v: any, n: any) => [
+                    `${formatMoney(Number(v))} (${total > 0 ? ((Number(v) / total) * 100).toFixed(1) : 0}%)`,
+                    n,
+                  ]}
+                />
+                <Pie
+                  data={slices}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={90}
+                  label={(e: any) => `${e.name} ${total > 0 ? ((e.value / total) * 100).toFixed(0) : 0}%`}
+                >
+                  {slices.map((_, i) => (
+                    <Cell key={i} fill={palette[i % palette.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
