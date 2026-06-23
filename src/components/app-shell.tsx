@@ -15,6 +15,7 @@ import {
   User as UserIcon,
   CalendarDays,
   Files,
+  PiggyBank,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -30,6 +31,7 @@ const OWNER_NAV = [
   { to: "/tenants", label: "Арендаторы", icon: Users },
   { to: "/contracts", label: "Договоры", icon: FileText },
   { to: "/payments", label: "Оплаты", icon: Wallet },
+  { to: "/budgets", label: "Бюджет", icon: PiggyBank },
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
 ] as const;
