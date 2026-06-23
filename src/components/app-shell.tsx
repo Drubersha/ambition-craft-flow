@@ -12,6 +12,7 @@ import {
   FolderTree,
   Kanban,
   MessageSquare,
+  KanbanSquare,
   User as UserIcon,
   CalendarDays,
   Files,
@@ -32,6 +33,7 @@ const OWNER_NAV = [
   { to: "/charges", label: "Начисления", icon: Receipt },
   { to: "/payments", label: "Платежи", icon: Wallet },
   { to: "/leads", label: "Воронка", icon: Kanban },
+  { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
 ] as const;
 
