@@ -1419,3 +1419,87 @@ function FinanceSection({
     </div>
   );
 }
+
+function ProfitSummary() {
+  const { data } = useQuery({
+    queryKey: ["dashboard-budget"],
+    queryFn: async () => {
+      const [py, ex] = await Promise.all([
+        supabase.from("payments").select("amount, paid_at"),
+        supabase.from("budget_expenses").select("amount, spent_at"),
+      ]);
+      if (py.error) throw py.error;
+      if (ex.error) throw ex.error;
+      return { payments: py.data ?? [], expenses: ex.data ?? [] };
+    },
+  });
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const inMonth = (s: string) => {
+    const d = new Date(s);
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+  const inYear = (s: string) => new Date(s).getFullYear() === y;
+
+  const sumBy = (arr: { amount: number | string; spent_at?: string; paid_at?: string }[], field: "spent_at" | "paid_at", pred: (s: string) => boolean) =>
+    arr.reduce((s, r) => (pred((r as any)[field]) ? s + Number(r.amount || 0) : s), 0);
+
+  const incomeMonth = sumBy((data?.payments ?? []) as any, "paid_at", inMonth);
+  const incomeYear = sumBy((data?.payments ?? []) as any, "paid_at", inYear);
+  const expenseMonth = sumBy((data?.expenses ?? []) as any, "spent_at", inMonth);
+  const expenseYear = sumBy((data?.expenses ?? []) as any, "spent_at", inYear);
+  const profitMonth = incomeMonth - expenseMonth;
+  const profitYear = incomeYear - expenseYear;
+  const marginMonth = incomeMonth > 0 ? (profitMonth / incomeMonth) * 100 : null;
+  const marginYear = incomeYear > 0 ? (profitYear / incomeYear) * 100 : null;
+
+  const profitColor = (v: number) => v < 0 ? "text-destructive" : "text-foreground";
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <TrendingDown className="h-4 w-4" />
+            <span>Расходы за месяц</span>
+          </div>
+          <div className="mt-1 text-lg sm:text-xl font-bold break-words">{formatMoney(expenseMonth)}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <TrendingDown className="h-4 w-4" />
+            <span>Расходы за год</span>
+          </div>
+          <div className="mt-1 text-lg sm:text-xl font-bold break-words">{formatMoney(expenseYear)}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <PiggyBank className="h-4 w-4" />
+            <span>Прибыль за месяц</span>
+          </div>
+          <div className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}>{formatMoney(profitMonth)}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Маржа: {marginMonth === null ? "—" : `${marginMonth.toFixed(1)}%`}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <PiggyBank className="h-4 w-4" />
+            <span>Прибыль за год</span>
+          </div>
+          <div className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}>{formatMoney(profitYear)}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Маржа: {marginYear === null ? "—" : `${marginYear.toFixed(1)}%`}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
