@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -77,6 +77,8 @@ function NavList({ onNavigate, role }: { onNavigate?: () => void; role: DemoRole
 
 function IdentitySwitcher() {
   const { role, tenantId, setRole, setTenantId } = useDemoIdentity();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: tenants } = useQuery({
     queryKey: ["tenants-for-switcher"],
     queryFn: async () => {
@@ -93,7 +95,18 @@ function IdentitySwitcher() {
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
         Демо: войти как
       </div>
-      <Select value={role} onValueChange={(v) => setRole(v as DemoRole)}>
+      <Select
+        value={role}
+        onValueChange={(v) => {
+          const next = v as DemoRole;
+          setRole(next);
+          if (next !== "tenant" && pathname.startsWith("/me")) {
+            navigate({ to: "/dashboard" });
+          } else if (next === "tenant" && !pathname.startsWith("/me")) {
+            navigate({ to: "/me" });
+          }
+        }}
+      >
         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
