@@ -33,7 +33,6 @@ import {
   monthlyPayment,
   PROPERTY_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
-  CONTRACT_STATUS_LABELS,
 } from "@/lib/format";
 import {
   Building2,
