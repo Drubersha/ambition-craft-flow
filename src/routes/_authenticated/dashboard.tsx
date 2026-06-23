@@ -535,7 +535,6 @@ function Dashboard() {
       {/* Block 3: Contracts */}
       <Section title="Договорная база">
         <div className="grid lg:grid-cols-2 gap-4">
-          <ContractsStatusPie contracts={filtered.contracts} />
           <ExpiringLists contracts={filtered.contracts} />
           <RateHistoryTable contracts={filtered.contracts} />
           <PlaceholderCard
