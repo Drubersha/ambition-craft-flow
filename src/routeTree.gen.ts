@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
-import { Route as AuthenticatedFoldersRouteImport } from './routes/_authenticated/folders'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTenantsIndexRouteImport } from './routes/_authenticated/tenants.index'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks.index'
@@ -48,11 +47,6 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   id: '/me',
   path: '/me',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFoldersRoute = AuthenticatedFoldersRouteImport.update({
-  id: '/folders',
-  path: '/folders',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -180,7 +174,6 @@ const AuthenticatedChargesIdRoute = AuthenticatedChargesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/folders': typeof AuthenticatedFoldersRoute
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
@@ -207,7 +200,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/folders': typeof AuthenticatedFoldersRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -235,7 +227,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/folders': typeof AuthenticatedFoldersRoute
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/charges/$id': typeof AuthenticatedChargesIdRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
@@ -264,7 +255,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
-    | '/folders'
     | '/me'
     | '/charges/$id'
     | '/contracts/$id'
@@ -291,7 +281,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
-    | '/folders'
     | '/charges/$id'
     | '/contracts/$id'
     | '/contracts/new'
@@ -318,7 +307,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/dashboard'
-    | '/_authenticated/folders'
     | '/_authenticated/me'
     | '/_authenticated/charges/$id'
     | '/_authenticated/contracts/$id'
@@ -369,13 +357,6 @@ declare module '@tanstack/react-router' {
       path: '/me'
       fullPath: '/me'
       preLoaderRoute: typeof AuthenticatedMeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/folders': {
-      id: '/_authenticated/folders'
-      path: '/folders'
-      fullPath: '/folders'
-      preLoaderRoute: typeof AuthenticatedFoldersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -559,7 +540,6 @@ const AuthenticatedMeRouteWithChildren = AuthenticatedMeRoute._addFileChildren(
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedFoldersRoute: typeof AuthenticatedFoldersRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
   AuthenticatedChargesIdRoute: typeof AuthenticatedChargesIdRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
@@ -580,7 +560,6 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedFoldersRoute: AuthenticatedFoldersRoute,
   AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
   AuthenticatedChargesIdRoute: AuthenticatedChargesIdRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
