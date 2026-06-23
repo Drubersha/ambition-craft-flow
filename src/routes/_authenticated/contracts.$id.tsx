@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Plus, Search } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Search, Eye } from "lucide-react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney, computeDepositWithArea, chargeTotalForPeriod, monthsInRange } from "@/lib/format";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
+import { useDemoIdentity } from "@/lib/demo-identity";
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   component: EditContract,
@@ -24,6 +25,7 @@ function EditContract() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { viewAsTenant } = useDemoIdentity();
   const [chargeQuery, setChargeQuery] = useState("");
   const [live, setLive] = useState<{ rate: number; area: number; period: string; depositPercent: number } | null>(null);
   const { data, isLoading } = useQuery({
@@ -141,15 +143,28 @@ function EditContract() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild><Link to="/contracts"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
-        <ConfirmButton
-          variant="destructive" size="sm" className="hidden md:inline-flex" destructive
-          title="Удалить договор?"
-          description="Договор и связанные начисления будут удалены. Действие необратимо."
-          confirmText="Удалить"
-          onConfirm={() => del.mutate()}
-        >
-          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
-        </ConfirmButton>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              viewAsTenant(data.tenant_id);
+              navigate({ to: "/me" });
+            }}
+          >
+            <Eye className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">От лица арендатора</span>
+          </Button>
+          <ConfirmButton
+            variant="destructive" size="sm" className="hidden md:inline-flex" destructive
+            title="Удалить договор?"
+            description="Договор и связанные начисления будут удалены. Действие необратимо."
+            confirmText="Удалить"
+            onConfirm={() => del.mutate()}
+          >
+            <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
+          </ConfirmButton>
+        </div>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.number ? `Договор № ${data.number}` : "Договор без номера"}</h1>
       <MobileCollapsible title="Данные договора">

@@ -1,72 +1,142 @@
-## Воронка продаж (Канбан лидов)
+## Демо-режим без логина, роли, чат и кабинет арендатора
 
-Новая страница `/leads` с канбан-доской потенциальных арендаторов. Лиды проходят 5 этапов; на финальном создаются Tenant + черновик договора.
+Большой апдейт: убираем экран входа, вводим переключатель ролей, чат с вложениями и личный кабинет арендатора.
 
-### Этапы воронки
-1. Спросил в агрегаторе
-2. Приехал посмотреть
-3. Дал документы (паспорт/ИНН)
-4. Получил договор — ожидается подпись
-5. Вернул подписанный договор → лид закрывается успешно (создаётся Tenant + Contract draft)
+---
 
-На каждом этапе кнопки **Прошёл** / **Не прошёл**. «Не прошёл» открывает диалог с обязательным комментарием → лид уходит в архив (скрыт из канбана, доступен через фильтр «Архив»).
+### 1. Демо-режим (без авторизации)
 
-### Карточка лида
-- ФИО (обязательно)
-- Телефон, email
-- ИНН (появляется/требуется на этапе 3)
-- Источник: Avito, Циан, Яндекс.Недвижимость, Рекомендация, Сайт, Другое
-- Бюджет (₽/мес) и желаемая площадь (м²)
-- Объект (property_id) — обязателен
-- Комментарий
-- История переходов между этапами (со временем и комментарием при отказе)
+- Удаляется экран `/auth` и редирект-гейт `_authenticated/route.tsx` заменяется на простой layout без проверки сессии.
+- Все маршруты становятся публичными (роуты остаются в той же папке, чтобы не править дерево).
+- Сверху приложения — **селектор личности** (в шапке AppShell):
+  - Роль: **Главный** / **Менеджер** / **Арендатор**
+  - Если «Арендатор» — второй селект: какой именно (список из таблицы `tenants`).
+- Текущая личность хранится в `localStorage` (`demo.role`, `demo.tenantId`) и в React-контексте `DemoIdentityProvider`. Меняется мгновенно, без перезагрузки.
+- Существующий триггер `handle_new_user` остаётся, но больше не выстреливает (никто не регистрируется). RLS-политики переделываются на permissive (`USING (true)`) — это демо, безопасность не цель этой итерации; в плане явно помечаем как demo-only.
 
-### База данных (новая миграция)
-Таблица `public.leads`:
-- `id`, `user_id` (auth.uid), `created_at`, `updated_at`
-- `full_name`, `phone`, `email`, `inn`
-- `source` (enum `lead_source`: avito, cian, yandex, referral, website, other)
-- `budget` numeric, `desired_area` numeric
-- `property_id` → properties (NOT NULL)
-- `stage` (enum `lead_stage`: inquiry, viewing, documents, contract_sent, signed)
-- `status` (enum `lead_status`: active, archived, won)
-- `archived_reason` text, `archived_at` timestamptz
-- `tenant_id` → tenants (nullable, заполняется при won)
-- `contract_id` → contracts (nullable)
+> ⚠️ Важно: «убрать авторизацию» + «личный кабинет арендатора» совмещаются именно через демо-селектор. Реальный логин арендаторов можно вернуть позже.
 
-Таблица `public.lead_events` (история этапов):
-- `id`, `lead_id`, `from_stage`, `to_stage`, `passed` bool, `comment` text, `created_at`, `created_by`
+### 2. Система ролей
 
-GRANT на обе таблицы для `authenticated` и `service_role`. RLS: владелец видит/правит только свои записи (`user_id = auth.uid()`); для `lead_events` — через JOIN на `leads.user_id`.
+- Новый enum `app_role` уже есть (`owner`). Расширяем до `owner | manager | tenant`.
+- В демо-режиме роль берётся не из БД, а из контекста личности (`useDemoIdentity()`).
+- Утилита `can(role, action)` и хук `useRole()`:
+  - `owner`, `manager` — видят всё (объекты, арендаторов, договоры, начисления, платежи, воронку, чаты со всеми).
+  - `tenant` — видит только свои данные + чат с управляющим.
+- Боковое меню в `AppShell` рендерится в зависимости от роли:
+  - **Owner/Manager**: текущие пункты + новый «Чаты».
+  - **Tenant**: «Мой кабинет», «Мои договоры», «Мои начисления», «Календарь», «Документы», «Чат».
 
-### UI
-Новый роут `src/routes/_authenticated/leads.index.tsx`:
-- Заголовок + кнопка «Новый лид» (диалог формы)
-- Переключатель «Активные / Архив»
-- 5 колонок канбана (горизонтальный скролл на мобильном)
-- Карточка: имя, источник-бейдж, объект, телефон, кнопки «Прошёл»/«Не прошёл»
-- «Прошёл» на этапе 5 → диалог подтверждения → транзакция: create tenant (ФИО, телефон, email, ИНН) + create contract draft (property_id, tenant_id, status='draft') + update lead (status='won', tenant_id, contract_id)
-- «Не прошёл» → диалог с textarea для причины → status='archived'
-- Drag-and-drop НЕ делаем в этой итерации (только кнопки) — упрощает логику и валидацию ИНН на 3-м этапе
+### 3. Привязка tenant ↔ identity (автосоздание)
 
-Пункт «Воронка» добавляется в боковое меню (`src/components/app-shell.tsx`).
+- В таблицу `tenants` добавляется `user_id uuid NULL` (на будущее) и `slug` (генерируется при создании договора, используется в demo-селекторе и в ссылках вида «просмотр от лица арендатора»).
+- При создании договора:
+  - Если у выбранного Tenant ещё нет `slug` — генерируем.
+  - В демо-режиме `user_id` не заполняется; идентичность арендатора = `tenant.id` в `localStorage`.
+- На странице договора `contracts.$id.tsx` — новая кнопка **«Просмотр от лица арендатора»**: переключает `demo.role='tenant'`, `demo.tenantId=<contract.tenant_id>` и навигирует на `/me`.
 
-### Валидация (zod)
-- `full_name`: 1–200
-- `phone`: 5–32, маска свободная
-- `email`: optional, email format
-- `inn`: 10 или 12 цифр (обязателен на переходе → этап 3)
-- `budget`, `desired_area`: >= 0
-- `archived_reason`: 1–500 при отказе
+### 4. Чат с вложениями
 
-### Файлы
-- Миграция: таблицы `leads`, `lead_events`, enums, RLS, GRANT, триггер `updated_at`
-- `src/routes/_authenticated/leads.index.tsx` — канбан
-- `src/components/lead-form.tsx` — диалог создания/редактирования
-- `src/components/app-shell.tsx` — пункт меню «Воронка»
+Новые таблицы:
+
+- `chat_threads` — `id`, `tenant_id` (unique), `last_message_at`, `unread_owner`, `unread_tenant`.
+- `chat_messages` — `id`, `thread_id`, `sender_role` (`owner|manager|tenant`), `sender_label` (имя для отображения), `body text`, `created_at`, `read_at`.
+- `chat_attachments` — `id`, `message_id`, `storage_path`, `file_name`, `mime`, `size_bytes`.
+
+Хранилище:
+- Новый bucket `chat-attachments` (private), путь `<thread_id>/<message_id>/<filename>`.
+
+Realtime:
+- `ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;` — для живых обновлений.
+- На странице чата — подписка через `useEffect`, очистка через `removeChannel`.
+
+UI:
+- **`/chats`** (owner/manager): двухколоночная панель — слева список тредов (по всем арендаторам, бейдж непрочитанных, поиск), справа выбранный тред с сообщениями, инпут текста + кнопка «📎» для аплоада.
+- **`/me/chat`** (tenant): один тред этого арендатора, тот же компонент сообщений.
+- Сообщения: пузырьки слева/справа в зависимости от роли отправителя относительно текущей личности, вложения рендерятся как карточки (изображения — превью, остальное — иконка+имя+скачать).
+- Тред арендатору автосоздаётся при первом открытии его кабинета.
+
+### 5. Кабинет арендатора
+
+Новый layout `/me` (рендерится только если `role==='tenant'`):
+
+- **`/me`** — дашборд: ближайший платёж, текущий долг, активный договор.
+- **`/me/contracts`** — список своих договоров (фильтр по `tenant_id = demo.tenantId`), карточка объекта.
+- **`/me/charges`** — свои начисления (сумма, период, статус, оплачено/осталось). Без кнопок редактирования.
+- **`/me/calendar`** — календарный вид (`date-fns` + сетка месяца, навигация по месяцам):
+  - дни с предстоящими `charges.due_date` (синие точки)
+  - просрочки (красные)
+  - оплаченные (зелёные)
+  - клик по дню → список начислений за этот день.
+- **`/me/documents`** — список документов по своим договорам (скачивание из bucket `documents`).
+- **`/me/chat`** — чат с управляющим (см. п.4).
+
+Шапка в кабинете арендатора показывает ФИО арендатора и кнопку «Выйти из режима арендатора» (возвращает на роль `owner` в селекторе).
+
+### 6. Изменения в существующих страницах
+
+- `app-shell.tsx` — селектор личности + динамическое меню по роли.
+- `contracts.$id.tsx` — кнопка «Просмотр от лица арендатора».
+- `_authenticated/route.tsx` — упрощается до `<AppShell><Outlet/></AppShell>` без `getUser`.
+- `auth.tsx`, `index.tsx` — удаляются (или `index.tsx` редиректит на `/dashboard` для owner / `/me` для tenant).
+- Все серверные функции с `requireSupabaseAuth` (если есть) — переводим на публичные `createServerFn` с проверкой `data.actorRole` из тела запроса. (Сейчас, судя по коду, серверных функций мало; основная работа — через клиент `supabase`.)
+
+---
+
+### Технические детали
+
+**Миграция (одной транзакцией):**
+
+```text
+- расширить enum app_role значениями manager, tenant
+- ALTER TABLE tenants ADD COLUMN user_id uuid, ADD COLUMN slug text UNIQUE
+- CREATE TABLE chat_threads (...) + GRANT + RLS(USING true)
+- CREATE TABLE chat_messages (...) + GRANT + RLS(USING true)
+- CREATE TABLE chat_attachments (...) + GRANT + RLS(USING true)
+- триггер touch_updated_at на chat_threads
+- триггер: после insert в chat_messages — обновить last_message_at и unread_*
+- ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages
+- Permissive RLS на существующих таблицах (USING true) — пометить комментарием "demo mode"
+```
+
+**Bucket:** `chat-attachments` (private) + storage RLS USING true (demo).
+
+**Файлы (новые):**
+
+```text
+src/lib/demo-identity.tsx          — провайдер + хуки роли/арендатора
+src/lib/role.ts                    — типы, can()
+src/components/identity-switcher.tsx
+src/components/chat/thread-list.tsx
+src/components/chat/message-list.tsx
+src/components/chat/message-composer.tsx
+src/components/chat/attachment-card.tsx
+src/routes/_authenticated/chats.index.tsx
+src/routes/_authenticated/me.tsx              (layout)
+src/routes/_authenticated/me.index.tsx        (дашборд)
+src/routes/_authenticated/me.contracts.tsx
+src/routes/_authenticated/me.charges.tsx
+src/routes/_authenticated/me.calendar.tsx
+src/routes/_authenticated/me.documents.tsx
+src/routes/_authenticated/me.chat.tsx
+```
+
+**Файлы (правка):**
+
+```text
+src/components/app-shell.tsx          — селектор, динамическое меню
+src/routes/_authenticated/route.tsx   — без проверки auth
+src/routes/_authenticated/contracts.$id.tsx — кнопка «От лица арендатора»
+src/routes/__root.tsx                 — обернуть в DemoIdentityProvider
+src/routes/index.tsx                  — простой редирект по роли
+```
+
+**Удаляется:** `src/routes/auth.tsx` (и упоминания в навигации).
 
 ### Вне scope
-- Drag-and-drop между колонками
-- Email/SMS уведомления
-- Назначение менеджеров (нет multi-user сценариев в проекте)
-- Импорт лидов из агрегаторов
+
+- Реальная аутентификация арендаторов (вернём, когда понадобится).
+- Уведомления на e-mail/push о новых сообщениях.
+- Групповые чаты, реакции, редактирование/удаление сообщений.
+- Подписание договора арендатором, онлайн-оплата.
+- Тонкая безопасность RLS (сейчас демо — permissive).

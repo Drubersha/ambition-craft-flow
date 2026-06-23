@@ -1,5 +1,5 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2,
@@ -8,17 +8,22 @@ import {
   FileText,
   Wallet,
   Receipt,
-  LogOut,
   Menu,
   FolderTree,
   Kanban,
+  MessageSquare,
+  User as UserIcon,
+  CalendarDays,
+  Files,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
 
-const NAV = [
+const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
   { to: "/folders", label: "Папки", icon: FolderTree },
   { to: "/properties", label: "Объекты", icon: Building2 },
@@ -27,15 +32,28 @@ const NAV = [
   { to: "/charges", label: "Начисления", icon: Receipt },
   { to: "/payments", label: "Платежи", icon: Wallet },
   { to: "/leads", label: "Воронка", icon: Kanban },
+  { to: "/chats", label: "Чаты", icon: MessageSquare },
 ] as const;
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+const TENANT_NAV = [
+  { to: "/me", label: "Мой кабинет", icon: UserIcon },
+  { to: "/me/contracts", label: "Мои договоры", icon: FileText },
+  { to: "/me/charges", label: "Начисления", icon: Receipt },
+  { to: "/me/calendar", label: "Календарь оплат", icon: CalendarDays },
+  { to: "/me/documents", label: "Документы", icon: Files },
+  { to: "/me/chat", label: "Чат", icon: MessageSquare },
+] as const;
+
+function NavList({ onNavigate, role }: { onNavigate?: () => void; role: DemoRole }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const items = role === "tenant" ? TENANT_NAV : OWNER_NAV;
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
-        const active = pathname === item.to || pathname.startsWith(item.to + "/");
+        const active =
+          pathname === item.to ||
+          (item.to !== "/me" && pathname.startsWith(item.to + "/"));
         return (
           <Link
             key={item.to}
@@ -57,17 +75,54 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [mobileOpen, setMobileOpen] = useState(false);
+function IdentitySwitcher() {
+  const { role, tenantId, setRole, setTenantId } = useDemoIdentity();
+  const { data: tenants } = useQuery({
+    queryKey: ["tenants-for-switcher"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  return (
+    <div className="space-y-2 px-3 py-2 border-b bg-muted/30">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        Демо: войти как
+      </div>
+      <Select value={role} onValueChange={(v) => setRole(v as DemoRole)}>
+        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
+          <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
+          <SelectItem value="tenant">{ROLE_LABELS.tenant}</SelectItem>
+        </SelectContent>
+      </Select>
+      {role === "tenant" && (
+        <Select
+          value={tenantId ?? ""}
+          onValueChange={(v) => setTenantId(v || null)}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Выберите арендатора" />
+          </SelectTrigger>
+          <SelectContent>
+            {(tenants ?? []).map((t) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
 
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
+export function AppShell({ children }: { children: ReactNode }) {
+  const { role } = useDemoIdentity();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-[100dvh] bg-muted/20">
@@ -78,13 +133,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <span className="font-semibold">RentFlow</span>
         </div>
+        <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
-          <NavList />
-        </div>
-        <div className="border-t p-2">
-          <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Выйти
-          </Button>
+          <NavList role={role} />
         </div>
       </aside>
 
@@ -100,13 +151,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Building2 className="h-5 w-5 text-primary" />
                 <span className="font-semibold">RentFlow</span>
               </div>
+              <IdentitySwitcher />
               <div className="py-3 flex-1 overflow-y-auto">
-                <NavList onNavigate={() => setMobileOpen(false)} />
-              </div>
-              <div className="border-t p-2">
-                <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" /> Выйти
-                </Button>
+                <NavList onNavigate={() => setMobileOpen(false)} role={role} />
               </div>
             </SheetContent>
           </Sheet>
@@ -114,9 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-5 w-5 text-primary shrink-0" />
             <span className="font-semibold truncate">RentFlow</span>
           </div>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={handleSignOut} aria-label="Выйти">
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <span className="ml-auto text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
           {children}

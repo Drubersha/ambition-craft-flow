@@ -105,6 +105,132 @@ export type Database = {
           },
         ]
       }
+      chat_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          message_id: string
+          mime: string | null
+          owner_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          message_id: string
+          mime?: string | null
+          owner_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          message_id?: string
+          mime?: string | null
+          owner_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          owner_id: string
+          read_at: string | null
+          sender_label: string | null
+          sender_role: Database["public"]["Enums"]["chat_sender_role"]
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          owner_id: string
+          read_at?: string | null
+          sender_label?: string | null
+          sender_role: Database["public"]["Enums"]["chat_sender_role"]
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          owner_id?: string
+          read_at?: string | null
+          sender_label?: string | null
+          sender_role?: Database["public"]["Enums"]["chat_sender_role"]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          owner_id: string
+          tenant_id: string
+          unread_owner: number
+          unread_tenant: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          owner_id: string
+          tenant_id: string
+          unread_owner?: number
+          unread_tenant?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          owner_id?: string
+          tenant_id?: string
+          unread_owner?: number
+          unread_tenant?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           area: number | null
@@ -666,6 +792,7 @@ export type Database = {
     Enums: {
       app_role: "owner" | "manager"
       charge_status: "unpaid" | "partial" | "paid" | "overdue"
+      chat_sender_role: "owner" | "manager" | "tenant"
       contract_kind: "rent" | "ahch"
       contract_status: "draft" | "active" | "finished" | "terminated"
       document_owner_kind: "property" | "tenant" | "contract"
@@ -829,6 +956,7 @@ export const Constants = {
     Enums: {
       app_role: ["owner", "manager"],
       charge_status: ["unpaid", "partial", "paid", "overdue"],
+      chat_sender_role: ["owner", "manager", "tenant"],
       contract_kind: ["rent", "ahch"],
       contract_status: ["draft", "active", "finished", "terminated"],
       document_owner_kind: ["property", "tenant", "contract"],
