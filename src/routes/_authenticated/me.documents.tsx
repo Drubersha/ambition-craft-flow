@@ -26,8 +26,9 @@ function MyDocs() {
       if (ids.length === 0) return { contracts: [], docs: [] };
       const { data: docs, error } = await supabase
         .from("documents")
-        .select("id, name, storage_path, mime, size_bytes, created_at, contract_id")
-        .in("contract_id", ids)
+        .select("id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind")
+        .eq("owner_kind", "contract" as any)
+        .in("ref_id", ids)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return { contracts: contracts ?? [], docs: docs ?? [] };
@@ -51,7 +52,7 @@ function MyDocs() {
 
 function DocRow({ doc, contracts }: { doc: any; contracts: any[] }) {
   const [busy, setBusy] = useState(false);
-  const contract = contracts.find((c) => c.id === doc.contract_id);
+  const contract = contracts.find((c) => c.id === doc.ref_id);
   async function download() {
     setBusy(true);
     try {
@@ -68,7 +69,7 @@ function DocRow({ doc, contracts }: { doc: any; contracts: any[] }) {
     <Card className="p-3 flex items-center gap-3">
       <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm truncate">{doc.name}</div>
+        <div className="font-medium text-sm truncate">{doc.label ?? doc.storage_path.split("/").pop()}</div>
         <div className="text-xs text-muted-foreground">
           {contract?.number ? `Договор № ${contract.number} · ` : ""}{formatDate(doc.created_at)}
         </div>
