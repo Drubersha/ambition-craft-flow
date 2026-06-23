@@ -864,58 +864,6 @@ function PropertiesTable({
   );
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "var(--success)",
-  draft: "var(--info)",
-  finished: "var(--muted-foreground)",
-  terminated: "var(--destructive)",
-};
-
-function ContractsStatusPie({ contracts }: { contracts: Contract[] }) {
-  const data = useMemo(() => {
-    const m = new Map<string, number>();
-    contracts.forEach((c) => m.set(c.status, (m.get(c.status) || 0) + 1));
-    return Array.from(m.entries()).map(([status, value]) => ({
-      status,
-      value,
-      label: CONTRACT_STATUS_LABELS[status] || status,
-    }));
-  }, [contracts]);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Статусы договоров</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          <EmptyText text="Нет договоров" />
-        ) : (
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius={50}
-                  outerRadius={90}
-                  paddingAngle={2}
-                >
-                  {data.map((d, i) => (
-                    <Cell key={i} fill={STATUS_COLORS[d.status] || "var(--primary)"} />
-                  ))}
-                </Pie>
-                <RTooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 function ExpiringLists({ contracts }: { contracts: Contract[] }) {
   const buckets = useMemo(() => {
     const b: { [k: string]: Contract[] } = { "0-30": [], "31-60": [], "61-90": [] };
