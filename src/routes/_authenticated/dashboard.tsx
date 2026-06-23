@@ -33,7 +33,6 @@ import {
   monthlyPayment,
   PROPERTY_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
-  CONTRACT_STATUS_LABELS,
 } from "@/lib/format";
 import {
   Building2,
@@ -536,7 +535,6 @@ function Dashboard() {
       {/* Block 3: Contracts */}
       <Section title="Договорная база">
         <div className="grid lg:grid-cols-2 gap-4">
-          <ContractsStatusPie contracts={filtered.contracts} />
           <ExpiringLists contracts={filtered.contracts} />
           <RateHistoryTable contracts={filtered.contracts} />
           <PlaceholderCard
@@ -863,58 +861,6 @@ function PropertiesTable({
         </tbody>
       </table>
     </div>
-  );
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  active: "var(--success)",
-  draft: "var(--info)",
-  finished: "var(--muted-foreground)",
-  terminated: "var(--destructive)",
-};
-
-function ContractsStatusPie({ contracts }: { contracts: Contract[] }) {
-  const data = useMemo(() => {
-    const m = new Map<string, number>();
-    contracts.forEach((c) => m.set(c.status, (m.get(c.status) || 0) + 1));
-    return Array.from(m.entries()).map(([status, value]) => ({
-      status,
-      value,
-      label: CONTRACT_STATUS_LABELS[status] || status,
-    }));
-  }, [contracts]);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Статусы договоров</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          <EmptyText text="Нет договоров" />
-        ) : (
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius={50}
-                  outerRadius={90}
-                  paddingAngle={2}
-                >
-                  {data.map((d, i) => (
-                    <Cell key={i} fill={STATUS_COLORS[d.status] || "var(--primary)"} />
-                  ))}
-                </Pie>
-                <RTooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
