@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ChatThread, ensureChatThread } from "@/components/chat/chat-thread";
 import { useDemoIdentity } from "@/lib/demo-identity";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/me/chat")({
   component: MyChat,
@@ -25,7 +26,13 @@ function MyChat() {
 
   useEffect(() => {
     if (!tenantId) return;
-    ensureChatThread(tenantId).then(setThreadId).catch(() => setThreadId(null));
+    ensureChatThread(tenantId)
+      .then(setThreadId)
+      .catch((e) => {
+        console.error("ensureChatThread failed", e);
+        toast.error(`Чат: ${e?.message ?? "ошибка"}`);
+        setThreadId(null);
+      });
   }, [tenantId]);
 
   return (
