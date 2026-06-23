@@ -1,142 +1,81 @@
-## Демо-режим без логина, роли, чат и кабинет арендатора
+## Канбан задач + ИИ-анализ чата
 
-Большой апдейт: убираем экран входа, вводим переключатель ролей, чат с вложениями и личный кабинет арендатора.
+### Что строим
 
----
+Новый раздел «Задачи» — канбан-доска с колонками: Принято → В процессе → На проверке → Готово → Архив. Видят только главный и менеджер. ИИ автоматически анализирует каждое новое сообщение арендатора (текст + фото) и предлагает создать задачу.
 
-### 1. Демо-режим (без авторизации)
+### База данных (миграция)
 
-- Удаляется экран `/auth` и редирект-гейт `_authenticated/route.tsx` заменяется на простой layout без проверки сессии.
-- Все маршруты становятся публичными (роуты остаются в той же папке, чтобы не править дерево).
-- Сверху приложения — **селектор личности** (в шапке AppShell):
-  - Роль: **Главный** / **Менеджер** / **Арендатор**
-  - Если «Арендатор» — второй селект: какой именно (список из таблицы `tenants`).
-- Текущая личность хранится в `localStorage` (`demo.role`, `demo.tenantId`) и в React-контексте `DemoIdentityProvider`. Меняется мгновенно, без перезагрузки.
-- Существующий триггер `handle_new_user` остаётся, но больше не выстреливает (никто не регистрируется). RLS-политики переделываются на permissive (`USING (true)`) — это демо, безопасность не цель этой итерации; в плане явно помечаем как demo-only.
+Таблица `tasks`:
+- `tenant_id` (uuid, FK на tenants, nullable — общие задачи без арендатора возможны)
+- `thread_id` (uuid, nullable — из какого чата)
+- `source_message_id` (uuid, nullable — исходное сообщение)
+- `title` (text), `description` (text)
+- `status` enum `task_status`: `accepted | in_progress | review | done | archived`
+- `priority` enum: `low | normal | high`
+- `photo_paths` (text[]) — пути в bucket `chat-attachments`, переносятся из сообщения
+- `position` (int) — порядок внутри колонки
+- `created_at`, `updated_at`, триггер `touch_updated_at`
 
-> ⚠️ Важно: «убрать авторизацию» + «личный кабинет арендатора» совмещаются именно через демо-селектор. Реальный логин арендаторов можно вернуть позже.
+Таблица `task_suggestions` (предложения ИИ, ждут подтверждения):
+- `tenant_id`, `thread_id`, `source_message_id`
+- `title`, `description`, `priority`, `photo_paths` (text[])
+- `status`: `pending | accepted | dismissed`
+- `model`, `created_at`
 
-### 2. Система ролей
+Обе таблицы: `GRANT` для authenticated и service_role, RLS `USING true` (демо-режим, как остальные).
 
-- Новый enum `app_role` уже есть (`owner`). Расширяем до `owner | manager | tenant`.
-- В демо-режиме роль берётся не из БД, а из контекста личности (`useDemoIdentity()`).
-- Утилита `can(role, action)` и хук `useRole()`:
-  - `owner`, `manager` — видят всё (объекты, арендаторов, договоры, начисления, платежи, воронку, чаты со всеми).
-  - `tenant` — видит только свои данные + чат с управляющим.
-- Боковое меню в `AppShell` рендерится в зависимости от роли:
-  - **Owner/Manager**: текущие пункты + новый «Чаты».
-  - **Tenant**: «Мой кабинет», «Мои договоры», «Мои начисления», «Календарь», «Документы», «Чат».
+В `chat_messages` добавим колонку `analyzed_at timestamptz` чтобы не анализировать дважды.
 
-### 3. Привязка tenant ↔ identity (автосоздание)
+### Серверная функция ИИ
 
-- В таблицу `tenants` добавляется `user_id uuid NULL` (на будущее) и `slug` (генерируется при создании договора, используется в demo-селекторе и в ссылках вида «просмотр от лица арендатора»).
-- При создании договора:
-  - Если у выбранного Tenant ещё нет `slug` — генерируем.
-  - В демо-режиме `user_id` не заполняется; идентичность арендатора = `tenant.id` в `localStorage`.
-- На странице договора `contracts.$id.tsx` — новая кнопка **«Просмотр от лица арендатора»**: переключает `demo.role='tenant'`, `demo.tenantId=<contract.tenant_id>` и навигирует на `/me`.
+`src/lib/tasks.functions.ts`:
+- `analyzeMessage({ messageId })` — `createServerFn`, публичный (демо). Загружает сообщение, его вложения, последние 5 сообщений треда для контекста. Если есть фото — подписывает временные URL и передаёт в Gemini как `image_url`. Если сообщение от owner/manager — пропускает.
+- Модель: `google/gemini-2.5-flash` через Lovable AI Gateway (`createLovableAiGatewayProvider`, `generateText` + `Output.object` со схемой Zod: `{ is_task: boolean, title, description, priority }`).
+- Если `is_task`, создаёт строку в `task_suggestions` с привязкой к `photo_paths` сообщения. Помечает `chat_messages.analyzed_at`.
+- `acceptSuggestion({ id })` — переносит в `tasks` (status=`accepted`), фото копируются по ссылке (тот же storage path), suggestion → `accepted`.
+- `dismissSuggestion({ id })`, `updateTaskStatus({ id, status, position })`, `archiveTask`, `deleteTask`.
 
-### 4. Чат с вложениями
+Автотриггер: в `ChatThread.send()` после успешной вставки сообщения арендатором (или в общем потоке — для всех неанализированных tenant-сообщений) вызывается `analyzeMessage` fire-and-forget. Также раз в открытии страницы чатов — добивка непроанализированных через realtime listener `chat_messages` INSERT.
 
-Новые таблицы:
+`LOVABLE_API_KEY` уже есть в секретах.
 
-- `chat_threads` — `id`, `tenant_id` (unique), `last_message_at`, `unread_owner`, `unread_tenant`.
-- `chat_messages` — `id`, `thread_id`, `sender_role` (`owner|manager|tenant`), `sender_label` (имя для отображения), `body text`, `created_at`, `read_at`.
-- `chat_attachments` — `id`, `message_id`, `storage_path`, `file_name`, `mime`, `size_bytes`.
+### UI
 
-Хранилище:
-- Новый bucket `chat-attachments` (private), путь `<thread_id>/<message_id>/<filename>`.
+**Новый маршрут** `src/routes/_authenticated/tasks.index.tsx`:
+- Канбан из 5 колонок (drag&drop через `@dnd-kit/core` + `@dnd-kit/sortable` — добавим зависимости).
+- Карточка задачи: title, превью первого фото, имя арендатора, бейдж приоритета, кнопки «В архив»/«Удалить».
+- Фильтр сверху: «Все арендаторы / выбрать одного» (Select по `tenants`).
+- Колонка «Архив» свёрнута по умолчанию (скрыта за раскрывающимся блоком).
+- Drag между колонками меняет `status` через `updateTaskStatus`; внутри колонки — `position`.
+- Realtime: подписка на `tasks` INSERT/UPDATE → invalidate query.
 
-Realtime:
-- `ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;` — для живых обновлений.
-- На странице чата — подписка через `useEffect`, очистка через `removeChannel`.
+**Панель предложений ИИ** (в `tasks.index.tsx` сверху):
+- Список `task_suggestions` со `status=pending`. Каждое: title, description, превью фото, ссылка «Открыть чат», кнопки «Создать задачу» / «Отклонить».
+- Realtime на `task_suggestions`.
 
-UI:
-- **`/chats`** (owner/manager): двухколоночная панель — слева список тредов (по всем арендаторам, бейдж непрочитанных, поиск), справа выбранный тред с сообщениями, инпут текста + кнопка «📎» для аплоада.
-- **`/me/chat`** (tenant): один тред этого арендатора, тот же компонент сообщений.
-- Сообщения: пузырьки слева/справа в зависимости от роли отправителя относительно текущей личности, вложения рендерятся как карточки (изображения — превью, остальное — иконка+имя+скачать).
-- Тред арендатору автосоздаётся при первом открытии его кабинета.
+**Бейдж предложений в навигации**: пункт «Задачи» в `OWNER_NAV` (иконка `KanbanSquare`) с badge числа pending suggestions.
 
-### 5. Кабинет арендатора
+**В чатах** (`chats.index.tsx` и `ChatThread`): на каждом сообщении арендатора маленькая кнопка «➕ Задача» — ручной вызов `analyzeMessage` или прямое создание (откроет суггест).
 
-Новый layout `/me` (рендерится только если `role==='tenant'`):
+### Файлы
 
-- **`/me`** — дашборд: ближайший платёж, текущий долг, активный договор.
-- **`/me/contracts`** — список своих договоров (фильтр по `tenant_id = demo.tenantId`), карточка объекта.
-- **`/me/charges`** — свои начисления (сумма, период, статус, оплачено/осталось). Без кнопок редактирования.
-- **`/me/calendar`** — календарный вид (`date-fns` + сетка месяца, навигация по месяцам):
-  - дни с предстоящими `charges.due_date` (синие точки)
-  - просрочки (красные)
-  - оплаченные (зелёные)
-  - клик по дню → список начислений за этот день.
-- **`/me/documents`** — список документов по своим договорам (скачивание из bucket `documents`).
-- **`/me/chat`** — чат с управляющим (см. п.4).
+Новые:
+- `supabase/migrations/<ts>_tasks.sql`
+- `src/lib/tasks.functions.ts`
+- `src/lib/ai-gateway.server.ts` (хелпер провайдера)
+- `src/components/tasks/kanban-board.tsx`, `task-card.tsx`, `suggestions-panel.tsx`
+- `src/routes/_authenticated/tasks.index.tsx`
 
-Шапка в кабинете арендатора показывает ФИО арендатора и кнопку «Выйти из режима арендатора» (возвращает на роль `owner` в селекторе).
+Изменения:
+- `src/components/app-shell.tsx` — пункт «Задачи» + бейдж
+- `src/components/chat/chat-thread.tsx` — кнопка «Создать задачу» на сообщении + авто-анализ после insert
+- `src/integrations/supabase/types.ts` — после миграции регенерируется
+- `package.json` — `@dnd-kit/core`, `@dnd-kit/sortable`, `ai`, `@ai-sdk/openai-compatible`, `zod` (если ещё нет)
 
-### 6. Изменения в существующих страницах
+### Вне рамок
 
-- `app-shell.tsx` — селектор личности + динамическое меню по роли.
-- `contracts.$id.tsx` — кнопка «Просмотр от лица арендатора».
-- `_authenticated/route.tsx` — упрощается до `<AppShell><Outlet/></AppShell>` без `getUser`.
-- `auth.tsx`, `index.tsx` — удаляются (или `index.tsx` редиректит на `/dashboard` для owner / `/me` для tenant).
-- Все серверные функции с `requireSupabaseAuth` (если есть) — переводим на публичные `createServerFn` с проверкой `data.actorRole` из тела запроса. (Сейчас, судя по коду, серверных функций мало; основная работа — через клиент `supabase`.)
-
----
-
-### Технические детали
-
-**Миграция (одной транзакцией):**
-
-```text
-- расширить enum app_role значениями manager, tenant
-- ALTER TABLE tenants ADD COLUMN user_id uuid, ADD COLUMN slug text UNIQUE
-- CREATE TABLE chat_threads (...) + GRANT + RLS(USING true)
-- CREATE TABLE chat_messages (...) + GRANT + RLS(USING true)
-- CREATE TABLE chat_attachments (...) + GRANT + RLS(USING true)
-- триггер touch_updated_at на chat_threads
-- триггер: после insert в chat_messages — обновить last_message_at и unread_*
-- ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages
-- Permissive RLS на существующих таблицах (USING true) — пометить комментарием "demo mode"
-```
-
-**Bucket:** `chat-attachments` (private) + storage RLS USING true (demo).
-
-**Файлы (новые):**
-
-```text
-src/lib/demo-identity.tsx          — провайдер + хуки роли/арендатора
-src/lib/role.ts                    — типы, can()
-src/components/identity-switcher.tsx
-src/components/chat/thread-list.tsx
-src/components/chat/message-list.tsx
-src/components/chat/message-composer.tsx
-src/components/chat/attachment-card.tsx
-src/routes/_authenticated/chats.index.tsx
-src/routes/_authenticated/me.tsx              (layout)
-src/routes/_authenticated/me.index.tsx        (дашборд)
-src/routes/_authenticated/me.contracts.tsx
-src/routes/_authenticated/me.charges.tsx
-src/routes/_authenticated/me.calendar.tsx
-src/routes/_authenticated/me.documents.tsx
-src/routes/_authenticated/me.chat.tsx
-```
-
-**Файлы (правка):**
-
-```text
-src/components/app-shell.tsx          — селектор, динамическое меню
-src/routes/_authenticated/route.tsx   — без проверки auth
-src/routes/_authenticated/contracts.$id.tsx — кнопка «От лица арендатора»
-src/routes/__root.tsx                 — обернуть в DemoIdentityProvider
-src/routes/index.tsx                  — простой редирект по роли
-```
-
-**Удаляется:** `src/routes/auth.tsx` (и упоминания в навигации).
-
-### Вне scope
-
-- Реальная аутентификация арендаторов (вернём, когда понадобится).
-- Уведомления на e-mail/push о новых сообщениях.
-- Групповые чаты, реакции, редактирование/удаление сообщений.
-- Подписание договора арендатором, онлайн-оплата.
-- Тонкая безопасность RLS (сейчас демо — permissive).
+- Назначение задачи на конкретного менеджера (только статусы)
+- Сроки и напоминания
+- Видимость задач арендатору
+- Полноценный аудит-лог
