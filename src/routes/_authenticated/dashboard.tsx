@@ -1404,18 +1404,8 @@ function FinanceSection({
         </CardContent>
       </Card>
 
-      <PlaceholderCard
-        title="NOI (чистый операционный доход)"
-        text="Нет источника данных об операционных расходах."
-      />
-      <PlaceholderCard
-        title="План vs Факт"
-        text="Плановые показатели не заданы — добавьте источник плана."
-      />
-      <PlaceholderCard
-        title="Структура операционных расходов"
-        text="Нет источника данных о расходах."
-      />
+      <BudgetPlanVsFact />
+      <BudgetExpenseStructure />
     </div>
   );
 }
