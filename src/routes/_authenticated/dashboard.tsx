@@ -44,6 +44,8 @@ import {
   X,
   Filter,
   Info,
+  PiggyBank,
+  TrendingDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
