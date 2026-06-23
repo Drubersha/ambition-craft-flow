@@ -1,5 +1,4 @@
 import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,12 +28,17 @@ function TenantLayout() {
     },
   });
 
-  useEffect(() => {
-    if (role !== "tenant") {
-      // Visiting /me while not in tenant mode: switch role automatically for convenience.
-      setRole("tenant");
-    }
-  }, [role, setRole]);
+  if (role !== "tenant") {
+    return (
+      <Card className="p-6 space-y-3">
+        <h2 className="font-semibold">Кабинет арендатора</h2>
+        <p className="text-sm text-muted-foreground">
+          Чтобы войти в кабинет, выберите слева роль «Арендатор» и нужного арендатора.
+        </p>
+        <Button onClick={() => setRole("tenant")}>Войти как арендатор</Button>
+      </Card>
+    );
+  }
 
   if (!tenantId) {
     return (
