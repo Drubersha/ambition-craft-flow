@@ -148,6 +148,7 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          analyzed_at: string | null
           body: string | null
           created_at: string
           id: string
@@ -158,6 +159,7 @@ export type Database = {
           thread_id: string
         }
         Insert: {
+          analyzed_at?: string | null
           body?: string | null
           created_at?: string
           id?: string
@@ -168,6 +170,7 @@ export type Database = {
           thread_id: string
         }
         Update: {
+          analyzed_at?: string | null
           body?: string | null
           created_at?: string
           id?: string
@@ -711,6 +714,143 @@ export type Database = {
           },
         ]
       }
+      task_suggestions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          model: string | null
+          owner_id: string
+          photo_paths: string[]
+          priority: Database["public"]["Enums"]["task_priority"]
+          source_message_id: string | null
+          status: Database["public"]["Enums"]["task_suggestion_status"]
+          tenant_id: string | null
+          thread_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          model?: string | null
+          owner_id: string
+          photo_paths?: string[]
+          priority?: Database["public"]["Enums"]["task_priority"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["task_suggestion_status"]
+          tenant_id?: string | null
+          thread_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          model?: string | null
+          owner_id?: string
+          photo_paths?: string[]
+          priority?: Database["public"]["Enums"]["task_priority"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["task_suggestion_status"]
+          tenant_id?: string | null
+          thread_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_suggestions_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_suggestions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_suggestions_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          owner_id: string
+          photo_paths: string[]
+          position: number
+          priority: Database["public"]["Enums"]["task_priority"]
+          source_message_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          tenant_id: string | null
+          thread_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id: string
+          photo_paths?: string[]
+          position?: number
+          priority?: Database["public"]["Enums"]["task_priority"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          tenant_id?: string | null
+          thread_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          photo_paths?: string[]
+          position?: number
+          priority?: Database["public"]["Enums"]["task_priority"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          tenant_id?: string | null
+          thread_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           contact_person: string | null
@@ -826,6 +966,9 @@ export type Database = {
         | "production"
         | "coworking"
         | "other"
+      task_priority: "low" | "normal" | "high"
+      task_status: "accepted" | "in_progress" | "review" | "done" | "archived"
+      task_suggestion_status: "pending" | "accepted" | "dismissed"
       tenant_kind: "person" | "company" | "own_company" | "owner_friends"
     }
     CompositeTypes: {
@@ -987,6 +1130,9 @@ export const Constants = {
         "coworking",
         "other",
       ],
+      task_priority: ["low", "normal", "high"],
+      task_status: ["accepted", "in_progress", "review", "done", "archived"],
+      task_suggestion_status: ["pending", "accepted", "dismissed"],
       tenant_kind: ["person", "company", "own_company", "owner_friends"],
     },
   },
