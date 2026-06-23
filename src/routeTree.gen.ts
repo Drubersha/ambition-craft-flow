@@ -18,6 +18,7 @@ import { Route as AuthenticatedPropertiesIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedPaymentsIndexRouteImport } from './routes/_authenticated/payments.index'
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads.index'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
+import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats.index'
 import { Route as AuthenticatedChargesIndexRouteImport } from './routes/_authenticated/charges.index'
 import { Route as AuthenticatedTenantsNewRouteImport } from './routes/_authenticated/tenants.new'
 import { Route as AuthenticatedTenantsIdRouteImport } from './routes/_authenticated/tenants.$id'
@@ -75,6 +76,11 @@ const AuthenticatedContractsIndexRoute =
     path: '/contracts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
+  id: '/chats/',
+  path: '/chats/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedChargesIndexRoute =
   AuthenticatedChargesIndexRouteImport.update({
     id: '/charges/',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/charges/': typeof AuthenticatedChargesIndexRoute
+  '/chats/': typeof AuthenticatedChatsIndexRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
   '/payments/': typeof AuthenticatedPaymentsIndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/charges': typeof AuthenticatedChargesIndexRoute
+  '/chats': typeof AuthenticatedChatsIndexRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
   '/payments': typeof AuthenticatedPaymentsIndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/_authenticated/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/_authenticated/tenants/new': typeof AuthenticatedTenantsNewRoute
   '/_authenticated/charges/': typeof AuthenticatedChargesIndexRoute
+  '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
   '/_authenticated/payments/': typeof AuthenticatedPaymentsIndexRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/tenants/$id'
     | '/tenants/new'
     | '/charges/'
+    | '/chats/'
     | '/contracts/'
     | '/leads/'
     | '/payments/'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/tenants/$id'
     | '/tenants/new'
     | '/charges'
+    | '/chats'
     | '/contracts'
     | '/leads'
     | '/payments'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tenants/$id'
     | '/_authenticated/tenants/new'
     | '/_authenticated/charges/'
+    | '/_authenticated/chats/'
     | '/_authenticated/contracts/'
     | '/_authenticated/leads/'
     | '/_authenticated/payments/'
@@ -305,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContractsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/chats/': {
+      id: '/_authenticated/chats/'
+      path: '/chats'
+      fullPath: '/chats/'
+      preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/charges/': {
       id: '/_authenticated/charges/'
       path: '/charges'
@@ -375,6 +394,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTenantsIdRoute: typeof AuthenticatedTenantsIdRoute
   AuthenticatedTenantsNewRoute: typeof AuthenticatedTenantsNewRoute
   AuthenticatedChargesIndexRoute: typeof AuthenticatedChargesIndexRoute
+  AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
   AuthenticatedPaymentsIndexRoute: typeof AuthenticatedPaymentsIndexRoute
@@ -393,6 +413,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTenantsIdRoute: AuthenticatedTenantsIdRoute,
   AuthenticatedTenantsNewRoute: AuthenticatedTenantsNewRoute,
   AuthenticatedChargesIndexRoute: AuthenticatedChargesIndexRoute,
+  AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
   AuthenticatedLeadsIndexRoute: AuthenticatedLeadsIndexRoute,
   AuthenticatedPaymentsIndexRoute: AuthenticatedPaymentsIndexRoute,
