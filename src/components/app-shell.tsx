@@ -9,7 +9,6 @@ import {
   Wallet,
   Receipt,
   Menu,
-  FolderTree,
   Kanban,
   MessageSquare,
   KanbanSquare,
@@ -26,13 +25,11 @@ import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
-  { to: "/folders", label: "Папки", icon: FolderTree },
+  { to: "/leads", label: "Воронка", icon: Kanban },
   { to: "/properties", label: "Объекты", icon: Building2 },
   { to: "/tenants", label: "Арендаторы", icon: Users },
   { to: "/contracts", label: "Договоры", icon: FileText },
-  { to: "/charges", label: "Начисления", icon: Receipt },
-  { to: "/payments", label: "Платежи", icon: Wallet },
-  { to: "/leads", label: "Воронка", icon: Kanban },
+  { to: "/payments", label: "Оплаты", icon: Wallet },
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
 ] as const;
