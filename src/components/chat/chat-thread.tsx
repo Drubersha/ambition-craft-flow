@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send, FileText, Download } from "lucide-react";
+import { Paperclip, Send, FileText, Download, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
+import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
 
 type Props = {
   threadId: string;
@@ -38,6 +40,8 @@ function timeLabel(iso: string) {
 
 export function ChatThread({ threadId, myRole, myLabel }: Props) {
   const qc = useQueryClient();
+  const analyze = useServerFn(analyzeMessage);
+  const manualTask = useServerFn(createManualTaskFromMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -146,6 +150,13 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       qc.invalidateQueries({ queryKey: ["chat-messages", threadId] });
       qc.invalidateQueries({ queryKey: ["chat-attachments", threadId] });
       qc.invalidateQueries({ queryKey: ["chat-threads"] });
+
+      // Auto-analyze tenant messages
+      if (myRole === "tenant") {
+        analyze({ data: { messageId: msg.id } })
+          .then(() => qc.invalidateQueries({ queryKey: ["task-suggestions"] }))
+          .catch((err) => console.error("[analyze]", err));
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Не удалось отправить");
     } finally {
