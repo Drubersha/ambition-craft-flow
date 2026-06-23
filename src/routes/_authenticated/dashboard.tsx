@@ -1433,7 +1433,7 @@ function BudgetPlanVsFact() {
     },
   });
 
-  const rows = React.useMemo(() => {
+  const rows = useMemo(() => {
     if (!data) return [];
     const now = new Date();
     const y = now.getFullYear();
@@ -1509,7 +1509,7 @@ function BudgetExpenseStructure() {
     },
   });
 
-  const slices = React.useMemo(() => {
+  const slices = useMemo(() => {
     if (!data) return [] as { name: string; value: number }[];
     const now = new Date();
     const y = now.getFullYear();
