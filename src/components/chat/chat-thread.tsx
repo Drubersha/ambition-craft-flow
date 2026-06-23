@@ -177,9 +177,10 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
           const atts = (attachments ?? []).filter((a) => a.message_id === m.id);
           return (
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div
+              <div className="flex flex-col items-stretch gap-1 max-w-[80%]">
+                <div
                 className={cn(
-                  "max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                  "rounded-lg px-3 py-2 text-sm shadow-sm",
                   mine ? "bg-primary text-primary-foreground" : "bg-muted",
                 )}
               >
@@ -191,6 +192,24 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
                   <AttachmentRow key={a.id} attachment={a} mine={mine} />
                 ))}
                 <div className={cn("text-[10px] mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
+              </div>
+                {myRole !== "tenant" && m.sender_role === "tenant" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await manualTask({ data: { messageId: m.id } });
+                        toast.success("Добавлено в предложения");
+                        qc.invalidateQueries({ queryKey: ["task-suggestions"] });
+                      } catch {
+                        toast.error("Не удалось");
+                      }
+                    }}
+                    className="self-start inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary px-1"
+                  >
+                    <Sparkles className="h-3 w-3" /> В задачи
+                  </button>
+                )}
               </div>
             </div>
           );
