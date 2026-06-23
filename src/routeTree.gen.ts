@@ -22,6 +22,7 @@ import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats.index'
 import { Route as AuthenticatedChargesIndexRouteImport } from './routes/_authenticated/charges.index'
+import { Route as AuthenticatedBudgetsIndexRouteImport } from './routes/_authenticated/budgets.index'
 import { Route as AuthenticatedTenantsNewRouteImport } from './routes/_authenticated/tenants.new'
 import { Route as AuthenticatedTenantsIdRouteImport } from './routes/_authenticated/tenants.$id'
 import { Route as AuthenticatedPropertiesNewRouteImport } from './routes/_authenticated/properties.new'
@@ -34,6 +35,7 @@ import { Route as AuthenticatedMeCalendarRouteImport } from './routes/_authentic
 import { Route as AuthenticatedContractsNewRouteImport } from './routes/_authenticated/contracts.new'
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 import { Route as AuthenticatedChargesIdRouteImport } from './routes/_authenticated/charges.$id'
+import { Route as AuthenticatedBudgetsFolderIdRouteImport } from './routes/_authenticated/budgets.$folderId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -104,6 +106,12 @@ const AuthenticatedChargesIndexRoute =
     path: '/charges/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBudgetsIndexRoute =
+  AuthenticatedBudgetsIndexRouteImport.update({
+    id: '/budgets/',
+    path: '/budgets/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTenantsNewRoute = AuthenticatedTenantsNewRouteImport.update({
   id: '/tenants/new',
   path: '/tenants/new',
@@ -170,11 +178,18 @@ const AuthenticatedChargesIdRoute = AuthenticatedChargesIdRouteImport.update({
   path: '/charges/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBudgetsFolderIdRoute =
+  AuthenticatedBudgetsFolderIdRouteImport.update({
+    id: '/budgets/$folderId',
+    path: '/budgets/$folderId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/me': typeof AuthenticatedMeRouteWithChildren
+  '/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -187,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/budgets/': typeof AuthenticatedBudgetsIndexRoute
   '/charges/': typeof AuthenticatedChargesIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -200,6 +216,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -212,6 +229,7 @@ export interface FileRoutesByTo {
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/budgets': typeof AuthenticatedBudgetsIndexRoute
   '/charges': typeof AuthenticatedChargesIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
@@ -228,6 +246,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
+  '/_authenticated/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
   '/_authenticated/charges/$id': typeof AuthenticatedChargesIdRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/_authenticated/contracts/new': typeof AuthenticatedContractsNewRoute
@@ -240,6 +259,7 @@ export interface FileRoutesById {
   '/_authenticated/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/_authenticated/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/_authenticated/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/_authenticated/budgets/': typeof AuthenticatedBudgetsIndexRoute
   '/_authenticated/charges/': typeof AuthenticatedChargesIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -256,6 +276,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/me'
+    | '/budgets/$folderId'
     | '/charges/$id'
     | '/contracts/$id'
     | '/contracts/new'
@@ -268,6 +289,7 @@ export interface FileRouteTypes {
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/budgets/'
     | '/charges/'
     | '/chats/'
     | '/contracts/'
@@ -281,6 +303,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/budgets/$folderId'
     | '/charges/$id'
     | '/contracts/$id'
     | '/contracts/new'
@@ -293,6 +316,7 @@ export interface FileRouteTypes {
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/budgets'
     | '/charges'
     | '/chats'
     | '/contracts'
@@ -308,6 +332,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_authenticated/dashboard'
     | '/_authenticated/me'
+    | '/_authenticated/budgets/$folderId'
     | '/_authenticated/charges/$id'
     | '/_authenticated/contracts/$id'
     | '/_authenticated/contracts/new'
@@ -320,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/properties/new'
     | '/_authenticated/tenants/$id'
     | '/_authenticated/tenants/new'
+    | '/_authenticated/budgets/'
     | '/_authenticated/charges/'
     | '/_authenticated/chats/'
     | '/_authenticated/contracts/'
@@ -429,6 +455,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChargesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/budgets/': {
+      id: '/_authenticated/budgets/'
+      path: '/budgets'
+      fullPath: '/budgets/'
+      preLoaderRoute: typeof AuthenticatedBudgetsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/tenants/new': {
       id: '/_authenticated/tenants/new'
       path: '/tenants/new'
@@ -513,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChargesIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/budgets/$folderId': {
+      id: '/_authenticated/budgets/$folderId'
+      path: '/budgets/$folderId'
+      fullPath: '/budgets/$folderId'
+      preLoaderRoute: typeof AuthenticatedBudgetsFolderIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -541,6 +581,7 @@ const AuthenticatedMeRouteWithChildren = AuthenticatedMeRoute._addFileChildren(
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
+  AuthenticatedBudgetsFolderIdRoute: typeof AuthenticatedBudgetsFolderIdRoute
   AuthenticatedChargesIdRoute: typeof AuthenticatedChargesIdRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
   AuthenticatedContractsNewRoute: typeof AuthenticatedContractsNewRoute
@@ -548,6 +589,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPropertiesNewRoute: typeof AuthenticatedPropertiesNewRoute
   AuthenticatedTenantsIdRoute: typeof AuthenticatedTenantsIdRoute
   AuthenticatedTenantsNewRoute: typeof AuthenticatedTenantsNewRoute
+  AuthenticatedBudgetsIndexRoute: typeof AuthenticatedBudgetsIndexRoute
   AuthenticatedChargesIndexRoute: typeof AuthenticatedChargesIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
@@ -561,6 +603,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
+  AuthenticatedBudgetsFolderIdRoute: AuthenticatedBudgetsFolderIdRoute,
   AuthenticatedChargesIdRoute: AuthenticatedChargesIdRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
   AuthenticatedContractsNewRoute: AuthenticatedContractsNewRoute,
@@ -568,6 +611,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPropertiesNewRoute: AuthenticatedPropertiesNewRoute,
   AuthenticatedTenantsIdRoute: AuthenticatedTenantsIdRoute,
   AuthenticatedTenantsNewRoute: AuthenticatedTenantsNewRoute,
+  AuthenticatedBudgetsIndexRoute: AuthenticatedBudgetsIndexRoute,
   AuthenticatedChargesIndexRoute: AuthenticatedChargesIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
