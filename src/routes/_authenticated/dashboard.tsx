@@ -506,6 +506,11 @@ function Dashboard() {
         </div>
       </Section>
 
+      {/* Block 1b: Income, Expenses, Profit */}
+      <Section title="Доходы, расходы и прибыль">
+        <ProfitSummary />
+      </Section>
+
       {/* Block 2: Properties table */}
       <Section title="Объекты и помещения">
         <Card>
