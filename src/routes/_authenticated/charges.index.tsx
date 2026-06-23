@@ -1,37 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Receipt } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import {
-  CHARGE_STATUS_LABELS,
-  chargeTotalForPeriod,
-  formatDate,
-  formatMoney,
-  splitContractPeriods,
-} from "@/lib/format";
+import { createFileRoute } from "@tanstack/react-router";
+import { ChargesListView } from "@/components/charges-list-view";
 
 export const Route = createFileRoute("/_authenticated/charges/")({
-  component: ChargesList,
+  component: ChargesPage,
 });
 
-function ChargesList() {
+function ChargesPage() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl sm:text-2xl font-bold">Начисления</h1>
+      <ChargesListView />
+    </div>
+  );
+}
   const [filter, setFilter] = useState<"active" | "archive">("active");
 
   const { data, isLoading } = useQuery({
