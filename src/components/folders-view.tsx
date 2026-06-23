@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,9 +22,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/folders")({
-  component: FoldersPage,
-});
+export { FoldersPage as FoldersView };
 
 const PLAN_BUCKET = "documents";
 const PLAN_MAX_BYTES = 25 * 1024 * 1024;

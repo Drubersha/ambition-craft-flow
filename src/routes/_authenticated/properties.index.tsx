@@ -11,10 +11,31 @@ import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney } from "@/lib
 import { PageHeader } from "@/components/page-header";
 import { FolderPicker } from "@/components/folder-picker";
 import { useFolders, folderBreadcrumb } from "@/lib/folders";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FoldersView } from "@/components/folders-view";
 
 export const Route = createFileRoute("/_authenticated/properties/")({
-  component: PropertiesList,
+  component: PropertiesPage,
 });
+
+function PropertiesPage() {
+  return (
+    <div className="space-y-4">
+      <Tabs defaultValue="list">
+        <TabsList>
+          <TabsTrigger value="list">Список</TabsTrigger>
+          <TabsTrigger value="folders">Папки</TabsTrigger>
+        </TabsList>
+        <TabsContent value="list" className="mt-4">
+          <PropertiesList />
+        </TabsContent>
+        <TabsContent value="folders" className="mt-4">
+          <FoldersView />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
 function PropertiesList() {
   const [q, setQ] = useState("");
