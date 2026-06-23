@@ -11,7 +11,7 @@ import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/me/calendar")({
-  component: MyCalendar;
+  component: MyCalendar,
 });
 
 function MyCalendar() {
