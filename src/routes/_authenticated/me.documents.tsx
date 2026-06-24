@@ -30,24 +30,24 @@ function MyDocs() {
       if (cErr) throw cErr;
       const ids = (contracts ?? []).map((c) => c.id);
 
-      const queries: Promise<any>[] = [];
+      const queries: PromiseLike<any>[] = [];
       // Contract documents
       if (ids.length > 0) {
         queries.push(
-          supabase
+          (supabase
             .from("documents")
             .select("id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind")
             .eq("owner_kind", "contract" as any)
-            .in("ref_id", ids),
+            .in("ref_id", ids) as unknown) as PromiseLike<any>,
         );
       }
       // Tenant documents
       queries.push(
-        supabase
+        (supabase
           .from("documents")
           .select("id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind")
           .eq("owner_kind", "tenant" as any)
-          .eq("ref_id", tenantId!),
+          .eq("ref_id", tenantId!) as unknown) as PromiseLike<any>,
       );
 
       const results = await Promise.all(queries);
