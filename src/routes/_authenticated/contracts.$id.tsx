@@ -315,9 +315,13 @@ function NewChargeDialog({ contractId, rate, area, currency, period }: { contrac
   const qc = useQueryClient();
   const mut = useMutation({
     mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
+      // Charge owner_id must match the contract owner — fetch from the row to
+      // stay correct for both owner-self and linked-manager flows.
+      const { data: c, error: cErr } = await supabase
+        .from("contracts").select("owner_id").eq("id", contractId).maybeSingle();
+      if (cErr || !c) throw cErr ?? new Error("Договор не найден");
       const { error } = await supabase.from("charges").insert({
-        owner_id: u.user!.id, contract_id: contractId,
+        owner_id: c.owner_id, contract_id: contractId,
         period_start: periodStart, period_end: periodEnd, due_date: dueDate,
         total: Number(total) || 0,
       });
