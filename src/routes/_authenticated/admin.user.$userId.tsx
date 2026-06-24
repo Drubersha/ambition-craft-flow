@@ -123,7 +123,8 @@ function UserOverviewPage() {
         },
       }),
     onSuccess: (res: any) => {
-      toast.success(`Создан аккаунт (${res.role === "owner" ? "арендодатель" : "арендатор"})`);
+      const label = res.role === "owner" ? "арендодатель" : "арендатор";
+      toast.success(res.sameAccount ? `Добавлена роль «${label}»` : `Создан аккаунт (${label})`);
       setCompanionOpen(false);
       setCompanionEmail("");
       setCompanionPassword("");
@@ -151,9 +152,7 @@ function UserOverviewPage() {
 
   function openCompanion() {
     const baseEmail = data.email ?? "";
-    const [local, domain] = baseEmail.split("@");
-    const suggested = local && domain ? `${local}+${companionRole}@${domain}` : "";
-    setCompanionEmail(suggested);
+    setCompanionEmail(baseEmail);
     setCompanionName(data.profile?.full_name ?? "");
     setCompanionPassword("");
     setCompanionOpen(true);
@@ -190,27 +189,35 @@ function UserOverviewPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Будет создан новый аккаунт с ролью «{companionRoleLabel}» и автоматически привязан к текущему пользователю.
-              Email должен отличаться от уже используемого.
+              Если оставить тот же email — роль «{companionRoleLabel}» будет просто добавлена к существующему аккаунту (вход тем же логином и паролем).
+              Если указать другой email — будет создан отдельный аккаунт и автоматически привязан к текущему.
             </p>
             <div className="space-y-1">
               <Label>Email</Label>
               <Input type="email" value={companionEmail} onChange={(e) => setCompanionEmail(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label>Пароль (≥8 символов)</Label>
-              <Input type="text" value={companionPassword} onChange={(e) => setCompanionPassword(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Имя</Label>
-              <Input value={companionName} onChange={(e) => setCompanionName(e.target.value)} />
-            </div>
+            {companionEmail.trim().toLowerCase() !== (data.email ?? "").toLowerCase() && (
+              <>
+                <div className="space-y-1">
+                  <Label>Пароль (≥8 символов)</Label>
+                  <Input type="text" value={companionPassword} onChange={(e) => setCompanionPassword(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Имя</Label>
+                  <Input value={companionName} onChange={(e) => setCompanionName(e.target.value)} />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCompanionOpen(false)}>Отмена</Button>
             <Button
               onClick={() => companionMut.mutate()}
-              disabled={!companionEmail || companionPassword.length < 8 || companionMut.isPending}
+              disabled={
+                !companionEmail ||
+                companionMut.isPending ||
+                (companionEmail.trim().toLowerCase() !== (data.email ?? "").toLowerCase() && companionPassword.length < 8)
+              }
             >
               Создать
             </Button>
