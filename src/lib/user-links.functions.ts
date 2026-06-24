@@ -9,7 +9,7 @@ async function getCallerRoles(supabase: any, userId: string): Promise<string[]> 
 }
 
 function isAdminRoles(roles: string[]) {
-  return roles.includes("owner") || roles.includes("moderator") || roles.includes("developer");
+  return roles.includes("moderator") || roles.includes("developer");
 }
 
 async function findUserIdByEmail(supabaseAdmin: any, email: string): Promise<string | null> {
