@@ -218,7 +218,7 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (!roles.includes("moderator") && !roles.includes("owner")) throw new Error("Forbidden");
     const email = data.email.trim().toLowerCase();
-    if (!email || !data.password || data.password.length < 8) throw new Error("Email и пароль (≥8 символов) обязательны");
+    if (!email) throw new Error("Email обязателен");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: srcRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.sourceUserId);
     const existing = new Set((srcRoles ?? []).map((r: any) => r.role));
@@ -226,6 +226,27 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     const hasTenant = existing.has("tenant");
     if (hasOwner && hasTenant) throw new Error("У пользователя уже есть и арендодатель, и арендатор");
     const newRole: "owner" | "tenant" = hasOwner ? "tenant" : "owner";
+
+    // Same email as source → just grant the missing role to the existing auth user (no new account).
+    const { data: srcAuth } = await supabaseAdmin.auth.admin.getUserById(data.sourceUserId);
+    const srcEmail = (srcAuth?.user?.email ?? "").toLowerCase();
+    if (srcEmail && email === srcEmail) {
+      await supabaseAdmin.from("user_roles").upsert(
+        { user_id: data.sourceUserId, role: newRole } as never,
+        { onConflict: "user_id,role" },
+      );
+      await supabaseAdmin.from("activity_logs").insert({
+        user_id: context.userId,
+        acted_as_user_id: data.sourceUserId,
+        action: "moderator_action",
+        entity_type: "user_role",
+        entity_id: data.sourceUserId,
+        metadata: { role: newRole, grant: true, companion_same_email: true } as never,
+      });
+      return { ok: true, userId: data.sourceUserId, role: newRole, sameAccount: true };
+    }
+
+    if (!data.password || data.password.length < 8) throw new Error("Пароль ≥8 символов обязателен");
     const { data: srcProfile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", data.sourceUserId).maybeSingle();
     const fullName = data.fullName?.trim() || srcProfile?.full_name || email;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
@@ -251,5 +272,5 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
       entity_id: newId,
       metadata: { companion_of: data.sourceUserId, role: newRole, email } as never,
     });
-    return { ok: true, userId: newId, role: newRole };
+    return { ok: true, userId: newId, role: newRole, sameAccount: false };
   });
