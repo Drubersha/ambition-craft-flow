@@ -1189,6 +1189,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      my_chat_role: { Args: { _thread: string }; Returns: string }
       recalc_charge: { Args: { _charge_id: string }; Returns: undefined }
       recalc_property_status: {
         Args: { _property_id: string }
