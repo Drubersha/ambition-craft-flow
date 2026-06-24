@@ -1,23 +1,15 @@
-## Что меняем в `src/routes/_authenticated/dashboard.tsx`
+Add a total-expense summary row below the "Структура операционных расходов" pie chart.
 
-В блоке аналитики, где сейчас три заглушки (строки 1407–1418):
+1. Modify `src/routes/_authenticated/dashboard.tsx` in the `BudgetExpenseStructure` component.
+2. After the existing `ResponsiveContainer`/PieChart block (when there is data), render a compact footer row inside the same `CardContent`:
+   - Label: "Всего расходов за месяц"
+   - Value: `formatMoney(total)` where `total` is the sum of the current-month `budget_expenses` already computed for the chart.
+   - Style: muted label + bold value, separated by a divider or small margin, centered or left-aligned under the chart.
+3. Keep the existing empty state ("Нет расходов за текущий месяц.") and loading state unchanged.
+4. No database or server changes are needed — the total is derived from the same data already fetched for the chart.
 
-1. **Удаляем** карточку «NOI (чистый операционный доход)».
-2. **«План vs Факт»** — заменяем заглушку на реальный график за **текущий календарный месяц**:
-   - План = сумма `budget_categories.limit_amount` по всем планам (пропорционально месяцу: лимит за период плана нормализуем к 1 месяцу — для `reset_day` всегда ~1 месяц, поэтому берём лимит как есть).
-   - Факт = сумма `budget_expenses.amount` за текущий календарный месяц по `spent_at` (включая архивные, фильтр по дате).
-   - Горизонтальный BarChart по папкам: две полосы на папку (План / Факт), цвет факта красный если факт > план. Если папок нет — `EmptyText`.
-3. **«Структура операционных расходов»** — заменяем заглушку на PieChart:
-   - Группируем `budget_expenses` за текущий календарный месяц по `category_id` → `budget_categories.name`.
-   - Сектор = доля категории в общих расходах за месяц, подпись с суммой и %.
-   - Цвета из существующей палитры графиков (`CHART_COLORS`/`var(--chart-N)`), если нет — генерируем через `hsl(var(--chart-1..5))`. Если расходов 0 — `EmptyText`.
-
-## Данные
-
-Новый `useQuery` `dashboard-budget-analytics`, забирает параллельно: `budget_plans`, `budget_categories`, `budget_expenses` (только `spent_at` текущего календарного месяца), `folders(id, name)`. RLS уже на месте, отдельных server fn не нужно.
-
-## Что НЕ трогаем
-
-- Никаких изменений в БД и других разделах.
-- Карточки прибыли/расходов, средняя ставка по типам — без изменений.
-- Только фронт, только этот файл.
+Технические детали:
+- Переменная `total` уже вычисляется в `BudgetExpenseStructure` на строке `const total = slices.reduce(...)`.
+- Добавить строку с `<div className="...">` сразу после закрывающего `</div>` диаграммы, внутри того же условия `slices.length === 0 ? ... : (...)`.
+- Использовать существующий `formatMoney` из `@/lib/format`.
+- Поддержать темную тему: использовать `text-muted-foreground` для подписи и `text-foreground` / `font-bold` для суммы.
