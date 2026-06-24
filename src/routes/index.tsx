@@ -8,8 +8,10 @@ export const Route = createFileRoute("/")({
   ssr: false,
   component: IndexPage,
   head: () => ({
-    links: [{ rel: "canonical", href: "https://ambition-craft-flow.lovable.app/" }],
-    meta: [{ property: "og:url", content: "https://ambition-craft-flow.lovable.app/" }],
+    // Relative URLs let browsers/crawlers resolve against the current host,
+    // so SEO stays correct on Lovable, self-hosted, and custom domains.
+    links: [{ rel: "canonical", href: "/" }],
+    meta: [{ property: "og:url", content: "/" }],
   }),
 });
 
