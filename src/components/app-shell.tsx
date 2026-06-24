@@ -24,6 +24,17 @@ import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
 import { useServerFn } from "@tanstack/react-start";
@@ -34,6 +45,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function handleLogout() {
     setLoading(true);
@@ -46,20 +58,43 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
     }
     navigate({ to: "/auth", replace: true });
     setLoading(false);
+    setOpen(false);
   }
 
   return (
-    <Button
-      variant={variant === "ghost" ? "ghost" : "outline"}
-      size={variant === "ghost" ? "icon" : "default"}
-      className={variant === "default" ? "w-full" : undefined}
-      aria-label="Выйти"
-      disabled={loading}
-      onClick={handleLogout}
-    >
-      <LogOut className="h-4 w-4" />
-      {variant === "default" && <span className="ml-2">Выйти</span>}
-    </Button>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant={variant === "ghost" ? "ghost" : "outline"}
+          size={variant === "ghost" ? "icon" : "default"}
+          className={variant === "default" ? "w-full" : undefined}
+          aria-label="Выйти"
+        >
+          <LogOut className="h-4 w-4" />
+          {variant === "default" && <span className="ml-2">Выйти</span>}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Текущая сессия будет завершена, и вы вернётесь на экран входа.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>Отмена</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={loading}
+            onClick={(e) => {
+              e.preventDefault();
+              handleLogout();
+            }}
+          >
+            {loading ? "Выход…" : "Выйти"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
