@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DemoIdentityProvider } from "@/lib/demo-identity";
+import { ManagerContextProvider } from "@/lib/manager-context";
 import { logActivity } from "@/lib/activity-log.functions";
 
 function NotFoundComponent() {
@@ -135,8 +136,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <DemoIdentityProvider>
-        <Outlet />
-        <Toaster richColors position="top-right" />
+        <ManagerContextProvider>
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </ManagerContextProvider>
       </DemoIdentityProvider>
     </QueryClientProvider>
   );
