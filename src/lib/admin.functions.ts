@@ -210,3 +210,46 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input)
+  .handler(async ({ data, context }) => {
+    const roles = await getCallerRoles(context.supabase, context.userId);
+    if (!roles.includes("moderator") && !roles.includes("owner")) throw new Error("Forbidden");
+    const email = data.email.trim().toLowerCase();
+    if (!email || !data.password || data.password.length < 8) throw new Error("Email и пароль (≥8 символов) обязательны");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: srcRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.sourceUserId);
+    const existing = new Set((srcRoles ?? []).map((r: any) => r.role));
+    const hasOwner = existing.has("owner");
+    const hasTenant = existing.has("tenant");
+    if (hasOwner && hasTenant) throw new Error("У пользователя уже есть и арендодатель, и арендатор");
+    const newRole: "owner" | "tenant" = hasOwner ? "tenant" : "owner";
+    const { data: srcProfile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", data.sourceUserId).maybeSingle();
+    const fullName = data.fullName?.trim() || srcProfile?.full_name || email;
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, signup_role: newRole },
+    });
+    if (error) throw new Error(error.message);
+    const newId = created.user?.id;
+    if (!newId) throw new Error("Не удалось создать аккаунт");
+    const ownerId = newRole === "owner" ? newId : data.sourceUserId;
+    const memberId = newRole === "tenant" ? newId : data.sourceUserId;
+    await supabaseAdmin.from("user_links").upsert(
+      { owner_user_id: ownerId, member_user_id: memberId, role: "tenant", created_by: context.userId } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: context.userId,
+      acted_as_user_id: newId,
+      action: "create",
+      entity_type: "user",
+      entity_id: newId,
+      metadata: { companion_of: data.sourceUserId, role: newRole, email } as never,
+    });
+    return { ok: true, userId: newId, role: newRole };
+  });
