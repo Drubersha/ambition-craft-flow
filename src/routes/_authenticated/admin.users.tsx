@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-export const Route = createFileRoute("/_authenticated/admin/users/")({
+export const Route = createFileRoute("/_authenticated/admin/users")({
   component: UsersPage,
   errorComponent: ({ error }) => <div className="p-6 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-6">Не найдено</div>,
@@ -50,7 +50,7 @@ function UsersPage() {
                     </TableCell>
                     <TableCell className="text-xs">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("ru-RU") : "—"}</TableCell>
                     <TableCell>
-                      <Link to="/admin/users/$userId" params={{ userId: u.id }} className="text-sm text-primary hover:underline">Открыть</Link>
+                      <Link to="/admin/user/$userId" params={{ userId: u.id }} className="text-sm text-primary hover:underline">Открыть</Link>
                     </TableCell>
                   </TableRow>
                 ))}
