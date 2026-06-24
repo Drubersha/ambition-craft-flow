@@ -123,3 +123,90 @@ export const ownerSetRole = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export type CreatableRole = "owner" | "tenant" | "manager" | "moderator" | "developer";
+
+export const adminCreateUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { email: string; password: string; fullName?: string; role: CreatableRole }) => input)
+  .handler(async ({ data, context }) => {
+    const roles = await getCallerRoles(context.supabase, context.userId);
+    if (roles.length === 0) throw new Error("Forbidden");
+    const email = data.email.trim().toLowerCase();
+    if (!email || !data.password || data.password.length < 8) throw new Error("Email и пароль (≥8 символов) обязательны");
+    const baseRole: "owner" | "tenant" = data.role === "tenant" ? "tenant" : "owner";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.fullName ?? email, signup_role: baseRole },
+    });
+    if (error) throw new Error(error.message);
+    const newId = created.user?.id;
+    if (!newId) throw new Error("Не удалось создать пользователя");
+    if (data.role !== baseRole) {
+      await supabaseAdmin.from("user_roles").upsert(
+        { user_id: newId, role: data.role } as never,
+        { onConflict: "user_id,role" },
+      );
+    }
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: context.userId,
+      acted_as_user_id: newId,
+      action: "create",
+      entity_type: "user",
+      entity_id: newId,
+      metadata: { email, role: data.role } as never,
+    });
+    return { ok: true, userId: newId };
+  });
+
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const roles = await getCallerRoles(context.supabase, context.userId);
+    if (roles.length === 0) throw new Error("Forbidden");
+    if (data.userId === context.userId) throw new Error("Нельзя удалить свой аккаунт");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: context.userId,
+      acted_as_user_id: data.userId,
+      action: "delete",
+      entity_type: "user",
+      entity_id: data.userId,
+      metadata: {} as never,
+    });
+    return { ok: true };
+  });
+
+export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { memberUserId: string; ownerUserId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const roles = await getCallerRoles(context.supabase, context.userId);
+    if (roles.length === 0) throw new Error("Forbidden");
+    if (data.memberUserId === data.ownerUserId) throw new Error("Нельзя привязать к самому себе");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("user_roles").upsert(
+      { user_id: data.memberUserId, role: "tenant" } as never,
+      { onConflict: "user_id,role" },
+    );
+    const { error } = await supabaseAdmin.from("user_links").upsert(
+      { owner_user_id: data.ownerUserId, member_user_id: data.memberUserId, role: "tenant", created_by: context.userId } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: context.userId,
+      acted_as_user_id: data.memberUserId,
+      action: "moderator_action",
+      entity_type: "user_link",
+      entity_id: data.memberUserId,
+      metadata: { owner_user_id: data.ownerUserId, role: "tenant", added_role: true } as never,
+    });
+    return { ok: true };
+  });

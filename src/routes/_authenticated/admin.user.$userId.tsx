@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getUserOverview, moderatorUpdateProfile, ownerSetRole } from "@/lib/admin.functions";
+import { getUserOverview, moderatorUpdateProfile, ownerSetRole, adminDeleteUser } from "@/lib/admin.functions";
 import { getActivityLogs } from "@/lib/activity-log.functions";
 import { listLinksForUser, moderatorLinkUser, unlinkUser } from "@/lib/user-links.functions";
 import { listAllUsers } from "@/lib/admin.functions";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ConfirmButton } from "@/components/confirm-button";
 import { formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
@@ -27,6 +28,7 @@ const ADMIN_ROLES = ["developer", "moderator", "owner"] as const;
 
 function UserOverviewPage() {
   const { userId } = Route.useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchOverview = useServerFn(getUserOverview);
   const fetchLogs = useServerFn(getActivityLogs);
@@ -36,6 +38,7 @@ function UserOverviewPage() {
   const linkFn = useServerFn(moderatorLinkUser);
   const unlinkFn = useServerFn(unlinkUser);
   const fetchAllUsers = useServerFn(listAllUsers);
+  const deleteFn = useServerFn(adminDeleteUser);
 
   const q = useQuery({
     queryKey: ["admin-user-overview", userId],
@@ -94,6 +97,14 @@ function UserOverviewPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const deleteMut = useMutation({
+    mutationFn: () => deleteFn({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Аккаунт удалён");
+      navigate({ to: "/admin/users" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   if (q.isLoading) return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>;
   if (q.error) return <div className="p-6 text-sm text-destructive">{(q.error as Error).message}</div>;
@@ -108,6 +119,20 @@ function UserOverviewPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Link to="/admin/users" className="text-sm text-muted-foreground hover:underline">← К списку</Link>
+        {canEdit && (
+          <ConfirmButton
+            size="sm"
+            variant="ghost"
+            destructive
+            className="ml-auto"
+            title="Удалить аккаунт?"
+            description={`Аккаунт ${data.email ?? data.profile?.full_name ?? userId} будет удалён без возможности восстановления.`}
+            confirmText="Удалить"
+            onConfirm={() => deleteMut.mutate()}
+          >
+            Удалить аккаунт
+          </ConfirmButton>
+        )}
       </div>
       <Card>
         <CardHeader>
