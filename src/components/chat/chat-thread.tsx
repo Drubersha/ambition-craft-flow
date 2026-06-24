@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
+import { ensureChatThreadFn } from "@/lib/chat.functions";
 
 type Props = {
   threadId: string;
@@ -47,6 +48,20 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
   const [sending, setSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const { data: thread } = useQuery({
+    queryKey: ["chat-thread", threadId],
+    enabled: !!threadId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chat_threads")
+        .select("id, owner_id, tenant_id")
+        .eq("id", threadId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: messages } = useQuery({
     queryKey: ["chat-messages", threadId],
@@ -110,10 +125,13 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
   async function send() {
     const body = text.trim();
     if (!body && !pendingFile) return;
+    if (!thread?.owner_id) {
+      toast.error("Чат ещё загружается");
+      return;
+    }
     setSending(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      const ownerId = u.user!.id;
+      const ownerId = thread.owner_id;
       const { data: msg, error } = await supabase
         .from("chat_messages")
         .insert({
