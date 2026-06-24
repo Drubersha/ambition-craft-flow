@@ -49,8 +49,8 @@ function LogsPage() {
   if (rolesQ.isLoading) return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>;
   if (!isAdmin) return <div className="p-6 text-sm text-destructive">Доступ только для администраторов.</div>;
 
-  const update = (patch: Partial<typeof search>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch, page: 0 }) });
+  const update = (patch: Record<string, unknown>) =>
+    navigate({ search: { ...search, ...patch, page: 0 } as never });
 
   return (
     <div className="space-y-4">
@@ -130,11 +130,11 @@ function LogsPage() {
                 <div className="text-muted-foreground">Всего: {q.data!.total}</div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" disabled={(search.page ?? 0) === 0}
-                    onClick={() => navigate({ search: (p) => ({ ...p, page: Math.max(0, (p.page ?? 0) - 1) }) })}>
+                    onClick={() => navigate({ search: { ...search, page: Math.max(0, (search.page ?? 0) - 1) } as never })}>
                     Назад
                   </Button>
                   <Button size="sm" variant="outline" disabled={((search.page ?? 0) + 1) * PAGE >= q.data!.total}
-                    onClick={() => navigate({ search: (p) => ({ ...p, page: (p.page ?? 0) + 1 }) })}>
+                    onClick={() => navigate({ search: { ...search, page: (search.page ?? 0) + 1 } as never })}>
                     Вперёд
                   </Button>
                 </div>
