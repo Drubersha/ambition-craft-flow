@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output } from "ai";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const AnalyzeInput = z.object({ messageId: z.string().uuid() });
 const AcceptInput = z.object({ id: z.string().uuid() });
@@ -25,8 +26,9 @@ async function admin() {
 }
 
 export const analyzeMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AnalyzeInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
     const { data: msg, error } = await sb
       .from("chat_messages")
@@ -34,6 +36,7 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .maybeSingle();
     if (error || !msg) return { ok: false, reason: "not_found" };
+    if (msg.owner_id !== context.userId) return { ok: false, reason: "forbidden" };
     if (msg.analyzed_at) return { ok: false, reason: "already" };
     if (msg.sender_role !== "tenant") {
       await sb.from("chat_messages").update({ analyzed_at: new Date().toISOString() }).eq("id", msg.id);
@@ -123,13 +126,15 @@ export const analyzeMessage = createServerFn({ method: "POST" })
   });
 
 export const acceptSuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AcceptInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
     const { data: s, error } = await sb
       .from("task_suggestions")
       .select("*")
       .eq("id", data.id)
+      .eq("owner_id", context.userId)
       .maybeSingle();
     if (error || !s) throw new Error("not found");
     const { data: maxRow } = await sb
@@ -162,36 +167,40 @@ export const acceptSuggestion = createServerFn({ method: "POST" })
   });
 
 export const dismissSuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => DismissInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
-    await sb.from("task_suggestions").update({ status: "dismissed" }).eq("id", data.id);
+    await sb.from("task_suggestions").update({ status: "dismissed" }).eq("id", data.id).eq("owner_id", context.userId);
     return { ok: true };
   });
 
 export const updateTaskStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => UpdateStatusInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
     const patch =
       typeof data.position === "number"
         ? { status: data.status, position: data.position }
         : { status: data.status };
-    await sb.from("tasks").update(patch).eq("id", data.id);
+    await sb.from("tasks").update(patch).eq("id", data.id).eq("owner_id", context.userId);
     return { ok: true };
   });
 
 export const deleteTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => TaskIdInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
-    await sb.from("tasks").delete().eq("id", data.id);
+    await sb.from("tasks").delete().eq("id", data.id).eq("owner_id", context.userId);
     return { ok: true };
   });
 
 export const createManualTaskFromMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AnalyzeInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const sb = await admin();
     const { data: msg } = await sb
       .from("chat_messages")
@@ -199,6 +208,7 @@ export const createManualTaskFromMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .maybeSingle();
     if (!msg) throw new Error("not found");
+    if (msg.owner_id !== context.userId) throw new Error("forbidden");
     const { data: thread } = await sb
       .from("chat_threads")
       .select("tenant_id")
