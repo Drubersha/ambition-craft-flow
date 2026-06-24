@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDemoIdentity } from "@/lib/demo-identity";
+import { useTenantContext } from "@/lib/tenant-context";
 import { Download, FileText } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/_authenticated/me/documents")({
 });
 
 function MyDocs() {
-  const { tenantId } = useDemoIdentity();
+  const ctx = useTenantContext();
+  const tenantId = ctx.status === "ready" ? ctx.tenantId : null;
   const { data } = useQuery({
     queryKey: ["me-docs", tenantId],
     enabled: !!tenantId,

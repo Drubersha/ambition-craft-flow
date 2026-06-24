@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useDemoIdentity } from "@/lib/demo-identity";
+import { useTenantContext } from "@/lib/tenant-context";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/_authenticated/me/calendar")({
 });
 
 function MyCalendar() {
-  const { tenantId } = useDemoIdentity();
+  const ctx = useTenantContext();
+  const tenantId = ctx.status === "ready" ? ctx.tenantId : null;
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
