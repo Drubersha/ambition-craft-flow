@@ -127,8 +127,6 @@ function RootComponent() {
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       if (event === "SIGNED_IN") {
         logActivity({ data: { action: "login" } }).catch(() => {});
-      } else if (event === "SIGNED_OUT") {
-        logActivity({ data: { action: "logout" } }).catch(() => {});
       }
     });
     return () => sub.subscription.unsubscribe();
