@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type DemoRole = "owner" | "manager" | "tenant";
+export type DemoRole = "owner" | "manager" | "tenant" | "developer" | "moderator";
 
 type Identity = {
   role: DemoRole;
@@ -20,7 +20,8 @@ function readInitial(): { role: DemoRole; tenantId: string | null } {
   if (typeof window === "undefined") return { role: "owner", tenantId: null };
   const r = (localStorage.getItem(ROLE_KEY) as DemoRole | null) ?? "owner";
   const t = localStorage.getItem(TENANT_KEY);
-  return { role: r === "owner" || r === "manager" || r === "tenant" ? r : "owner", tenantId: t };
+  const allowed: DemoRole[] = ["owner", "manager", "tenant", "developer", "moderator"];
+  return { role: (allowed as string[]).includes(r as string) ? (r as DemoRole) : "owner", tenantId: t };
 }
 
 export function DemoIdentityProvider({ children }: { children: ReactNode }) {
@@ -69,4 +70,6 @@ export const ROLE_LABELS: Record<DemoRole, string> = {
   owner: "Главный",
   manager: "Менеджер",
   tenant: "Арендатор",
+  developer: "Разработчик",
+  moderator: "Модератор",
 };
