@@ -34,9 +34,9 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Вход и регистрация в RentFlow — системе учёта коммерческой аренды." },
       { property: "og:title", content: "Вход — RentFlow" },
       { property: "og:description", content: "Вход и регистрация в RentFlow." },
-      { property: "og:url", content: "https://ambition-craft-flow.lovable.app/auth" },
+      { property: "og:url", content: "/auth" },
     ],
-    links: [{ rel: "canonical", href: "https://ambition-craft-flow.lovable.app/auth" }],
+    links: [{ rel: "canonical", href: "/auth" }],
   }),
 });
 

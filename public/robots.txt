@@ -14,4 +14,6 @@ Disallow: /leads
 Disallow: /tasks
 Disallow: /users
 
-Sitemap: https://ambition-craft-flow.lovable.app/sitemap.xml
+# Crawlers auto-discover /sitemap.xml at the well-known path on whichever
+# host serves this file (Lovable, self-host, custom domain). Set an explicit
+# absolute Sitemap: line here only if your deployment needs it.
