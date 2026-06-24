@@ -113,7 +113,6 @@ function UserOverviewPage() {
   const data = q.data;
   const isOwner = data.viewerRoles.includes("owner");
   const canEdit = isOwner || data.viewerRoles.includes("moderator");
-  const canDelete = canEdit && userId !== q.data?.viewerRoles && q.data; // viewerRoles not user id; fallback below
   const displayName = name ?? data.profile?.full_name ?? "";
 
   return (
