@@ -57,7 +57,13 @@ const ADMIN_NAV = [
 
 function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role: DemoRole; isAdmin: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = role === "tenant" ? TENANT_NAV : OWNER_NAV;
+  const items =
+    role === "tenant"
+      ? TENANT_NAV
+      : role === "developer" || role === "moderator"
+      ? []
+      : OWNER_NAV;
+  const showAdmin = isAdmin || role === "developer" || role === "moderator";
   return (
     <nav className="flex flex-col gap-1 px-2">
       {items.map((item) => {
@@ -82,9 +88,9 @@ function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role:
           </Link>
         );
       })}
-      {isAdmin && (
+      {showAdmin && (
         <>
-          <div className="mt-3 px-3 text-[10px] uppercase tracking-wide text-muted-foreground">Администрирование</div>
+          <div className={cn("px-3 text-[10px] uppercase tracking-wide text-muted-foreground", items.length > 0 && "mt-3")}>Администрирование</div>
           {ADMIN_NAV.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
