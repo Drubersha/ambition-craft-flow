@@ -37,7 +37,7 @@ import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedChargesIdRouteImport } from './routes/_authenticated/charges.$id'
 import { Route as AuthenticatedBudgetsFolderIdRouteImport } from './routes/_authenticated/budgets.$folderId'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
-import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
+import { Route as AuthenticatedAdminUserUserIdRouteImport } from './routes/_authenticated/admin.user.$userId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -191,10 +191,10 @@ const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
   path: '/admin/logs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminUsersUserIdRoute =
-  AuthenticatedAdminUsersUserIdRouteImport.update({
-    id: '/admin/users/$userId',
-    path: '/admin/users/$userId',
+const AuthenticatedAdminUserUserIdRoute =
+  AuthenticatedAdminUserUserIdRouteImport.update({
+    id: '/admin/user/$userId',
+    path: '/admin/user/$userId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
@@ -226,7 +226,7 @@ export interface FileRoutesByFullPath {
   '/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
   '/tenants/': typeof AuthenticatedTenantsIndexRoute
-  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/admin/user/$userId': typeof AuthenticatedAdminUserUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -255,7 +255,7 @@ export interface FileRoutesByTo {
   '/properties': typeof AuthenticatedPropertiesIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/tenants': typeof AuthenticatedTenantsIndexRoute
-  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/admin/user/$userId': typeof AuthenticatedAdminUserUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -287,7 +287,7 @@ export interface FileRoutesById {
   '/_authenticated/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/tenants/': typeof AuthenticatedTenantsIndexRoute
-  '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/_authenticated/admin/user/$userId': typeof AuthenticatedAdminUserUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -319,7 +319,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/tasks/'
     | '/tenants/'
-    | '/admin/users/$userId'
+    | '/admin/user/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -348,7 +348,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/tasks'
     | '/tenants'
-    | '/admin/users/$userId'
+    | '/admin/user/$userId'
   id:
     | '__root__'
     | '/'
@@ -379,7 +379,7 @@ export interface FileRouteTypes {
     | '/_authenticated/properties/'
     | '/_authenticated/tasks/'
     | '/_authenticated/tenants/'
-    | '/_authenticated/admin/users/$userId'
+    | '/_authenticated/admin/user/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -585,11 +585,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLogsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/users/$userId': {
-      id: '/_authenticated/admin/users/$userId'
-      path: '/admin/users/$userId'
-      fullPath: '/admin/users/$userId'
-      preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
+    '/_authenticated/admin/user/$userId': {
+      id: '/_authenticated/admin/user/$userId'
+      path: '/admin/user/$userId'
+      fullPath: '/admin/user/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminUserUserIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -638,7 +638,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPropertiesIndexRoute: typeof AuthenticatedPropertiesIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedTenantsIndexRoute: typeof AuthenticatedTenantsIndexRoute
-  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+  AuthenticatedAdminUserUserIdRoute: typeof AuthenticatedAdminUserUserIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -662,7 +662,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPropertiesIndexRoute: AuthenticatedPropertiesIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedTenantsIndexRoute: AuthenticatedTenantsIndexRoute,
-  AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+  AuthenticatedAdminUserUserIdRoute: AuthenticatedAdminUserUserIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

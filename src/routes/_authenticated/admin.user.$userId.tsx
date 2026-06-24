@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/admin/users/$userId")({
+export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
   component: UserOverviewPage,
   errorComponent: ({ error }) => <div className="p-6 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-6">Не найдено</div>,
