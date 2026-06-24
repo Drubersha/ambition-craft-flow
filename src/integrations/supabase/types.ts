@@ -1069,7 +1069,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "manager"
+      app_role: "owner" | "manager" | "developer" | "moderator"
       charge_status: "unpaid" | "partial" | "paid" | "overdue"
       chat_sender_role: "owner" | "manager" | "tenant"
       contract_kind: "rent" | "ahch"
@@ -1236,7 +1236,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "manager"],
+      app_role: ["owner", "manager", "developer", "moderator"],
       charge_status: ["unpaid", "partial", "paid", "overdue"],
       chat_sender_role: ["owner", "manager", "tenant"],
       contract_kind: ["rent", "ahch"],
