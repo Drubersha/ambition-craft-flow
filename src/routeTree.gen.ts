@@ -36,6 +36,7 @@ import { Route as AuthenticatedContractsNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 import { Route as AuthenticatedChargesIdRouteImport } from './routes/_authenticated/charges.$id'
 import { Route as AuthenticatedBudgetsFolderIdRouteImport } from './routes/_authenticated/budgets.$folderId'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
@@ -187,6 +188,11 @@ const AuthenticatedBudgetsFolderIdRoute =
     path: '/budgets/$folderId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
   id: '/admin/logs',
   path: '/admin/logs',
@@ -194,15 +200,15 @@ const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
 } as any)
 const AuthenticatedAdminUsersIndexRoute =
   AuthenticatedAdminUsersIndexRouteImport.update({
-    id: '/admin/users/',
-    path: '/admin/users/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
   } as any)
 const AuthenticatedAdminUsersUserIdRoute =
   AuthenticatedAdminUsersUserIdRouteImport.update({
-    id: '/admin/users/$userId',
-    path: '/admin/users/$userId',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
   '/charges/$id': typeof AuthenticatedChargesIdRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
@@ -273,6 +280,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
   '/_authenticated/charges/$id': typeof AuthenticatedChargesIdRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
@@ -306,6 +314,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/me'
     | '/admin/logs'
+    | '/admin/users'
     | '/budgets/$folderId'
     | '/charges/$id'
     | '/contracts/$id'
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/me'
     | '/_authenticated/admin/logs'
+    | '/_authenticated/admin/users'
     | '/_authenticated/budgets/$folderId'
     | '/_authenticated/charges/$id'
     | '/_authenticated/contracts/$id'
@@ -591,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBudgetsFolderIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/logs': {
       id: '/_authenticated/admin/logs'
       path: '/admin/logs'
@@ -600,17 +617,17 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/users/': {
       id: '/_authenticated/admin/users/'
-      path: '/admin/users'
+      path: '/'
       fullPath: '/admin/users/'
       preLoaderRoute: typeof AuthenticatedAdminUsersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminUsersRoute
     }
     '/_authenticated/admin/users/$userId': {
       id: '/_authenticated/admin/users/$userId'
-      path: '/admin/users/$userId'
+      path: '/$userId'
       fullPath: '/admin/users/$userId'
       preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminUsersRoute
     }
   }
 }
@@ -637,10 +654,27 @@ const AuthenticatedMeRouteWithChildren = AuthenticatedMeRoute._addFileChildren(
   AuthenticatedMeRouteChildren,
 )
 
+interface AuthenticatedAdminUsersRouteChildren {
+  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+  AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
+}
+
+const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
+  {
+    AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+    AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
+  }
+
+const AuthenticatedAdminUsersRouteWithChildren =
+  AuthenticatedAdminUsersRoute._addFileChildren(
+    AuthenticatedAdminUsersRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
   AuthenticatedBudgetsFolderIdRoute: typeof AuthenticatedBudgetsFolderIdRoute
   AuthenticatedChargesIdRoute: typeof AuthenticatedChargesIdRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
@@ -658,14 +692,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPropertiesIndexRoute: typeof AuthenticatedPropertiesIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedTenantsIndexRoute: typeof AuthenticatedTenantsIndexRoute
-  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
-  AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
   AuthenticatedBudgetsFolderIdRoute: AuthenticatedBudgetsFolderIdRoute,
   AuthenticatedChargesIdRoute: AuthenticatedChargesIdRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
@@ -683,8 +716,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPropertiesIndexRoute: AuthenticatedPropertiesIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedTenantsIndexRoute: AuthenticatedTenantsIndexRoute,
-  AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
-  AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
