@@ -27,7 +27,7 @@ function TasksPage() {
   if (role === "tenant") {
     return (
       <Card className="p-6 text-sm text-muted-foreground">
-        Раздел задач доступен только главному и менеджеру.
+        Раздел задач доступен только арендодателю и менеджеру.
       </Card>
     );
   }
