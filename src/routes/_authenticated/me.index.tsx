@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDemoIdentity } from "@/lib/demo-identity";
+import { useTenantContext } from "@/lib/tenant-context";
 import { formatDate, formatMoney, CHARGE_STATUS_LABELS } from "@/lib/format";
 import { FileText, Receipt, CalendarDays, MessageSquare } from "lucide-react";
 
@@ -12,7 +12,8 @@ export const Route = createFileRoute("/_authenticated/me/")({
 });
 
 function MeDashboard() {
-  const { tenantId } = useDemoIdentity();
+  const ctx = useTenantContext();
+  const tenantId = ctx.status === "ready" ? ctx.tenantId : null;
 
   const { data } = useQuery({
     queryKey: ["me-dashboard", tenantId],
