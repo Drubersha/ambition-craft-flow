@@ -140,6 +140,8 @@ function IdentitySwitcher() {
           <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
           <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
           <SelectItem value="tenant">{ROLE_LABELS.tenant}</SelectItem>
+          <SelectItem value="developer">{ROLE_LABELS.developer}</SelectItem>
+          <SelectItem value="moderator">{ROLE_LABELS.moderator}</SelectItem>
         </SelectContent>
       </Select>
       {role === "tenant" && (
@@ -166,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
   const rolesQ = useQuery({ queryKey: ["admin-roles"], queryFn: () => fetchRoles(), staleTime: 60_000 });
-  const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0;
+  const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0 || role === "developer" || role === "moderator";
 
   return (
     <div className="flex min-h-[100dvh] bg-muted/20">
