@@ -699,6 +699,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          entity_id: string | null
+          entity_table: string | null
+          id: string
+          kind: string
+          read_at: string | null
+          route: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: string
+          kind: string
+          read_at?: string | null
+          route?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          route?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -1118,6 +1157,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _notify_owner_and_managers: {
+        Args: {
+          _body: string
+          _entity_id: string
+          _entity_table: string
+          _kind: string
+          _owner_id: string
+          _route: string
+          _title: string
+        }
+        Returns: undefined
+      }
       get_my_owner_ids: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: string[]

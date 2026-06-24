@@ -1,47 +1,50 @@
-## Цель
-Дать модератору (и developer/owner-admin) расширенные права в разделе «Пользователи»:
-1. Создавать новый аккаунт (email + пароль + ФИО + стартовая роль).
-2. Удалять аккаунт с подтверждением.
-3. Добавлять модератором роль «арендатор» уже существующему арендодателю и привязывать его как арендатора к выбранному главному (на случай, если пользователь зарегистрировался не той ролью).
+## Кнопка уведомлений
 
-## Где меняем
+Добавить колокольчик с бейджем непрочитанных в шапке (видимый на всех страницах), хранить уведомления в БД, генерировать их триггерами на ключевые события и подписываться на realtime.
 
-### Backend — `src/lib/admin.functions.ts` (новые server fn)
-- `adminCreateUser({ email, password, fullName, role: 'owner'|'tenant'|'manager'|'moderator'|'developer' })`
-  - Проверка ролей вызывающего через `is_admin` / `has_role`.
-  - `supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name, signup_role } })`.
-  - Триггер `handle_new_user` создаст profile + базовую роль; затем `user_roles.upsert` для запрошенной роли, если она отличается от owner/tenant.
-  - Логирование в `activity_logs` (action: `create`, entity_type: `user`).
-- `adminDeleteUser({ userId })`
-  - Только admin-роли, нельзя удалить себя.
-  - `supabaseAdmin.auth.admin.deleteUser(userId)` (каскад уберёт profile/roles/links через FK on delete cascade — проверим в текущей схеме user_roles/user_links/profiles, они уже ссылаются `on delete cascade` на `auth.users`).
-  - Лог в `activity_logs` (action: `delete`).
-- `adminAddTenantRoleAndLink({ memberUserId, ownerUserId })`
-  - Только admin-роли.
-  - Добавляет роль `tenant` пользователю (`user_roles.upsert`) и создаёт связь `user_links(owner_user_id=ownerUserId, member_user_id=memberUserId, role='tenant')`.
-  - Лог `moderator_action`.
-  - (Аналогичный сценарий для роли `manager` уже покрывается `moderatorLinkUser`, дублировать не будем.)
+### 1. БД (миграция)
 
-Миграции не требуются — таблицы и политики уже есть; пишем только server-fn поверх `supabaseAdmin`.
+Таблица `notifications`:
+- `user_id` (uuid, кому) — индекс
+- `kind` (text): `alert | account | property | tenant | contract | charge | indexation | chat`
+- `title` (text), `body` (text, опц.)
+- `entity_table`, `entity_id` (для ссылки)
+- `route` (text, куда вести по клику)
+- `read_at` (timestamptz, null = непрочитано)
+- `created_at`
 
-### Frontend
+GRANT для `authenticated` + `service_role`. RLS: пользователь видит/обновляет/удаляет только свои строки (`user_id = auth.uid()`), INSERT через service_role/триггеры.
 
-`src/routes/_authenticated/admin.users.tsx` (страница «Пользователи» у модератора):
-- Кнопка «Создать пользователя» → диалог с полями email, пароль (с генератором), ФИО, селект роли. Submit → `adminCreateUser` → invalidate `admin-users`, toast.
-- В строке таблицы — кнопка «Удалить» с `ConfirmButton` (destructive). Скрываем для текущего пользователя.
-- В строке таблицы — кнопка «Сделать арендатором у…» → диалог: селект арендодателя (из текущего списка `listAllUsers`, фильтр по роли `owner`). Submit → `adminAddTenantRoleAndLink` → invalidate.
+Триггеры (SECURITY DEFINER), для каждого ключевого события вставляют по строке каждому получателю:
+- `properties` AFTER INSERT → арендодатель (owner_id) + связанные менеджеры через `user_links`
+- `tenants` AFTER INSERT → то же
+- `contracts` AFTER INSERT → то же
+- `charges` AFTER INSERT → арендодатель/менеджеры + арендатор контракта; `kind='indexation'` если `meta`/тип = индексация, иначе `charge`
+- `chat_messages` AFTER INSERT → второй стороне треда (если sender=tenant → owner/менеджеры, если owner/manager → tenant)
+- `activity_logs` AFTER INSERT с `action in ('login','password_change',...)` → владельцу аккаунта (`account`)
 
-`src/routes/_authenticated/admin.user.$userId.tsx` (детальная):
-- В уже существующем табе «Привязки» добавить кнопку «Привязать как арендатора к арендодателю …» (форма выбора owner) — использует тот же `adminAddTenantRoleAndLink`.
-- Добавить кнопку «Удалить аккаунт» с подтверждением (если не сам себе) → `adminDeleteUser` → redirect на `/admin/users`.
+### 2. Server functions (`src/lib/notifications.functions.ts`)
+- `listMyNotifications({ limit })` — последние N
+- `getUnreadCount()`
+- `markRead({ ids })` / `markAllRead()`
+- `deleteNotification({ id })`
 
-UX: все confirm-модалки через существующий `ConfirmButton`, диалоги через `Dialog` shadcn, тосты через `sonner`.
+Все с `requireSupabaseAuth`, фильтр `user_id = context.userId`.
 
-## Безопасность
-- Все новые server-fn используют `requireSupabaseAuth` + проверку `is_admin(userId)` до любых действий.
-- `supabaseAdmin` импортируется только внутри `.handler()` (правило client.server).
-- Запрет удаления себя и понижения собственных admin-прав на этом этапе (отдельные кнопки скрываем для `context.userId === target`).
+### 3. UI
 
-## Что не трогаем
-- Схема БД, RLS, регистрация (`auth.tsx`), self-service страница `/users` для арендодателя.
-- Демо-режим: новые админ-действия не имитируются (нужен реальный логин с admin-ролью).
+Новый компонент `src/components/notifications-bell.tsx`:
+- Иконка `Bell` (lucide) + красный бейдж с количеством непрочитанных
+- Popover со списком (заголовок, текст, относительное время, иконка по `kind`)
+- Клик по пункту → `markRead` + `navigate(route)`
+- Кнопки «Прочитать всё» и «Очистить»
+- React Query: `useQuery` для списка/счётчика (staleTime 30с) + Supabase realtime подписка на `notifications` для текущего `user_id`, инвалидирует кэш при INSERT/UPDATE → «одноразовые» (показывается, пока не прочитано, потом исчезает из badge)
+- Toast (sonner) при новом INSERT через realtime
+
+Размещение: в `src/components/app-shell.tsx` — добавить колокольчик в десктоп-сайдбар рядом с `IdentitySwitcher` и в мобильную шапку рядом с `ROLE_LABELS[role]`.
+
+### Технические детали
+- Realtime: `supabase.channel('notif:'+userId).on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications', filter:'user_id=eq.'+userId }, ...)`
+- Получатели в триггерах вычисляются через `user_links` (member_user_id для роли owner/manager) + сам `owner_id`
+- Для чатов: получатель — `tenant_user_id` или `owner_user_id` треда (поля уже есть в `chat_threads`)
+- Маршруты в `route`: `/properties/:id`, `/tenants/:id`, `/contracts/:id`, `/charges/:id`, `/chats` и т.д.
