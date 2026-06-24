@@ -41,11 +41,13 @@ function AuthPage() {
   const [gatePassword, setGatePassword] = useState("");
 
   async function openGate(kind: DemoKind) {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
+    const { data, error } = await supabase.auth.getUser();
+    if (data?.user && !error) {
       toast.error("В аккаунт уже вошли, дождитесь когда выйдут");
       return;
     }
+    // Clear any stale local session before opening the gate.
+    await supabase.auth.signOut().catch(() => {});
     setGateLogin("");
     setGatePassword("");
     setGateKind(kind);
