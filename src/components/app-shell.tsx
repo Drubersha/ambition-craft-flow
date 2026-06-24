@@ -219,11 +219,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-4 w-4" />
           </div>
           <span className="font-semibold">RentFlow</span>
-          <div className="ml-auto"><NotificationsBell /></div>
+        <div className="ml-auto"><NotificationsBell /></div>
         </div>
         <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
           <NavList role={role} isAdmin={isAdmin} />
+        </div>
+        <div className="border-t p-3">
+          <LogoutButton />
         </div>
       </aside>
 
@@ -243,6 +246,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="py-3 flex-1 overflow-y-auto">
                 <NavList onNavigate={() => setMobileOpen(false)} role={role} isAdmin={isAdmin} />
               </div>
+              <div className="border-t p-3">
+                <LogoutButton />
+              </div>
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2 min-w-0">
@@ -251,6 +257,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="ml-auto flex items-center gap-1">
             <NotificationsBell />
+            <LogoutButton variant="ghost" />
             <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
           </div>
         </header>
