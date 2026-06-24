@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type DemoKind = "demo" | "demo2" | "moderator" | "developer";
 
@@ -10,15 +11,22 @@ export const DEMO_ACCOUNTS: Record<DemoKind, { email: string; password: string; 
 };
 
 export const ensureDemoAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { kind: DemoKind }) => {
     if (!input || !["demo", "demo2", "moderator", "developer"].includes(input.kind)) {
       throw new Error("Bad kind");
     }
     return input;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const acc = DEMO_ACCOUNTS[data.kind];
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Only an existing developer/admin may (re)provision demo accounts.
+    const { data: isDev } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "developer",
+    });
+    if (!isDev) throw new Error("Forbidden");
     // Try to find existing user by listing (small scale demo)
     const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
     let user = list?.users?.find((u) => u.email?.toLowerCase() === acc.email.toLowerCase()) ?? null;
@@ -46,13 +54,20 @@ export const ensureDemoAccount = createServerFn({ method: "POST" })
   });
 
 export const resetDemo2Account = createServerFn({ method: "POST" })
-  .handler(async () => {
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
     const acc = DEMO_ACCOUNTS.demo2;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
     const user = list?.users?.find((u) => u.email?.toLowerCase() === acc.email.toLowerCase());
     if (!user) return { ok: true };
     const uid = user.id;
+    // Only the demo2 account itself, or a developer, may wipe demo2 data.
+    const { data: isDev } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "developer",
+    });
+    if (context.userId !== uid && !isDev) throw new Error("Forbidden");
     // Tables to wipe (activity_logs intentionally preserved).
     const ownerTables = [
       "payments", "charge_items", "charges", "contracts", "tenants",
