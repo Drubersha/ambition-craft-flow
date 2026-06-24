@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyRoles } from "@/lib/my-roles.functions";
 
 export type DemoRole = "owner" | "manager" | "tenant" | "developer" | "moderator";
 
@@ -16,25 +18,54 @@ const Ctx = createContext<Identity | null>(null);
 const ROLE_KEY = "demo.role";
 const TENANT_KEY = "demo.tenantId";
 
-function readInitial(): { role: DemoRole; tenantId: string | null } {
-  if (typeof window === "undefined") return { role: "owner", tenantId: null };
-  const r = (localStorage.getItem(ROLE_KEY) as DemoRole | null) ?? "owner";
-  const t = localStorage.getItem(TENANT_KEY);
-  const allowed: DemoRole[] = ["owner", "manager", "tenant", "developer", "moderator"];
-  return { role: (allowed as string[]).includes(r as string) ? (r as DemoRole) : "owner", tenantId: t };
+// Roles that grant privileged UI (admin pages, moderator tools) MUST be
+// verified against the server. Owner/manager/tenant views are RLS-scoped, so
+// switching to them client-side cannot leak data.
+const PRIVILEGED: DemoRole[] = ["developer", "moderator"];
+
+function readTenantId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TENANT_KEY);
 }
 
 export function DemoIdentityProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<DemoRole>("owner");
   const [tenantId, setTenantIdState] = useState<string | null>(null);
+  const [serverRoles, setServerRoles] = useState<string[] | null>(null);
+  const fetchRoles = useServerFn(getMyRoles);
 
   useEffect(() => {
-    const init = readInitial();
-    setRoleState(init.role);
-    setTenantIdState(init.tenantId);
-  }, []);
+    setTenantIdState(readTenantId());
+    let active = true;
+    fetchRoles()
+      .then((res) => {
+        if (!active) return;
+        const roles = res?.roles ?? [];
+        setServerRoles(roles);
+        // Honour saved preference only if user actually owns that role.
+        const stored =
+          typeof window !== "undefined"
+            ? (localStorage.getItem(ROLE_KEY) as DemoRole | null)
+            : null;
+        const allowed: DemoRole[] = ["owner", "manager", "tenant"];
+        for (const r of PRIVILEGED) if (roles.includes(r)) allowed.push(r);
+        if (stored && allowed.includes(stored)) setRoleState(stored);
+        else setRoleState(roles.includes("developer") ? "developer" : roles.includes("moderator") ? "moderator" : "owner");
+      })
+      .catch(() => {
+        if (active) setServerRoles([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [fetchRoles]);
 
   const setRole = (r: DemoRole) => {
+    // Block escalation into privileged roles unless server confirmed them.
+    if (PRIVILEGED.includes(r) && !(serverRoles ?? []).includes(r)) {
+      console.warn("[demo-identity] refused privileged role switch:", r);
+      return;
+    }
     setRoleState(r);
     if (typeof window !== "undefined") localStorage.setItem(ROLE_KEY, r);
   };
