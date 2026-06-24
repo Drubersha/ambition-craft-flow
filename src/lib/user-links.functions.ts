@@ -156,8 +156,9 @@ export const listLinksForUser = createServerFn({ method: "POST" })
     if (ids.length > 0) {
       const { data: profs } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
       (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
-      const { data: auths } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-      (auths?.users ?? []).forEach((u: any) => { if (ids.includes(u.id)) emailById.set(u.id, u.email ?? null); });
+      const { getAuthUsersByIds } = await import("@/lib/auth-users.server");
+      const authById = await getAuthUsersByIds(supabaseAdmin, ids);
+      authById.forEach((u, id) => emailById.set(id, u.email));
     }
     const decorate = (l: any, otherId: string) => ({
       ...l,
