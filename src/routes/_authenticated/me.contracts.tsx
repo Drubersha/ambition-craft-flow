@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDemoIdentity } from "@/lib/demo-identity";
+import { useTenantContext } from "@/lib/tenant-context";
 import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/me/contracts")({
@@ -11,7 +11,8 @@ export const Route = createFileRoute("/_authenticated/me/contracts")({
 });
 
 function MyContracts() {
-  const { tenantId } = useDemoIdentity();
+  const ctx = useTenantContext();
+  const tenantId = ctx.status === "ready" ? ctx.tenantId : null;
   const { data, isLoading } = useQuery({
     queryKey: ["me-contracts", tenantId],
     enabled: !!tenantId,

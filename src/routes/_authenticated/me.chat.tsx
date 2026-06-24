@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ChatThread, ensureChatThread } from "@/components/chat/chat-thread";
-import { useDemoIdentity } from "@/lib/demo-identity";
+import { useTenantContext } from "@/lib/tenant-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/me/chat")({
@@ -12,7 +12,8 @@ export const Route = createFileRoute("/_authenticated/me/chat")({
 });
 
 function MyChat() {
-  const { tenantId } = useDemoIdentity();
+  const ctx = useTenantContext();
+  const tenantId = ctx.status === "ready" ? ctx.tenantId : null;
   const [threadId, setThreadId] = useState<string | null>(null);
 
   const { data: tenant } = useQuery({
