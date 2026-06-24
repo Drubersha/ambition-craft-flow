@@ -114,7 +114,7 @@ function ChatsPage() {
           {selected ? (
             <ChatThread
               threadId={selected}
-              myRole={role === "tenant" ? "tenant" : role === "manager" ? "manager" : "owner"}
+              myRole={role === "manager" ? "manager" : "owner"}
               myLabel={ROLE_LABELS[role]}
             />
           ) : (
