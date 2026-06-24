@@ -1169,15 +1169,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      _seed_demo_user: {
-        Args: {
-          _email: string
-          _full_name: string
-          _password: string
-          _roles: Database["public"]["Enums"]["app_role"][]
-        }
-        Returns: string
-      }
       get_my_owner_ids: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: string[]
