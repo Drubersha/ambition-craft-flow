@@ -39,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
+import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
@@ -51,10 +52,14 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
     setLoading(true);
     await queryClient.cancelQueries();
     queryClient.clear();
+    if (typeof window !== "undefined" && localStorage.getItem("demo.kind") === "demo2") {
+      try { await resetDemo2Account(); } catch { /* ignore */ }
+    }
     await supabase.auth.signOut();
     if (typeof window !== "undefined") {
       localStorage.removeItem("demo.role");
       localStorage.removeItem("active_account_kind");
+      localStorage.removeItem("demo.kind");
     }
     navigate({ to: "/auth", replace: true });
     setLoading(false);

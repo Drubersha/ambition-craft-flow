@@ -51,7 +51,10 @@ function AuthPage() {
           <div className="mt-6 pt-4 border-t space-y-2">
             <div className="text-xs text-muted-foreground text-center">Быстрый вход для демонстрации</div>
             <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("demo")}>
-              {demoLoading === "demo" ? "..." : "Зайти в демо режим"}
+              {demoLoading === "demo" ? "..." : "Зайти в демо режим 1"}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("demo2")}>
+              {demoLoading === "demo2" ? "..." : "Зайти в демо режим 2 (авто-очистка при выходе)"}
             </Button>
             <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("moderator")}>
               {demoLoading === "moderator" ? "..." : "Зайти как модератор"}
