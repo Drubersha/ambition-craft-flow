@@ -9,6 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { signInAsDemo } from "@/lib/demo-auth";
 import type { DemoKind } from "@/lib/demo-auth.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+const DEMO_CREDENTIALS: Record<DemoKind, { login: string; password: string; label: string }> = {
+  demo: { login: "admin", password: "admin", label: "Демо режим 1" },
+  demo2: { login: "demo", password: "demo", label: "Демо режим 2" },
+  moderator: { login: "admin", password: "admin", label: "Модератор" },
+  developer: { login: "admin", password: "admin", label: "Администратор" },
+};
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -21,8 +36,31 @@ function AuthPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [demoLoading, setDemoLoading] = useState<DemoKind | null>(null);
+  const [gateKind, setGateKind] = useState<DemoKind | null>(null);
+  const [gateLogin, setGateLogin] = useState("");
+  const [gatePassword, setGatePassword] = useState("");
 
-  async function enterAs(kind: DemoKind) {
+  async function openGate(kind: DemoKind) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      toast.error("В аккаунт уже вошли, дождитесь когда выйдут");
+      return;
+    }
+    setGateLogin("");
+    setGatePassword("");
+    setGateKind(kind);
+  }
+
+  async function submitGate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gateKind) return;
+    const creds = DEMO_CREDENTIALS[gateKind];
+    if (gateLogin !== creds.login || gatePassword !== creds.password) {
+      toast.error("Неверный логин или пароль");
+      return;
+    }
+    const kind = gateKind;
+    setGateKind(null);
     setDemoLoading(kind);
     try {
       await signInAsDemo(kind);
@@ -50,21 +88,43 @@ function AuthPage() {
           </Tabs>
           <div className="mt-6 pt-4 border-t space-y-2">
             <div className="text-xs text-muted-foreground text-center">Быстрый вход для демонстрации</div>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("demo")}>
+            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("demo")}>
               {demoLoading === "demo" ? "..." : "Зайти в демо режим 1"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("demo2")}>
+            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("demo2")}>
               {demoLoading === "demo2" ? "..." : "Зайти в демо режим 2 (авто-очистка при выходе)"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("moderator")}>
+            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("moderator")}>
               {demoLoading === "moderator" ? "..." : "Зайти как модератор"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => enterAs("developer")}>
+            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("developer")}>
               {demoLoading === "developer" ? "..." : "Зайти как администратор"}
             </Button>
           </div>
         </CardContent>
       </Card>
+      <Dialog open={gateKind !== null} onOpenChange={(o) => { if (!o) setGateKind(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Вход — {gateKind ? DEMO_CREDENTIALS[gateKind].label : ""}</DialogTitle>
+            <DialogDescription>Введите логин и пароль для доступа</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitGate} className="space-y-3">
+            <div className="space-y-1">
+              <Label>Логин</Label>
+              <Input value={gateLogin} onChange={(e) => setGateLogin(e.target.value)} autoFocus required />
+            </div>
+            <div className="space-y-1">
+              <Label>Пароль</Label>
+              <Input type="password" value={gatePassword} onChange={(e) => setGatePassword(e.target.value)} required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setGateKind(null)}>Отмена</Button>
+              <Button type="submit">Войти</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
