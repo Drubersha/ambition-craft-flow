@@ -5,6 +5,7 @@ import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
 import { toast } from "sonner";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
+import { useEffectiveOwnerId } from "@/lib/manager-context";
 
 export const Route = createFileRoute("/_authenticated/tenants/new")({
   component: NewTenant,
@@ -13,11 +14,12 @@ export const Route = createFileRoute("/_authenticated/tenants/new")({
 function NewTenant() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { ownerId } = useEffectiveOwnerId();
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
-      const { data: u } = await supabase.auth.getUser();
+      if (!ownerId) throw new Error("Не удалось определить арендодателя");
       const { data, error } = await supabase.from("tenants").insert({
-        owner_id: u.user!.id,
+        owner_id: ownerId,
         name: v.name, kind: v.kind as any,
         inn: v.inn || null, phone: v.phone || null, email: v.email || null,
         contact_person: v.contact_person || null, notes: v.notes || null,
