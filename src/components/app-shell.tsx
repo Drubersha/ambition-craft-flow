@@ -21,7 +21,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -243,7 +243,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role } = useDemoIdentity();
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
-  const rolesQ = useQuery({ queryKey: ["admin-roles"], queryFn: () => fetchRoles(), staleTime: 60_000 });
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) setHasSession(!!data.session); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (active) setHasSession(!!session);
+    });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
+  const rolesQ = useQuery({
+    queryKey: ["admin-roles"],
+    queryFn: () => fetchRoles(),
+    staleTime: 60_000,
+    enabled: hasSession,
+    retry: false,
+  });
   const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0 || role === "developer" || role === "moderator";
 
   return (
