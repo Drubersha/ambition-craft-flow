@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ensureOwnerAccess } from "@/lib/manager-context.functions";
 
 const AnalyzeInput = z.object({ messageId: z.string().uuid() });
 const AcceptInput = z.object({ id: z.string().uuid() });
@@ -23,6 +24,18 @@ const TaskSchema = z.object({
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
+}
+
+/** Owner ids the caller can act on: themselves + every owner they manage. */
+async function allowedOwnerIds(supabase: any, userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("user_links")
+    .select("owner_user_id")
+    .eq("member_user_id", userId)
+    .eq("role", "manager");
+  const ids = new Set<string>([userId]);
+  (data ?? []).forEach((r: any) => ids.add(r.owner_user_id));
+  return Array.from(ids);
 }
 
 export const analyzeMessage = createServerFn({ method: "POST" })
