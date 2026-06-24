@@ -49,7 +49,11 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .maybeSingle();
     if (error || !msg) return { ok: false, reason: "not_found" };
-    if (msg.owner_id !== context.userId) return { ok: false, reason: "forbidden" };
+    try {
+      await ensureOwnerAccess(context.supabase, context.userId, msg.owner_id as string);
+    } catch {
+      return { ok: false, reason: "forbidden" };
+    }
     if (msg.analyzed_at) return { ok: false, reason: "already" };
     if (msg.sender_role !== "tenant") {
       await sb.from("chat_messages").update({ analyzed_at: new Date().toISOString() }).eq("id", msg.id);
