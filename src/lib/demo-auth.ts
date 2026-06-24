@@ -11,6 +11,6 @@ export async function signInAsDemo(kind: DemoKind): Promise<void> {
     const role = kind === "developer" ? "developer" : kind === "moderator" ? "moderator" : "owner";
     localStorage.setItem("demo.role", role);
     // Force a full reload so DemoIdentityProvider re-reads the role from localStorage.
-    window.location.assign(role === "tenant" ? "/me" : role === "owner" ? "/dashboard" : "/admin/users");
+    window.location.assign(role === "owner" ? "/dashboard" : "/admin/users");
   }
 }
