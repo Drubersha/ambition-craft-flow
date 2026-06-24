@@ -1195,6 +1195,10 @@ export type Database = {
         Args: { _property_id: string }
         Returns: undefined
       }
+      tenant_can_access_document: {
+        Args: { _doc_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "manager" | "developer" | "moderator" | "tenant"
