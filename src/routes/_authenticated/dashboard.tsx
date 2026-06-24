@@ -1565,6 +1565,12 @@ function BudgetExpenseStructure() {
             </ResponsiveContainer>
           </div>
         )}
+        {!isLoading && slices.length > 0 && (
+          <div className="mt-3 flex items-center justify-between border-t pt-3">
+            <span className="text-sm text-muted-foreground">Всего расходов за месяц</span>
+            <span className="text-base font-bold text-foreground">{formatMoney(total)}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
