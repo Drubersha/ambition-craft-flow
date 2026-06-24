@@ -432,7 +432,7 @@ function Dashboard() {
                   <button
                     onClick={c.clear}
                     className="ml-1 rounded hover:bg-background/60 p-0.5"
-                    aria-label="Удалить фильтр"
+                    aria-label={`Удалить фильтр: ${c.label}`}
                   >
                     <X className="h-3 w-3" />
                   </button>

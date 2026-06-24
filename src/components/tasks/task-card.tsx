@@ -27,7 +27,7 @@ function Thumb({ path }: { path: string }) {
     return () => { active = false; };
   }, [path]);
   if (!url) return <div className="h-20 w-full rounded bg-muted flex items-center justify-center"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>;
-  return <img src={url} alt="" className="h-20 w-full rounded object-cover" />;
+  return <img src={url} alt="Вложение задачи" className="h-20 w-full rounded object-cover" />;
 }
 
 export function TaskCard({
