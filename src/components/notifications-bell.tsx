@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bell, Building2, Users, FileText, Wallet, TrendingUp, MessageSquare, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,11 +38,22 @@ export function NotificationsBell() {
   const list = useServerFn(listMyNotifications);
   const markRead = useServerFn(markNotificationsRead);
   const del = useServerFn(deleteNotifications);
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) setHasSession(!!data.session); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (active) setHasSession(!!session);
+    });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => list(),
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    enabled: hasSession,
+    retry: false,
   });
   const items = data ?? [];
   const unread = useMemo(() => items.filter((n: any) => !n.read_at).length, [items]);
