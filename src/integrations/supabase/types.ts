@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          acted_as_user_id: string | null
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          route: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acted_as_user_id?: string | null
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          route?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acted_as_user_id?: string | null
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          route?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       budget_categories: {
         Row: {
           created_at: string
@@ -1062,6 +1098,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       recalc_charge: { Args: { _charge_id: string }; Returns: undefined }
       recalc_property_status: {
         Args: { _property_id: string }
