@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type AdminRole = "developer" | "moderator" | "owner";
+export type AdminRole = "developer" | "moderator";
 
 async function getCallerRoles(supabase: any, userId: string): Promise<AdminRole[]> {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return (data ?? []).map((r: any) => r.role).filter((r: string) => r === "developer" || r === "moderator" || r === "owner");
+  return (data ?? [])
+    .map((r: any) => r.role)
+    .filter((r: string): r is AdminRole => r === "developer" || r === "moderator");
 }
 
 export const getCurrentAdminRoles = createServerFn({ method: "GET" })
@@ -103,9 +105,9 @@ export const ownerSetRole = createServerFn({ method: "POST" })
   .inputValidator((input: { userId: string; role: AdminRole | "manager"; grant: boolean }) => input)
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("owner")) throw new Error("Only owner can manage roles");
-    if (data.userId === context.userId && data.role === "owner" && !data.grant) {
-      throw new Error("Owner cannot remove own owner role");
+    if (!roles.includes("developer")) throw new Error("Only developer can manage roles");
+    if (data.userId === context.userId && data.role === "developer" && !data.grant) {
+      throw new Error("Developer cannot remove own developer role");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.grant) {
