@@ -83,7 +83,7 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
   .inputValidator((input: { userId: string; full_name?: string | null }) => input)
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("moderator") && !roles.includes("owner")) throw new Error("Forbidden");
+    if (!roles.includes("moderator") && !roles.includes("developer")) throw new Error("Forbidden");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
@@ -218,7 +218,7 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
   .inputValidator((input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input)
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("moderator") && !roles.includes("owner")) throw new Error("Forbidden");
+    if (!roles.includes("moderator") && !roles.includes("developer")) throw new Error("Forbidden");
     const email = data.email.trim().toLowerCase();
     if (!email) throw new Error("Email обязателен");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
