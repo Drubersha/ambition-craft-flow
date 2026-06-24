@@ -325,20 +325,6 @@ function AttachmentRow({ attachment, mine }: { attachment: Attachment; mine: boo
 
 /** Ensures a chat thread exists for (owner, tenant) and returns its id. */
 export async function ensureChatThread(tenantId: string): Promise<string> {
-  const { data: u } = await supabase.auth.getUser();
-  const ownerId = u.user!.id;
-  const { data: existing } = await supabase
-    .from("chat_threads")
-    .select("id")
-    .eq("owner_id", ownerId)
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-  if (existing?.id) return existing.id;
-  const { data, error } = await supabase
-    .from("chat_threads")
-    .insert({ owner_id: ownerId, tenant_id: tenantId })
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data.id;
+  const res = await ensureChatThreadFn({ data: { tenantId } });
+  return res.threadId;
 }
