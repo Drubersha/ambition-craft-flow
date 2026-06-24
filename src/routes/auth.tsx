@@ -28,6 +28,16 @@ const DEMO_CREDENTIALS: Record<DemoKind, { login: string; password: string; labe
 export const Route = createFileRoute("/auth")({
   ssr: false,
   component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Вход — RentFlow" },
+      { name: "description", content: "Вход и регистрация в RentFlow — системе учёта коммерческой аренды." },
+      { property: "og:title", content: "Вход — RentFlow" },
+      { property: "og:description", content: "Вход и регистрация в RentFlow." },
+      { property: "og:url", content: "https://ambition-craft-flow.lovable.app/auth" },
+    ],
+    links: [{ rel: "canonical", href: "https://ambition-craft-flow.lovable.app/auth" }],
+  }),
 });
 
 type AccountKind = "owner" | "tenant";
