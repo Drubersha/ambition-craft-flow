@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
+import { useManagerContext } from "@/lib/manager-context";
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
 import { resetDemo2Account } from "@/lib/demo-auth.functions";
@@ -188,6 +189,7 @@ function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role:
 
 function IdentitySwitcher() {
   const { role, tenantId, setRole, setTenantId } = useDemoIdentity();
+  const mctx = useManagerContext();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: tenants } = useQuery({
@@ -241,6 +243,28 @@ function IdentitySwitcher() {
             ))}
           </SelectContent>
         </Select>
+      )}
+      {mctx.status === "ready" && role !== "tenant" && (
+        <div className="space-y-1">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Активный арендодатель
+          </div>
+          <Select
+            value={mctx.selectedOwnerId}
+            onValueChange={(v) => mctx.setSelectedOwnerId(v)}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Выберите арендодателя" />
+            </SelectTrigger>
+            <SelectContent>
+              {mctx.owners.map((o) => (
+                <SelectItem key={o.owner_user_id} value={o.owner_user_id}>
+                  {o.owner_full_name || o.owner_email || o.owner_user_id.slice(0, 8)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
     </div>
   );

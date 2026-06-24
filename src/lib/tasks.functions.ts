@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ensureOwnerAccess } from "@/lib/manager-context.functions";
 
 const AnalyzeInput = z.object({ messageId: z.string().uuid() });
 const AcceptInput = z.object({ id: z.string().uuid() });
@@ -25,6 +26,18 @@ async function admin() {
   return supabaseAdmin;
 }
 
+/** Owner ids the caller can act on: themselves + every owner they manage. */
+async function allowedOwnerIds(supabase: any, userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("user_links")
+    .select("owner_user_id")
+    .eq("member_user_id", userId)
+    .eq("role", "manager");
+  const ids = new Set<string>([userId]);
+  (data ?? []).forEach((r: any) => ids.add(r.owner_user_id));
+  return Array.from(ids);
+}
+
 export const analyzeMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AnalyzeInput.parse(d))
@@ -36,7 +49,11 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .maybeSingle();
     if (error || !msg) return { ok: false, reason: "not_found" };
-    if (msg.owner_id !== context.userId) return { ok: false, reason: "forbidden" };
+    try {
+      await ensureOwnerAccess(context.supabase, context.userId, msg.owner_id as string);
+    } catch {
+      return { ok: false, reason: "forbidden" };
+    }
     if (msg.analyzed_at) return { ok: false, reason: "already" };
     if (msg.sender_role !== "tenant") {
       await sb.from("chat_messages").update({ analyzed_at: new Date().toISOString() }).eq("id", msg.id);
@@ -130,11 +147,12 @@ export const acceptSuggestion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => AcceptInput.parse(d))
   .handler(async ({ data, context }) => {
     const sb = await admin();
+    const allowed = await allowedOwnerIds(context.supabase, context.userId);
     const { data: s, error } = await sb
       .from("task_suggestions")
       .select("*")
       .eq("id", data.id)
-      .eq("owner_id", context.userId)
+      .in("owner_id", allowed)
       .maybeSingle();
     if (error || !s) throw new Error("not found");
     const { data: maxRow } = await sb
@@ -171,7 +189,8 @@ export const dismissSuggestion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => DismissInput.parse(d))
   .handler(async ({ data, context }) => {
     const sb = await admin();
-    await sb.from("task_suggestions").update({ status: "dismissed" }).eq("id", data.id).eq("owner_id", context.userId);
+    const allowed = await allowedOwnerIds(context.supabase, context.userId);
+    await sb.from("task_suggestions").update({ status: "dismissed" }).eq("id", data.id).in("owner_id", allowed);
     return { ok: true };
   });
 
@@ -180,11 +199,12 @@ export const updateTaskStatus = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => UpdateStatusInput.parse(d))
   .handler(async ({ data, context }) => {
     const sb = await admin();
+    const allowed = await allowedOwnerIds(context.supabase, context.userId);
     const patch =
       typeof data.position === "number"
         ? { status: data.status, position: data.position }
         : { status: data.status };
-    await sb.from("tasks").update(patch).eq("id", data.id).eq("owner_id", context.userId);
+    await sb.from("tasks").update(patch).eq("id", data.id).in("owner_id", allowed);
     return { ok: true };
   });
 
@@ -193,7 +213,8 @@ export const deleteTask = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => TaskIdInput.parse(d))
   .handler(async ({ data, context }) => {
     const sb = await admin();
-    await sb.from("tasks").delete().eq("id", data.id).eq("owner_id", context.userId);
+    const allowed = await allowedOwnerIds(context.supabase, context.userId);
+    await sb.from("tasks").delete().eq("id", data.id).in("owner_id", allowed);
     return { ok: true };
   });
 
