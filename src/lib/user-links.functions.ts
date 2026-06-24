@@ -13,17 +13,9 @@ function isAdminRoles(roles: string[]) {
 }
 
 async function findUserIdByEmail(supabaseAdmin: any, email: string): Promise<string | null> {
-  const target = email.trim().toLowerCase();
-  // listUsers is paginated; we scan reasonable pages.
-  for (let page = 1; page <= 10; page++) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw new Error(error.message);
-    const users = data?.users ?? [];
-    const hit = users.find((u: any) => (u.email ?? "").toLowerCase() === target);
-    if (hit) return hit.id;
-    if (users.length < 200) break;
-  }
-  return null;
+  const { findAuthUserByEmail } = await import("@/lib/auth-users.server");
+  const u = await findAuthUserByEmail(supabaseAdmin, email);
+  return u?.id ?? null;
 }
 
 export const listMyLinks = createServerFn({ method: "GET" })
@@ -41,9 +33,10 @@ export const listMyLinks = createServerFn({ method: "GET" })
     if (ids.length > 0) {
       const { data: profs } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
       (profs ?? []).forEach((p: any) => profilesById.set(p.id, { full_name: p.full_name, email: null }));
-      const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-      (authData?.users ?? []).forEach((u: any) => {
-        if (profilesById.has(u.id)) profilesById.get(u.id)!.email = u.email ?? null;
+      const { getAuthUsersByIds } = await import("@/lib/auth-users.server");
+      const authById = await getAuthUsersByIds(supabaseAdmin, ids);
+      authById.forEach((u, id) => {
+        if (profilesById.has(id)) profilesById.get(id)!.email = u.email;
       });
     }
     return (links ?? []).map((l: any) => ({
@@ -163,8 +156,9 @@ export const listLinksForUser = createServerFn({ method: "POST" })
     if (ids.length > 0) {
       const { data: profs } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
       (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
-      const { data: auths } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-      (auths?.users ?? []).forEach((u: any) => { if (ids.includes(u.id)) emailById.set(u.id, u.email ?? null); });
+      const { getAuthUsersByIds } = await import("@/lib/auth-users.server");
+      const authById = await getAuthUsersByIds(supabaseAdmin, ids);
+      authById.forEach((u, id) => emailById.set(id, u.email));
     }
     const decorate = (l: any, otherId: string) => ({
       ...l,

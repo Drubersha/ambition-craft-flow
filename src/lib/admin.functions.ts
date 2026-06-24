@@ -32,10 +32,11 @@ export const listAllUsers = createServerFn({ method: "GET" })
       arr.push(r.role);
       rolesByUser.set(r.user_id, arr);
     });
-    const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-    const emailById = new Map((authData?.users ?? []).map((u) => [u.id, u.email]));
-    const lastSignByUser = new Map((authData?.users ?? []).map((u) => [u.id, u.last_sign_in_at]));
-    const createdByUser = new Map((authData?.users ?? []).map((u) => [u.id, u.created_at]));
+    const { listAllAuthUsersPaginated } = await import("@/lib/auth-users.server");
+    const authUsers = await listAllAuthUsersPaginated(supabaseAdmin);
+    const emailById = new Map(authUsers.map((u) => [u.id, u.email]));
+    const lastSignByUser = new Map(authUsers.map((u) => [u.id, u.last_sign_in_at]));
+    const createdByUser = new Map(authUsers.map((u) => [u.id, u.created_at]));
     return (profiles ?? []).map((p: any) => ({
       id: p.id,
       full_name: p.full_name,
