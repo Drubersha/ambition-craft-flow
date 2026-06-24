@@ -246,7 +246,7 @@ function UserOverviewPage() {
               </div>
             </div>
           )}
-          {isOwner && (
+          {isDeveloper && (
             <div className="border-t pt-3 space-y-2">
               <div className="text-sm font-medium">Управление ролями</div>
               {ADMIN_ROLES.map((r) => {
