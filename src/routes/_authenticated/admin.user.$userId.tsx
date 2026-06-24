@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, monthlyPayment, PAYMENT_PERIOD_LABELS } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
   component: UserOverviewPage,
@@ -280,13 +280,28 @@ function UserOverviewPage() {
           <SimpleTable rows={data.tenants} columns={[["name","Имя"],["phone","Телефон"],["email","Email"]]} />
         </TabsContent>
         <TabsContent value="contracts">
-          <SimpleTable rows={data.contracts} columns={[["kind","Тип"],["status","Статус"],["start_date","С"],["end_date","По"],["monthly_amount","Месяц"]]} formatter={{ monthly_amount: (v) => formatMoney(Number(v) || 0) }} />
+          <SimpleTable
+            rows={data.contracts.map((c: any) => ({
+              ...c,
+              monthly: monthlyPayment(Number(c.rate) || 0, c.payment_period, Number(c.area) || 0),
+              period_label: PAYMENT_PERIOD_LABELS[c.payment_period as keyof typeof PAYMENT_PERIOD_LABELS] ?? c.payment_period,
+            }))}
+            columns={[["number","№"],["kind","Тип"],["status","Статус"],["start_date","С"],["end_date","По"],["rate","Ставка"],["period_label","Период"],["monthly","Месяц"]]}
+            formatter={{
+              rate: (v) => formatMoney(Number(v) || 0),
+              monthly: (v) => formatMoney(Number(v) || 0),
+            }}
+          />
         </TabsContent>
         <TabsContent value="payments">
           <SimpleTable rows={data.payments} columns={[["paid_at","Дата"],["amount","Сумма"]]} formatter={{ amount: (v) => formatMoney(Number(v) || 0) }} />
         </TabsContent>
         <TabsContent value="tasks">
-          <SimpleTable rows={data.tasks} columns={[["title","Задача"],["status","Статус"],["due_at","Срок"]]} />
+          <SimpleTable
+            rows={data.tasks}
+            columns={[["title","Задача"],["status","Статус"],["priority","Приоритет"],["created_at","Создана"]]}
+            formatter={{ created_at: (v) => v ? new Date(v).toLocaleDateString("ru-RU") : "—" }}
+          />
         </TabsContent>
         <TabsContent value="links">
           <Card><CardContent className="pt-4 space-y-4">
