@@ -112,7 +112,11 @@ function ChatsPage() {
 
         <Card className="p-0 overflow-hidden">
           {selected ? (
-            <ChatThread threadId={selected} myRole={role} myLabel={ROLE_LABELS[role]} />
+            <ChatThread
+              threadId={selected}
+              myRole={role === "manager" ? "manager" : "owner"}
+              myLabel={ROLE_LABELS[role]}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-sm text-muted-foreground">
               <MessageSquare className="h-10 w-10 mb-2 opacity-50" />
