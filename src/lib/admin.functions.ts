@@ -78,14 +78,13 @@ export const getUserOverview = createServerFn({ method: "POST" })
 
 export const moderatorUpdateProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string; full_name?: string | null; phone?: string | null }) => input)
+  .inputValidator((input: { userId: string; full_name?: string | null }) => input)
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (!roles.includes("moderator") && !roles.includes("owner")) throw new Error("Forbidden");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
-    if (data.phone !== undefined) patch.phone = data.phone;
     const { error } = await supabaseAdmin.from("profiles").update(patch as never).eq("id", data.userId);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("activity_logs").insert({
