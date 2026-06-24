@@ -1,11 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
-import { ensureDemoAccount, DEMO_ACCOUNTS, type DemoKind } from "@/lib/demo-auth.functions";
+import { DEMO_ACCOUNTS, type DemoKind } from "@/lib/demo-auth.functions";
 
 export async function signInAsDemo(kind: DemoKind): Promise<void> {
-  await ensureDemoAccount({ data: { kind } });
   const acc = DEMO_ACCOUNTS[kind];
+  // Demo accounts are seeded by migration — the client only signs in.
+  // ensureDemoAccount() lives in demo-auth.functions.ts and is developer-only
+  // for re-provisioning from the admin panel.
   const { error } = await supabase.auth.signInWithPassword({ email: acc.email, password: acc.password });
-  if (error) throw error;
+  if (error) {
+    throw new Error("Демо-аккаунт временно недоступен. Попробуйте позже или обратитесь к администратору.");
+  }
   if (typeof window !== "undefined") {
     localStorage.setItem("active_account_kind", "owner");
     const role = kind === "developer" ? "developer" : kind === "moderator" ? "moderator" : "owner";
