@@ -38,6 +38,7 @@ import { Route as AuthenticatedChargesIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBudgetsFolderIdRouteImport } from './routes/_authenticated/budgets.$folderId'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
+import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -197,6 +198,12 @@ const AuthenticatedAdminUsersIndexRoute =
     path: '/admin/users/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminUsersUserIdRoute =
+  AuthenticatedAdminUsersUserIdRouteImport.update({
+    id: '/admin/users/$userId',
+    path: '/admin/users/$userId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
   '/tenants/': typeof AuthenticatedTenantsIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -255,6 +263,7 @@ export interface FileRoutesByTo {
   '/properties': typeof AuthenticatedPropertiesIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/tenants': typeof AuthenticatedTenantsIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesById {
@@ -287,6 +296,7 @@ export interface FileRoutesById {
   '/_authenticated/properties/': typeof AuthenticatedPropertiesIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/tenants/': typeof AuthenticatedTenantsIndexRoute
+  '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRouteTypes {
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/tasks/'
     | '/tenants/'
+    | '/admin/users/$userId'
     | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/tasks'
     | '/tenants'
+    | '/admin/users/$userId'
     | '/admin/users'
   id:
     | '__root__'
@@ -379,6 +391,7 @@ export interface FileRouteTypes {
     | '/_authenticated/properties/'
     | '/_authenticated/tasks/'
     | '/_authenticated/tenants/'
+    | '/_authenticated/admin/users/$userId'
     | '/_authenticated/admin/users/'
   fileRoutesById: FileRoutesById
 }
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/users/$userId': {
+      id: '/_authenticated/admin/users/$userId'
+      path: '/admin/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -638,6 +658,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPropertiesIndexRoute: typeof AuthenticatedPropertiesIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedTenantsIndexRoute: typeof AuthenticatedTenantsIndexRoute
+  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
   AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
 }
 
@@ -662,6 +683,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPropertiesIndexRoute: AuthenticatedPropertiesIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedTenantsIndexRoute: AuthenticatedTenantsIndexRoute,
+  AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
   AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
 }
 

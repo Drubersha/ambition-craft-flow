@@ -16,6 +16,8 @@ import {
   CalendarDays,
   Files,
   PiggyBank,
+  ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -23,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
+import { useServerFn } from "@tanstack/react-start";
+import { getCurrentAdminRoles } from "@/lib/admin.functions";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
@@ -45,7 +49,12 @@ const TENANT_NAV = [
   { to: "/me/chat", label: "Чат", icon: MessageSquare },
 ] as const;
 
-function NavList({ onNavigate, role }: { onNavigate?: () => void; role: DemoRole }) {
+const ADMIN_NAV = [
+  { to: "/admin/logs", label: "Журнал действий", icon: ScrollText },
+  { to: "/admin/users", label: "Пользователи", icon: ShieldCheck },
+] as const;
+
+function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role: DemoRole; isAdmin: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = role === "tenant" ? TENANT_NAV : OWNER_NAV;
   return (
@@ -72,6 +81,23 @@ function NavList({ onNavigate, role }: { onNavigate?: () => void; role: DemoRole
           </Link>
         );
       })}
+      {isAdmin && (
+        <>
+          <div className="mt-3 px-3 text-[10px] uppercase tracking-wide text-muted-foreground">Администрирование</div>
+          {ADMIN_NAV.map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.to || pathname.startsWith(item.to + "/");
+            return (
+              <Link key={item.to} to={item.to} onClick={onNavigate}
+                className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-11",
+                  active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted")}>
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </>
+      )}
     </nav>
   );
 }
@@ -137,6 +163,9 @@ function IdentitySwitcher() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { role } = useDemoIdentity();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const fetchRoles = useServerFn(getCurrentAdminRoles);
+  const rolesQ = useQuery({ queryKey: ["admin-roles"], queryFn: () => fetchRoles(), staleTime: 60_000 });
+  const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0;
 
   return (
     <div className="flex min-h-[100dvh] bg-muted/20">
@@ -149,7 +178,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
-          <NavList role={role} />
+          <NavList role={role} isAdmin={isAdmin} />
         </div>
       </aside>
 
@@ -167,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <IdentitySwitcher />
               <div className="py-3 flex-1 overflow-y-auto">
-                <NavList onNavigate={() => setMobileOpen(false)} role={role} />
+                <NavList onNavigate={() => setMobileOpen(false)} role={role} isAdmin={isAdmin} />
               </div>
             </SheetContent>
           </Sheet>
