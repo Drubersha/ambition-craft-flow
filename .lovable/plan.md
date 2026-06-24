@@ -1,50 +1,40 @@
-## Кнопка уведомлений
 
-Добавить колокольчик с бейджем непрочитанных в шапке (видимый на всех страницах), хранить уведомления в БД, генерировать их триггерами на ключевые события и подписываться на realtime.
+## Что уже готово в проекте
 
-### 1. БД (миграция)
+В репозитории уже лежит всё для запуска одной командой — трогать почти ничего не нужно:
 
-Таблица `notifications`:
-- `user_id` (uuid, кому) — индекс
-- `kind` (text): `alert | account | property | tenant | contract | charge | indexation | chat`
-- `title` (text), `body` (text, опц.)
-- `entity_table`, `entity_id` (для ссылки)
-- `route` (text, куда вести по клику)
-- `read_at` (timestamptz, null = непрочитано)
-- `created_at`
+- `Dockerfile` — собирает приложение (фронт + сервер TanStack Start) в один контейнер.
+- `docker-compose.yml` — поднимает 4 контейнера: само приложение, Postgres (база), GoTrue (аутентификация), Kong (API-шлюз Supabase) + Storage.
+- `supabase/migrations/*.sql` — структура базы (таблицы, роли, политики) применяется автоматически при первом запуске.
+- `.env.example` — шаблон настроек.
+- `scripts/gen-keys.mjs` — генератор секретных ключей (`JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`).
+- `README.deploy.md` — техническая инструкция.
 
-GRANT для `authenticated` + `service_role`. RLS: пользователь видит/обновляет/удаляет только свои строки (`user_id = auth.uid()`), INSERT через service_role/триггеры.
+Полевые испытания запускаются как: `docker compose up -d --build` → приложение на `http://IP-сервера:3000`, авторизация работает локально (никакой Lovable Cloud).
 
-Триггеры (SECURITY DEFINER), для каждого ключевого события вставляют по строке каждому получателю:
-- `properties` AFTER INSERT → арендодатель (owner_id) + связанные менеджеры через `user_links`
-- `tenants` AFTER INSERT → то же
-- `contracts` AFTER INSERT → то же
-- `charges` AFTER INSERT → арендодатель/менеджеры + арендатор контракта; `kind='indexation'` если `meta`/тип = индексация, иначе `charge`
-- `chat_messages` AFTER INSERT → второй стороне треда (если sender=tenant → owner/менеджеры, если owner/manager → tenant)
-- `activity_logs` AFTER INSERT с `action in ('login','password_change',...)` → владельцу аккаунта (`account`)
+## Что я добавлю
 
-### 2. Server functions (`src/lib/notifications.functions.ts`)
-- `listMyNotifications({ limit })` — последние N
-- `getUnreadCount()`
-- `markRead({ ids })` / `markAllRead()`
-- `deleteNotification({ id })`
+Один новый файл — **`DEPLOY-ДЛЯ-НОВИЧКА.md`** в корне репозитория. Это пошаговая инструкция простым языком, с командами, которые нужно скопировать целиком. Существующий `README.deploy.md` оставлю как «техническую» версию.
 
-Все с `requireSupabaseAuth`, фильтр `user_id = context.userId`.
+Содержание новой инструкции:
 
-### 3. UI
+1. **Что нам нужно** — Ubuntu-сервер (22.04 или 24.04), доступ по SSH, IP-адрес сервера.
+2. **Шаг 1. Заходим на сервер** — команда `ssh user@IP`.
+3. **Шаг 2. Ставим Docker** — две команды одной копипастой.
+4. **Шаг 3. Скачиваем проект** — `git clone` + `cd`.
+5. **Шаг 4. Создаём файл с настройками** — `cp .env.example .env`.
+6. **Шаг 5. Генерируем секретные ключи** — одна команда `node scripts/gen-keys.mjs`, объяснение что куда вставить в `.env` (с примером строк).
+7. **Шаг 6. Меняем адреса** — `SITE_URL`, `VITE_SUPABASE_URL` (на `http://IP-сервера:8000`), `POSTGRES_PASSWORD`. Покажу `nano .env` и стрелками что править.
+8. **Шаг 7. Запускаем** — `docker compose up -d --build`, ждём ~1 минуту.
+9. **Шаг 8. Проверяем** — открыть `http://IP-сервера:3000`, увидеть страницу входа, нажать кнопку демо-режима или зарегистрироваться.
+10. **Если что-то пошло не так** — `docker compose logs -f app`, как перезапустить, как остановить (`docker compose down`).
+11. **Бонус**: как сделать бэкап БД одной командой, как обновиться (`git pull && docker compose up -d --build`).
+12. **Безопасность для полевых испытаний** — закрыть порт 5432 firewall'ом (`ufw`), сменить пароли по умолчанию, не публиковать в открытый интернет без HTTPS (краткое упоминание Caddy).
 
-Новый компонент `src/components/notifications-bell.tsx`:
-- Иконка `Bell` (lucide) + красный бейдж с количеством непрочитанных
-- Popover со списком (заголовок, текст, относительное время, иконка по `kind`)
-- Клик по пункту → `markRead` + `navigate(route)`
-- Кнопки «Прочитать всё» и «Очистить»
-- React Query: `useQuery` для списка/счётчика (staleTime 30с) + Supabase realtime подписка на `notifications` для текущего `user_id`, инвалидирует кэш при INSERT/UPDATE → «одноразовые» (показывается, пока не прочитано, потом исчезает из badge)
-- Toast (sonner) при новом INSERT через realtime
+## Технические детали (для справки)
 
-Размещение: в `src/components/app-shell.tsx` — добавить колокольчик в десктоп-сайдбар рядом с `IdentitySwitcher` и в мобильную шапку рядом с `ROLE_LABELS[role]`.
-
-### Технические детали
-- Realtime: `supabase.channel('notif:'+userId).on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications', filter:'user_id=eq.'+userId }, ...)`
-- Получатели в триггерах вычисляются через `user_links` (member_user_id для роли owner/manager) + сам `owner_id`
-- Для чатов: получатель — `tenant_user_id` или `owner_user_id` треда (поля уже есть в `chat_threads`)
-- Маршруты в `route`: `/properties/:id`, `/tenants/:id`, `/contracts/:id`, `/charges/:id`, `/chats` и т.д.
+- Сборка фронта: переменные `VITE_*` зашиваются на этапе `docker build` — пересборка нужна при смене `VITE_SUPABASE_URL`.
+- Server-функции читают `SUPABASE_URL=http://kong:8000` (внутри docker-сети) — это уже в `.env.example`, менять не надо.
+- Миграции применяются автоматически только при пустом томе `db-data`. В инструкции дам команду на ручной прогон на случай повторной инициализации.
+- Storage bucket `documents` создаётся отдельной SQL-командой — добавлю её в инструкцию шагом 7.5.
+- Никаких изменений кода или схемы БД не требуется — только новый markdown-файл.
