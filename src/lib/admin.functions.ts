@@ -86,7 +86,7 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
     if (data.phone !== undefined) patch.phone = data.phone;
-    const { error } = await supabaseAdmin.from("profiles").update(patch).eq("id", data.userId);
+    const { error } = await supabaseAdmin.from("profiles").update(patch as never).eq("id", data.userId);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
