@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getUserOverview, moderatorUpdateProfile, ownerSetRole } from "@/lib/admin.functions";
 import { getActivityLogs } from "@/lib/activity-log.functions";
+import { listLinksForUser, moderatorLinkUser, unlinkUser } from "@/lib/user-links.functions";
+import { listAllUsers } from "@/lib/admin.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,6 +32,10 @@ function UserOverviewPage() {
   const fetchLogs = useServerFn(getActivityLogs);
   const updateProfile = useServerFn(moderatorUpdateProfile);
   const setRole = useServerFn(ownerSetRole);
+  const fetchLinks = useServerFn(listLinksForUser);
+  const linkFn = useServerFn(moderatorLinkUser);
+  const unlinkFn = useServerFn(unlinkUser);
+  const fetchAllUsers = useServerFn(listAllUsers);
 
   const q = useQuery({
     queryKey: ["admin-user-overview", userId],
@@ -39,6 +45,33 @@ function UserOverviewPage() {
     queryKey: ["admin-user-logs", userId],
     queryFn: () => fetchLogs({ data: { user_id: userId, limit: 100 } }),
     enabled: !!q.data,
+  });
+  const linksQ = useQuery({
+    queryKey: ["admin-user-links", userId],
+    queryFn: () => fetchLinks({ data: { userId } }),
+    enabled: !!q.data,
+  });
+  const usersQ = useQuery({ queryKey: ["admin-all-users"], queryFn: () => fetchAllUsers(), staleTime: 60_000 });
+
+  const [linkOwner, setLinkOwner] = useState("");
+  const [linkRole, setLinkRole] = useState<"manager" | "tenant">("tenant");
+
+  const linkMut = useMutation({
+    mutationFn: () => linkFn({ data: { ownerUserId: linkOwner, memberUserId: userId, role: linkRole } }),
+    onSuccess: () => {
+      toast.success("Привязано");
+      setLinkOwner("");
+      qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const unlinkMut = useMutation({
+    mutationFn: (linkId: string) => unlinkFn({ data: { linkId } }),
+    onSuccess: () => {
+      toast.success("Отвязано");
+      qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [name, setName] = useState<string | null>(null);
@@ -122,6 +155,7 @@ function UserOverviewPage() {
           <TabsTrigger value="contracts">Договоры ({data.contracts.length})</TabsTrigger>
           <TabsTrigger value="payments">Оплаты ({data.payments.length})</TabsTrigger>
           <TabsTrigger value="tasks">Задачи ({data.tasks.length})</TabsTrigger>
+          <TabsTrigger value="links">Привязки</TabsTrigger>
           <TabsTrigger value="logs">Логи</TabsTrigger>
         </TabsList>
         <TabsContent value="properties">
@@ -138,6 +172,74 @@ function UserOverviewPage() {
         </TabsContent>
         <TabsContent value="tasks">
           <SimpleTable rows={data.tasks} columns={[["title","Задача"],["status","Статус"],["due_at","Срок"]]} />
+        </TabsContent>
+        <TabsContent value="links">
+          <Card><CardContent className="pt-4 space-y-4">
+            {canEdit && (
+              <div className="border rounded-md p-3 space-y-2">
+                <div className="text-sm font-medium">Привязать к арендодателю</div>
+                <div className="grid sm:grid-cols-[1fr,180px,auto] gap-2 items-end">
+                  <div className="space-y-1">
+                    <Label>Арендодатель</Label>
+                    <select className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                      value={linkOwner} onChange={(e) => setLinkOwner(e.target.value)}>
+                      <option value="">— выберите —</option>
+                      {(usersQ.data ?? []).filter((u: any) => u.roles.includes("owner") && u.id !== userId).map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.full_name ?? u.email ?? u.id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Роль</Label>
+                    <select className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                      value={linkRole} onChange={(e) => setLinkRole(e.target.value as "manager" | "tenant")}>
+                      <option value="tenant">Арендатор</option>
+                      <option value="manager">Менеджер</option>
+                    </select>
+                  </div>
+                  <Button onClick={() => linkMut.mutate()} disabled={!linkOwner || linkMut.isPending}>Привязать</Button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Как участник (привязан к арендодателям)</div>
+              {(linksQ.data?.asMember ?? []).length === 0 ? (
+                <div className="text-sm text-muted-foreground">Нет связей.</div>
+              ) : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Арендодатель</TableHead><TableHead>Роль</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {(linksQ.data?.asMember ?? []).map((l: any) => (
+                      <TableRow key={l.id}>
+                        <TableCell>{l.other_full_name ?? l.other_email ?? l.other_user_id}</TableCell>
+                        <TableCell><Badge variant="outline">{l.role}</Badge></TableCell>
+                        <TableCell>{canEdit && <Button size="sm" variant="ghost" onClick={() => unlinkMut.mutate(l.id)}>Отвязать</Button>}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Как арендодатель (его участники)</div>
+              {(linksQ.data?.asOwner ?? []).length === 0 ? (
+                <div className="text-sm text-muted-foreground">Нет привязок.</div>
+              ) : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Участник</TableHead><TableHead>Роль</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {(linksQ.data?.asOwner ?? []).map((l: any) => (
+                      <TableRow key={l.id}>
+                        <TableCell>{l.other_full_name ?? l.other_email ?? l.other_user_id}</TableCell>
+                        <TableCell><Badge variant="outline">{l.role}</Badge></TableCell>
+                        <TableCell>{canEdit && <Button size="sm" variant="ghost" onClick={() => unlinkMut.mutate(l.id)}>Отвязать</Button>}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </CardContent></Card>
         </TabsContent>
         <TabsContent value="logs">
           <Card><CardContent className="pt-4">

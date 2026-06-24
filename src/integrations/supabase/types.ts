@@ -1068,6 +1068,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          member_user_id: string
+          owner_user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_user_id: string
+          owner_user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_user_id?: string
+          owner_user_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1091,6 +1118,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_owner_ids: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1099,6 +1130,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_linked_member: {
+        Args: {
+          _member: string
+          _owner: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       recalc_charge: { Args: { _charge_id: string }; Returns: undefined }
       recalc_property_status: {
         Args: { _property_id: string }
@@ -1106,7 +1145,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "manager" | "developer" | "moderator"
+      app_role: "owner" | "manager" | "developer" | "moderator" | "tenant"
       charge_status: "unpaid" | "partial" | "paid" | "overdue"
       chat_sender_role: "owner" | "manager" | "tenant"
       contract_kind: "rent" | "ahch"
@@ -1273,7 +1312,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "manager", "developer", "moderator"],
+      app_role: ["owner", "manager", "developer", "moderator", "tenant"],
       charge_status: ["unpaid", "partial", "paid", "overdue"],
       chat_sender_role: ["owner", "manager", "tenant"],
       contract_kind: ["rent", "ahch"],

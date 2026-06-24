@@ -38,6 +38,7 @@ const OWNER_NAV = [
   { to: "/budgets", label: "Бюджет", icon: PiggyBank },
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
+  { to: "/users", label: "Пользователи", icon: ShieldCheck },
 ] as const;
 
 const TENANT_NAV = [
