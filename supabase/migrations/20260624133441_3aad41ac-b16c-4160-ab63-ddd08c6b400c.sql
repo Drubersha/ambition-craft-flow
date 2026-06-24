@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public._seed_demo_user(text, text, text, public.app_role[]);

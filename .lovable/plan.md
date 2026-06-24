@@ -1,40 +1,74 @@
+## Проблема
 
-## Что уже готово в проекте
+`signInAsDemo()` вызывает `ensureDemoAccount()` ДО `signInWithPassword`. Но `ensureDemoAccount` теперь защищён `requireSupabaseAuth` + проверкой роли `developer`. Новый посетитель не авторизован → нет Bearer → 401 → demo-вход падает. Это логическое противоречие: «нужен developer, чтобы войти как developer».
 
-В репозитории уже лежит всё для запуска одной командой — трогать почти ничего не нужно:
+## Решение: сидинг demo-аккаунтов в миграции, клиент только логинится
 
-- `Dockerfile` — собирает приложение (фронт + сервер TanStack Start) в один контейнер.
-- `docker-compose.yml` — поднимает 4 контейнера: само приложение, Postgres (база), GoTrue (аутентификация), Kong (API-шлюз Supabase) + Storage.
-- `supabase/migrations/*.sql` — структура базы (таблицы, роли, политики) применяется автоматически при первом запуске.
-- `.env.example` — шаблон настроек.
-- `scripts/gen-keys.mjs` — генератор секретных ключей (`JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`).
-- `README.deploy.md` — техническая инструкция.
+Demo-аккаунты — это фиксированный набор из 4 заранее известных email'ов. Нет причины создавать их по требованию из браузера. Создадим их один раз в миграции (через Auth Admin внутри plpgsql/SQL-сидинга или через server-only seed), и клиент будет просто звать `signInWithPassword`. Provisioning остаётся доступен только разработчику из админки.
 
-Полевые испытания запускаются как: `docker compose up -d --build` → приложение на `http://IP-сервера:3000`, авторизация работает локально (никакой Lovable Cloud).
+### Шаги
 
-## Что я добавлю
+**1. Миграция — сидинг demo-пользователей**
 
-Один новый файл — **`DEPLOY-ДЛЯ-НОВИЧКА.md`** в корне репозитория. Это пошаговая инструкция простым языком, с командами, которые нужно скопировать целиком. Существующий `README.deploy.md` оставлю как «техническую» версию.
+Создать миграцию, которая идемпотентно вставляет 4 demo-пользователя в `auth.users` через `supabase_auth_admin`-доступный путь. Поскольку прямой `INSERT INTO auth.users` хрупкий, используем подход: SQL-функция `public._seed_demo_user(email, password, full_name, roles[])` с `SECURITY DEFINER`, владелец `postgres`, которая:
+   - находит/создаёт запись в `auth.users` (через `auth.users` insert с захешированным паролем — bcrypt через `crypt()` + `gen_salt('bf')`, расширение `pgcrypto` уже есть),
+   - подтверждает email (`email_confirmed_at = now()`),
+   - upsert в `public.profiles`,
+   - upsert ролей в `public.user_roles`.
 
-Содержание новой инструкции:
+Затем в миграции вызвать её 4 раза для `demo / demo2 / moderator / developer` с теми же паролями, что в `DEMO_ACCOUNTS`. После сидинга — `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` на самой функции (вызывать её сможет только service_role / суперпользователь).
 
-1. **Что нам нужно** — Ubuntu-сервер (22.04 или 24.04), доступ по SSH, IP-адрес сервера.
-2. **Шаг 1. Заходим на сервер** — команда `ssh user@IP`.
-3. **Шаг 2. Ставим Docker** — две команды одной копипастой.
-4. **Шаг 3. Скачиваем проект** — `git clone` + `cd`.
-5. **Шаг 4. Создаём файл с настройками** — `cp .env.example .env`.
-6. **Шаг 5. Генерируем секретные ключи** — одна команда `node scripts/gen-keys.mjs`, объяснение что куда вставить в `.env` (с примером строк).
-7. **Шаг 6. Меняем адреса** — `SITE_URL`, `VITE_SUPABASE_URL` (на `http://IP-сервера:8000`), `POSTGRES_PASSWORD`. Покажу `nano .env` и стрелками что править.
-8. **Шаг 7. Запускаем** — `docker compose up -d --build`, ждём ~1 минуту.
-9. **Шаг 8. Проверяем** — открыть `http://IP-сервера:3000`, увидеть страницу входа, нажать кнопку демо-режима или зарегистрироваться.
-10. **Если что-то пошло не так** — `docker compose logs -f app`, как перезапустить, как остановить (`docker compose down`).
-11. **Бонус**: как сделать бэкап БД одной командой, как обновиться (`git pull && docker compose up -d --build`).
-12. **Безопасность для полевых испытаний** — закрыть порт 5432 firewall'ом (`ufw`), сменить пароли по умолчанию, не публиковать в открытый интернет без HTTPS (краткое упоминание Caddy).
+Пароли demo-аккаунтов и так публично известны (это демо), коммитить их в миграцию допустимо.
 
-## Технические детали (для справки)
+**2. `src/lib/demo-auth.ts` — упростить клиент**
 
-- Сборка фронта: переменные `VITE_*` зашиваются на этапе `docker build` — пересборка нужна при смене `VITE_SUPABASE_URL`.
-- Server-функции читают `SUPABASE_URL=http://kong:8000` (внутри docker-сети) — это уже в `.env.example`, менять не надо.
-- Миграции применяются автоматически только при пустом томе `db-data`. В инструкции дам команду на ручной прогон на случай повторной инициализации.
-- Storage bucket `documents` создаётся отдельной SQL-командой — добавлю её в инструкцию шагом 7.5.
-- Никаких изменений кода или схемы БД не требуется — только новый markdown-файл.
+```ts
+export async function signInAsDemo(kind: DemoKind): Promise<void> {
+  const acc = DEMO_ACCOUNTS[kind];
+  const { error } = await supabase.auth.signInWithPassword({
+    email: acc.email, password: acc.password
+  });
+  if (error) {
+    throw new Error("Демо-аккаунт недоступен. Обратитесь к администратору.");
+  }
+  // ... localStorage + redirect как сейчас
+}
+```
+
+Никакого `ensureDemoAccount` на пути входа. Никакого импорта `client.server.ts`.
+
+**3. `src/lib/demo-auth.functions.ts` — оставить, но только для админки**
+
+`ensureDemoAccount` остаётся как есть (developer-only) — для ручного «починить/пересоздать demo» из админ-панели. `resetDemo2Account` остаётся как есть (demo2-сам-себя или developer) — он вызывается уже из авторизованной сессии demo2, всё корректно.
+
+**4. UX gate в `src/routes/auth.tsx`**
+
+Не меняется. По-прежнему просим `admin/admin` или `demo/demo`, потом зовём `signInAsDemo`. Сообщение об ошибке станет понятным благодаря изменению из шага 2.
+
+**5. Проверка для всех 4 ролей**
+
+После применения миграции:
+- `demo` → роли `[owner]` → редирект `/dashboard`
+- `demo2` → роли `[owner]` → `/dashboard` (демо2-очистка работает, т.к. вызывается уже авторизованным demo2)
+- `moderator` → роли `[moderator, owner]` → `/admin/users`
+- `developer` → роли `[developer, owner]` → `/admin/users`
+
+`DemoIdentityProvider` уже корректно сверяет роль с сервером через `getMyRoles`.
+
+## Безопасность
+
+- Service-role ключ не покидает сервер.
+- `ensureDemoAccount` остаётся developer-only — abuse невозможен.
+- Публичной server function, создающей произвольных пользователей, нет вообще.
+- Сидинг ограничен 4 захардкоженными email'ами в миграции.
+- SECURITY DEFINER seed-функция после использования теряет EXECUTE для anon/authenticated.
+
+## Технические детали (для разработчика)
+
+Файлы:
+- `supabase/migrations/<timestamp>_seed_demo_accounts.sql` — новая миграция.
+- `src/lib/demo-auth.ts` — убрать `ensureDemoAccount` из пути входа, улучшить ошибку.
+- `src/lib/demo-auth.functions.ts` — без изменений (либо мелкая правка комментария).
+- `src/routes/auth.tsx` — без изменений.
+
+Проверка: `bun run lint`, `bun run build`, ручной прогон 4 demo-входов в чистой сессии.
