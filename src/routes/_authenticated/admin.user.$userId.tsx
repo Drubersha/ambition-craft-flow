@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getUserOverview, moderatorUpdateProfile, ownerSetRole, adminDeleteUser } from "@/lib/admin.functions";
+import { getUserOverview, moderatorUpdateProfile, ownerSetRole, adminDeleteUser, adminCreateCompanionAccount } from "@/lib/admin.functions";
 import { getActivityLogs } from "@/lib/activity-log.functions";
 import { listLinksForUser, moderatorLinkUser, unlinkUser } from "@/lib/user-links.functions";
 import { listAllUsers } from "@/lib/admin.functions";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ConfirmButton } from "@/components/confirm-button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
@@ -39,6 +40,7 @@ function UserOverviewPage() {
   const unlinkFn = useServerFn(unlinkUser);
   const fetchAllUsers = useServerFn(listAllUsers);
   const deleteFn = useServerFn(adminDeleteUser);
+  const createCompanionFn = useServerFn(adminCreateCompanionAccount);
 
   const q = useQuery({
     queryKey: ["admin-user-overview", userId],
@@ -106,6 +108,33 @@ function UserOverviewPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [companionOpen, setCompanionOpen] = useState(false);
+  const [companionEmail, setCompanionEmail] = useState("");
+  const [companionPassword, setCompanionPassword] = useState("");
+  const [companionName, setCompanionName] = useState("");
+  const companionMut = useMutation({
+    mutationFn: () =>
+      createCompanionFn({
+        data: {
+          sourceUserId: userId,
+          email: companionEmail,
+          password: companionPassword,
+          fullName: companionName || undefined,
+        },
+      }),
+    onSuccess: (res: any) => {
+      toast.success(`Создан аккаунт (${res.role === "owner" ? "арендодатель" : "арендатор"})`);
+      setCompanionOpen(false);
+      setCompanionEmail("");
+      setCompanionPassword("");
+      setCompanionName("");
+      qc.invalidateQueries({ queryKey: ["admin-user-overview", userId] });
+      qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
+      qc.invalidateQueries({ queryKey: ["admin-all-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (q.isLoading) return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>;
   if (q.error) return <div className="p-6 text-sm text-destructive">{(q.error as Error).message}</div>;
   if (!q.data) return null;
@@ -114,17 +143,37 @@ function UserOverviewPage() {
   const isOwner = data.viewerRoles.includes("owner");
   const canEdit = isOwner || data.viewerRoles.includes("moderator");
   const displayName = name ?? data.profile?.full_name ?? "";
+  const hasOwnerRole = data.roles.includes("owner");
+  const hasTenantRole = data.roles.includes("tenant");
+  const companionRole: "owner" | "tenant" | null =
+    hasOwnerRole && hasTenantRole ? null : hasOwnerRole ? "tenant" : "owner";
+  const companionRoleLabel = companionRole === "owner" ? "арендодатель" : "арендатор";
+
+  function openCompanion() {
+    const baseEmail = data.email ?? "";
+    const [local, domain] = baseEmail.split("@");
+    const suggested = local && domain ? `${local}+${companionRole}@${domain}` : "";
+    setCompanionEmail(suggested);
+    setCompanionName(data.profile?.full_name ?? "");
+    setCompanionPassword("");
+    setCompanionOpen(true);
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Link to="/admin/users" className="text-sm text-muted-foreground hover:underline">← К списку</Link>
+        {canEdit && companionRole && (
+          <Button size="sm" variant="outline" className="ml-auto" onClick={openCompanion}>
+            Создать доп. аккаунт ({companionRoleLabel})
+          </Button>
+        )}
         {canEdit && (
           <ConfirmButton
             size="sm"
             variant="ghost"
             destructive
-            className="ml-auto"
+            className={companionRole ? "" : "ml-auto"}
             title="Удалить аккаунт?"
             description={`Аккаунт ${data.email ?? data.profile?.full_name ?? userId} будет удалён без возможности восстановления.`}
             confirmText="Удалить"
@@ -134,6 +183,40 @@ function UserOverviewPage() {
           </ConfirmButton>
         )}
       </div>
+      <Dialog open={companionOpen} onOpenChange={setCompanionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Доп. аккаунт — {companionRoleLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Будет создан новый аккаунт с ролью «{companionRoleLabel}» и автоматически привязан к текущему пользователю.
+              Email должен отличаться от уже используемого.
+            </p>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input type="email" value={companionEmail} onChange={(e) => setCompanionEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Пароль (≥8 символов)</Label>
+              <Input type="text" value={companionPassword} onChange={(e) => setCompanionPassword(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Имя</Label>
+              <Input value={companionName} onChange={(e) => setCompanionName(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCompanionOpen(false)}>Отмена</Button>
+            <Button
+              onClick={() => companionMut.mutate()}
+              disabled={!companionEmail || companionPassword.length < 8 || companionMut.isPending}
+            >
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Card>
         <CardHeader>
           <CardTitle>{data.profile?.full_name ?? data.email ?? userId}</CardTitle>
