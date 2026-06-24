@@ -27,9 +27,10 @@ export const ensureDemoAccount = createServerFn({ method: "POST" })
       _role: "developer",
     });
     if (!isDev) throw new Error("Forbidden");
-    // Try to find existing user by listing (small scale demo)
-    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-    let user = list?.users?.find((u) => u.email?.toLowerCase() === acc.email.toLowerCase()) ?? null;
+    // Find existing demo user across all auth pages.
+    const { findAuthUserByEmail } = await import("@/lib/auth-users.server");
+    const existing = await findAuthUserByEmail(supabaseAdmin, acc.email);
+    let user: { id: string } | null = existing ? { id: existing.id } : null;
     if (!user) {
       const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
         email: acc.email,
@@ -38,7 +39,7 @@ export const ensureDemoAccount = createServerFn({ method: "POST" })
         user_metadata: { full_name: acc.full_name, signup_role: "owner" },
       });
       if (error) throw new Error(error.message);
-      user = created.user;
+      user = created.user ? { id: created.user.id } : null;
     } else {
       // Ensure password is the expected one (idempotent for repeated demo use)
       await supabaseAdmin.auth.admin.updateUserById(user.id, { password: acc.password, email_confirm: true });
@@ -58,8 +59,8 @@ export const resetDemo2Account = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const acc = DEMO_ACCOUNTS.demo2;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-    const user = list?.users?.find((u) => u.email?.toLowerCase() === acc.email.toLowerCase());
+    const { findAuthUserByEmail } = await import("@/lib/auth-users.server");
+    const user = await findAuthUserByEmail(supabaseAdmin, acc.email);
     if (!user) return { ok: true };
     const uid = user.id;
     // Only the demo2 account itself, or a developer, may wipe demo2 data.
