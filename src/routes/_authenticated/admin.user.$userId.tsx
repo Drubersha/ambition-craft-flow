@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
   notFoundComponent: () => <div className="p-6">Не найдено</div>,
 });
 
-const ADMIN_ROLES = ["developer", "moderator", "owner"] as const;
+const ADMIN_ROLES = ["developer", "moderator"] as const;
 
 function UserOverviewPage() {
   const { userId } = Route.useParams();
@@ -141,8 +141,8 @@ function UserOverviewPage() {
   if (!q.data) return null;
 
   const data = q.data;
-  const isOwner = data.viewerRoles.includes("owner");
-  const canEdit = isOwner || data.viewerRoles.includes("moderator");
+  const isDeveloper = data.viewerRoles.includes("developer");
+  const canEdit = isDeveloper || data.viewerRoles.includes("moderator");
   const displayName = name ?? data.profile?.full_name ?? "";
   const hasOwnerRole = data.roles.includes("owner");
   const hasTenantRole = data.roles.includes("tenant");
@@ -246,7 +246,7 @@ function UserOverviewPage() {
               </div>
             </div>
           )}
-          {isOwner && (
+          {isDeveloper && (
             <div className="border-t pt-3 space-y-2">
               <div className="text-sm font-medium">Управление ролями</div>
               {ADMIN_ROLES.map((r) => {
