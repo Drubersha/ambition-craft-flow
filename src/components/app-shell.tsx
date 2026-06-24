@@ -243,7 +243,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role } = useDemoIdentity();
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
-  const rolesQ = useQuery({ queryKey: ["admin-roles"], queryFn: () => fetchRoles(), staleTime: 60_000 });
+  const [hasSession, setHasSession] = useState(false);
+  useState(() => {
+    supabase.auth.getSession().then(({ data }) => setHasSession(!!data.session));
+    return 0;
+  });
+  const rolesQ = useQuery({
+    queryKey: ["admin-roles"],
+    queryFn: () => fetchRoles(),
+    staleTime: 60_000,
+    enabled: hasSession,
+    retry: false,
+  });
   const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0 || role === "developer" || role === "moderator";
 
   return (
