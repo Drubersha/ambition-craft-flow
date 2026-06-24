@@ -56,9 +56,9 @@ export const getUserOverview = createServerFn({ method: "POST" })
       supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId),
       supabaseAdmin.from("properties").select("id, name, status, area_total").eq("owner_id", data.userId),
       supabaseAdmin.from("tenants").select("id, name, phone, email").eq("owner_id", data.userId),
-      supabaseAdmin.from("contracts").select("id, kind, status, start_date, end_date, monthly_amount").eq("owner_id", data.userId),
+      supabaseAdmin.from("contracts").select("id, number, kind, status, start_date, end_date, rate, area, payment_period, currency").eq("owner_id", data.userId),
       supabaseAdmin.from("payments").select("id, amount, paid_at, charge_id").eq("owner_id", data.userId).order("paid_at", { ascending: false }).limit(50),
-      supabaseAdmin.from("tasks").select("id, title, status, due_at").eq("owner_id", data.userId).order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("tasks").select("id, title, status, priority, created_at").eq("owner_id", data.userId).order("created_at", { ascending: false }).limit(50),
     ]);
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
     return {
