@@ -1157,6 +1157,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _is_non_prod_env: { Args: never; Returns: boolean }
       _notify_owner_and_managers: {
         Args: {
           _body: string
@@ -1168,6 +1169,15 @@ export type Database = {
           _title: string
         }
         Returns: undefined
+      }
+      _seed_demo_user: {
+        Args: {
+          _email: string
+          _full_name: string
+          _password: string
+          _roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: string
       }
       get_my_owner_ids: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
