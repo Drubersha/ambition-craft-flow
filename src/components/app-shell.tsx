@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
@@ -184,6 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-4 w-4" />
           </div>
           <span className="font-semibold">RentFlow</span>
+          <div className="ml-auto"><NotificationsBell /></div>
         </div>
         <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
@@ -213,7 +215,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-5 w-5 text-primary shrink-0" />
             <span className="font-semibold truncate">RentFlow</span>
           </div>
-          <span className="ml-auto text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationsBell />
+            <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
+          </div>
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
           {children}
