@@ -1,5 +1,5 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useRouterState, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2,
@@ -18,6 +18,7 @@ import {
   PiggyBank,
   ShieldCheck,
   ScrollText,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -28,6 +29,39 @@ import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
+
+function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogout() {
+    setLoading(true);
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("demo.role");
+      localStorage.removeItem("active_account_kind");
+    }
+    navigate({ to: "/auth", replace: true });
+    setLoading(false);
+  }
+
+  return (
+    <Button
+      variant={variant === "ghost" ? "ghost" : "outline"}
+      size={variant === "ghost" ? "icon" : "default"}
+      className={variant === "default" ? "w-full" : undefined}
+      aria-label="Выйти"
+      disabled={loading}
+      onClick={handleLogout}
+    >
+      <LogOut className="h-4 w-4" />
+      {variant === "default" && <span className="ml-2">Выйти</span>}
+    </Button>
+  );
+}
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
