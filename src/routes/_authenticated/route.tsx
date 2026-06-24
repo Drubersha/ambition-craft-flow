@@ -1,7 +1,7 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { ensureDemoSession } from "@/lib/demo-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity-log.functions";
 
 // Demo mode: authentication is bypassed. A shared demo account is auto-signed-in
@@ -9,16 +9,29 @@ import { logActivity } from "@/lib/activity-log.functions";
 // client-side via the DemoIdentityProvider in __root.tsx.
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  component: DemoLayout,
+  component: AuthLayout,
 });
 
-function DemoLayout() {
+function AuthLayout() {
   const [ready, setReady] = useState(false);
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const lastLogged = useRef<string | null>(null);
   useEffect(() => {
-    ensureDemoSession().finally(() => setReady(true));
-  }, []);
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (!data.user) {
+        navigate({ to: "/auth", replace: true });
+        return;
+      }
+      setReady(true);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
   useEffect(() => {
     if (!ready) return;
     if (lastLogged.current === pathname) return;
