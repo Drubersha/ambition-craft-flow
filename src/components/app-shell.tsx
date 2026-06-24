@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2,
@@ -18,6 +18,7 @@ import {
   PiggyBank,
   ShieldCheck,
   ScrollText,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, type ReactNode } from "react";
@@ -28,6 +29,39 @@ import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
+
+function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogout() {
+    setLoading(true);
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("demo.role");
+      localStorage.removeItem("active_account_kind");
+    }
+    navigate({ to: "/auth", replace: true });
+    setLoading(false);
+  }
+
+  return (
+    <Button
+      variant={variant === "ghost" ? "ghost" : "outline"}
+      size={variant === "ghost" ? "icon" : "default"}
+      className={variant === "default" ? "w-full" : undefined}
+      aria-label="Выйти"
+      disabled={loading}
+      onClick={handleLogout}
+    >
+      <LogOut className="h-4 w-4" />
+      {variant === "default" && <span className="ml-2">Выйти</span>}
+    </Button>
+  );
+}
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
@@ -185,11 +219,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-4 w-4" />
           </div>
           <span className="font-semibold">RentFlow</span>
-          <div className="ml-auto"><NotificationsBell /></div>
+        <div className="ml-auto"><NotificationsBell /></div>
         </div>
         <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
           <NavList role={role} isAdmin={isAdmin} />
+        </div>
+        <div className="border-t p-3">
+          <LogoutButton />
         </div>
       </aside>
 
@@ -209,6 +246,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="py-3 flex-1 overflow-y-auto">
                 <NavList onNavigate={() => setMobileOpen(false)} role={role} isAdmin={isAdmin} />
               </div>
+              <div className="border-t p-3">
+                <LogoutButton />
+              </div>
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2 min-w-0">
@@ -217,6 +257,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="ml-auto flex items-center gap-1">
             <NotificationsBell />
+            <LogoutButton variant="ghost" />
             <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
           </div>
         </header>
