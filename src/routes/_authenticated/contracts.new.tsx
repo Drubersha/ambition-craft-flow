@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
+import { useEffectiveOwnerId } from "@/lib/manager-context";
 
 const search = z.object({ tenant: z.string().optional(), property: z.string().optional() });
 
@@ -19,11 +20,12 @@ function NewContract() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const sp = useSearch({ from: "/_authenticated/contracts/new" });
+  const { ownerId } = useEffectiveOwnerId();
   const mut = useMutation({
     mutationFn: async (v: ContractFormValues) => {
-      const { data: u } = await supabase.auth.getUser();
+      if (!ownerId) throw new Error("Не удалось определить арендодателя");
       const { data, error } = await supabase.from("contracts").insert({
-        owner_id: u.user!.id,
+        owner_id: ownerId,
         tenant_id: v.tenant_id, property_id: v.property_id,
         number: v.number || null, cadastral_no: v.cadastral_no || null,
         area: v.area ? Number(v.area) : null,
