@@ -67,7 +67,7 @@ export function useDemoIdentity(): Identity {
 }
 
 export const ROLE_LABELS: Record<DemoRole, string> = {
-  owner: "Главный",
+  owner: "Арендодатель",
   manager: "Менеджер",
   tenant: "Арендатор",
   developer: "Разработчик",
