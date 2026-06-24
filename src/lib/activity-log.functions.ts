@@ -54,7 +54,20 @@ export const getActivityLogs = createServerFn({ method: "POST" })
     if (data.entity_type) q = q.eq("entity_type", data.entity_type);
     if (data.from) q = q.gte("created_at", data.from);
     if (data.to) q = q.lte("created_at", data.to);
-    if (data.search) q = q.or(`route.ilike.%${data.search}%,action.ilike.%${data.search}%,entity_type.ilike.%${data.search}%`);
+    if (data.search) {
+      // Sanitize: strip PostgREST filter metacharacters to prevent filter injection.
+      const safe = data.search.replace(/[^a-zA-Z0-9_ /.\-А-Яа-яЁё]/g, "").slice(0, 100);
+      if (safe) {
+        const pattern = `%${safe}%`;
+        q = q.or(
+          [
+            `route.ilike.${pattern}`,
+            `action.ilike.${pattern}`,
+            `entity_type.ilike.${pattern}`,
+          ].join(","),
+        );
+      }
+    }
     const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);
 
