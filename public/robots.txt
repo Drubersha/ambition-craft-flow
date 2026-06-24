@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /me
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /properties
+Disallow: /tenants
+Disallow: /contracts
+Disallow: /charges
+Disallow: /payments
+Disallow: /budgets
+Disallow: /chats
+Disallow: /leads
+Disallow: /tasks
+Disallow: /users
+
+Sitemap: https://ambition-craft-flow.lovable.app/sitemap.xml

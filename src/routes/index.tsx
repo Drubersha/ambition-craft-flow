@@ -7,6 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   ssr: false,
   component: IndexPage,
+  head: () => ({
+    links: [{ rel: "canonical", href: "https://ambition-craft-flow.lovable.app/" }],
+    meta: [{ property: "og:url", content: "https://ambition-craft-flow.lovable.app/" }],
+  }),
 });
 
 function IndexPage() {
