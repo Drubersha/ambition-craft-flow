@@ -90,7 +90,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
           className={variant === "default" ? "w-full" : undefined}
           aria-label="Выйти"
         >
-      <BrandIcon icon={LogOut} size="sm" />
+          <BrandIcon icon={LogOut} size="sm" />
           {variant === "default" && <span className="ml-2">Выйти</span>}
         </Button>
       </AlertDialogTrigger>

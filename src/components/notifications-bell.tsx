@@ -196,7 +196,7 @@ export function NotificationsBell() {
                     !n.read_at && "bg-primary/5",
                   )}
                 >
-              <BrandIcon icon={Icon} size="sm" tone="muted" className="mt-0.5" />
+                  <BrandIcon icon={Icon} size="sm" tone="muted" className="mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-sm font-medium truncate">{n.title}</div>
