@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 128" role="img" aria-label="LeasePlease — Making leasing easy.">
+  <g fill="none" stroke="#0b2f3a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 10 H40 a14 14 0 0 1 0 28 H30 V22 H40" />
+    <path d="M32 38 V82" />
+    <path d="M32 66 H44" />
+    <path d="M32 76 H40" />
+  </g>
+  <g stroke="#22b8a5" stroke-width="4" stroke-linecap="round">
+    <path d="M50 10 L56 6" />
+    <path d="M54 18 L60 18" />
+    <path d="M50 26 L56 30" />
+  </g>
+  <g font-family="ui-sans-serif,system-ui,sans-serif" font-weight="700" font-size="44">
+    <text x="80" y="62" fill="#0b2f3a">Lease</text>
+    <text x="196" y="62" fill="#22b8a5">Please</text>
+  </g>
+  <g font-family="ui-sans-serif,system-ui,sans-serif" font-weight="600" font-size="12" letter-spacing="2">
+    <text x="80" y="96" fill="#0b2f3a">MAKING LEASING EASY.</text>
+    <path d="M250 92 a3 3 0 0 1 6 0 a3 3 0 0 1 6 0 c0 4 -6 7 -6 7 c0 0 -6 -3 -6 -7 z" fill="#22b8a5" stroke="none"/>
+  </g>
+</svg>

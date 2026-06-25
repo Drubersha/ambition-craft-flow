@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" role="img" aria-label="LeasePlease">
+  <g fill="none" stroke="#0b2f3a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- key head: stylized P/loop -->
+    <path d="M22 10 H40 a14 14 0 0 1 0 28 H30 V22 H40" />
+    <!-- shaft -->
+    <path d="M32 38 V82" />
+    <!-- teeth -->
+    <path d="M32 66 H44" />
+    <path d="M32 76 H40" />
+  </g>
+  <!-- sparkle accents -->
+  <g stroke="#22b8a5" stroke-width="4" stroke-linecap="round">
+    <path d="M50 10 L56 6" />
+    <path d="M54 18 L60 18" />
+    <path d="M50 26 L56 30" />
+  </g>
+</svg>

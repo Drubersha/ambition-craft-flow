@@ -16,11 +16,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { DemoIdentityProvider } from "@/lib/demo-identity";
 import { ManagerContextProvider } from "@/lib/manager-context";
 import { logActivitySafe } from "@/lib/activity-log.functions";
+import { BrandLogo } from "@/components/brand-logo";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
+        <div className="mb-6 flex justify-center">
+          <BrandLogo variant="lockup" size="md" clickable to="/" />
+        </div>
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Страница не найдена</h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -49,6 +53,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
+        <div className="mb-6 flex justify-center">
+          <BrandLogo variant="lockup" size="md" clickable to="/" />
+        </div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Не удалось загрузить страницу
         </h1>
@@ -101,6 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", type: "image/svg+xml", href: "/brand/favicon.svg" },
     ],
   }),
   shellComponent: RootShell,
