@@ -1,4 +1,4 @@
-# Self-hosting RentFlow
+# Self-hosting LeasePlease
 
 Полностью автономный стек: приложение + Supabase в Docker на вашем сервере.
 
