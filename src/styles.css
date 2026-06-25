@@ -69,6 +69,11 @@
 
 :root {
   --radius: 0.625rem;
+  /* Brand tokens (LeasePlease) */
+  --brand-navy: #0b2f3a;
+  --brand-teal: #22b8a5;
+  --brand-mint: #b8ebe2;
+  --brand-muted: #5b7480;
   --background: oklch(0.97 0.015 190);
   --foreground: oklch(0.22 0.03 205);
   --card: oklch(0.98 0.012 190);
