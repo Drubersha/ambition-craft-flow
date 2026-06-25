@@ -65,17 +65,15 @@ export const linkUserByEmail = createServerFn({ method: "POST" })
     if (!memberId) throw new Error("Пользователь с такой почтой не зарегистрирован");
     if (memberId === context.userId) throw new Error("Нельзя привязать самого себя");
 
-    const { error: linkErr } = await supabaseAdmin
-      .from("user_links")
-      .upsert(
-        {
-          owner_user_id: context.userId,
-          member_user_id: memberId,
-          role: data.role,
-          created_by: context.userId,
-        } as never,
-        { onConflict: "owner_user_id,member_user_id,role" },
-      );
+    const { error: linkErr } = await supabaseAdmin.from("user_links").upsert(
+      {
+        owner_user_id: context.userId,
+        member_user_id: memberId,
+        role: data.role,
+        created_by: context.userId,
+      } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
     if (linkErr) throw new Error(linkErr.message);
     await supabaseAdmin
       .from("user_roles")
@@ -131,17 +129,15 @@ export const moderatorLinkUser = createServerFn({ method: "POST" })
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (!isAdminRoles(roles)) throw new Error("Forbidden");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("user_links")
-      .upsert(
-        {
-          owner_user_id: data.ownerUserId,
-          member_user_id: data.memberUserId,
-          role: data.role,
-          created_by: context.userId,
-        } as never,
-        { onConflict: "owner_user_id,member_user_id,role" },
-      );
+    const { error } = await supabaseAdmin.from("user_links").upsert(
+      {
+        owner_user_id: data.ownerUserId,
+        member_user_id: data.memberUserId,
+        role: data.role,
+        created_by: context.userId,
+      } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
     if (error) throw new Error(error.message);
     await supabaseAdmin
       .from("user_roles")

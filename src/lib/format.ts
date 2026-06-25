@@ -178,7 +178,7 @@ export function splitContractPeriods(
   }
 
   while (cursor <= upTo) {
-    let ps = cursor < start ? start : cursor;
+    const ps = cursor < start ? start : cursor;
     let pe = periodEnd(cursor);
     if (hardEnd && pe > hardEnd) pe = hardEnd;
     if (pe > upTo) pe = upTo;

@@ -228,17 +228,15 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
       .upsert({ user_id: data.memberUserId, role: "tenant" } as never, {
         onConflict: "user_id,role",
       });
-    const { error } = await supabaseAdmin
-      .from("user_links")
-      .upsert(
-        {
-          owner_user_id: data.ownerUserId,
-          member_user_id: data.memberUserId,
-          role: "tenant",
-          created_by: context.userId,
-        } as never,
-        { onConflict: "owner_user_id,member_user_id,role" },
-      );
+    const { error } = await supabaseAdmin.from("user_links").upsert(
+      {
+        owner_user_id: data.ownerUserId,
+        member_user_id: data.memberUserId,
+        role: "tenant",
+        created_by: context.userId,
+      } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
@@ -312,17 +310,15 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     if (!newId) throw new Error("Не удалось создать аккаунт");
     const ownerId = newRole === "owner" ? newId : data.sourceUserId;
     const memberId = newRole === "tenant" ? newId : data.sourceUserId;
-    await supabaseAdmin
-      .from("user_links")
-      .upsert(
-        {
-          owner_user_id: ownerId,
-          member_user_id: memberId,
-          role: "tenant",
-          created_by: context.userId,
-        } as never,
-        { onConflict: "owner_user_id,member_user_id,role" },
-      );
+    await supabaseAdmin.from("user_links").upsert(
+      {
+        owner_user_id: ownerId,
+        member_user_id: memberId,
+        role: "tenant",
+        created_by: context.userId,
+      } as never,
+      { onConflict: "owner_user_id,member_user_id,role" },
+    );
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
       acted_as_user_id: newId,
