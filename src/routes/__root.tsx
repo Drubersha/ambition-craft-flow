@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DemoIdentityProvider } from "@/lib/demo-identity";
 import { ManagerContextProvider } from "@/lib/manager-context";
-import { logActivity } from "@/lib/activity-log.functions";
+import { logActivitySafe } from "@/lib/activity-log.functions";
 
 function NotFoundComponent() {
   return (
@@ -133,7 +133,7 @@ function RootComponent() {
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       if (event === "SIGNED_IN") {
-        logActivity({ data: { action: "login" } }).catch(() => {});
+        logActivitySafe({ action: "login" });
       }
     });
     return () => sub.subscription.unsubscribe();
