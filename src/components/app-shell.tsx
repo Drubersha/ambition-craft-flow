@@ -49,6 +49,7 @@ import { getCurrentAdminRoles } from "@/lib/admin.functions";
 import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { BrandLogo } from "@/components/brand-logo";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
   const queryClient = useQueryClient();
@@ -321,10 +322,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-[100dvh] bg-muted/20">
       <aside className="hidden md:flex w-60 flex-col border-r bg-background">
         <div className="flex h-14 items-center gap-2 px-4 border-b">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <span className="font-semibold">LeasePlease</span>
+          <BrandLogo
+            variant="lockup"
+            size="sm"
+            clickable
+            to={role === "tenant" ? "/me" : "/dashboard"}
+          />
           <div className="ml-auto">
             <NotificationsBell />
           </div>
@@ -349,8 +352,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SheetContent side="left" className="w-72 max-w-[85vw] p-0 flex flex-col">
               <SheetTitle className="sr-only">Навигация</SheetTitle>
               <div className="flex h-14 items-center gap-2 px-4 border-b">
-                <Building2 className="h-5 w-5 text-primary" />
-                <span className="font-semibold">LeasePlease</span>
+                <BrandLogo
+                  variant="lockup"
+                  size="sm"
+                  clickable
+                  to={role === "tenant" ? "/me" : "/dashboard"}
+                />
               </div>
               <IdentitySwitcher />
               <div className="py-3 flex-1 overflow-y-auto">
@@ -362,8 +369,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2 min-w-0">
-            <Building2 className="h-5 w-5 text-primary shrink-0" />
-            <span className="font-semibold truncate">LeasePlease</span>
+            <BrandLogo
+              variant="lockup"
+              size="sm"
+              clickable
+              to={role === "tenant" ? "/me" : "/dashboard"}
+            />
           </div>
           <div className="ml-auto flex items-center gap-1">
             <NotificationsBell />
