@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useRouterState, useNavigate } from "@tanstack/
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
-import { logActivity } from "@/lib/activity-log.functions";
+import { logActivitySafe } from "@/lib/activity-log.functions";
 
 // Demo mode: authentication is bypassed. A shared demo account is auto-signed-in
 // so existing RLS (owner_id = auth.uid()) keeps working. Role gating happens
@@ -38,7 +38,7 @@ function AuthLayout() {
     if (pathname.startsWith("/admin/logs")) return;
     lastLogged.current = pathname;
     const t = setTimeout(() => {
-      logActivity({ data: { action: "view", route: pathname } }).catch(() => {});
+      logActivitySafe({ action: "view", route: pathname });
     }, 500);
     return () => clearTimeout(t);
   }, [pathname, ready]);
