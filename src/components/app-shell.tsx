@@ -50,6 +50,7 @@ import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandLogo } from "@/components/brand-logo";
+import { BrandIcon } from "@/components/brand-icon";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
   const queryClient = useQueryClient();
@@ -89,7 +90,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
           className={variant === "default" ? "w-full" : undefined}
           aria-label="Выйти"
         >
-          <LogOut className="h-4 w-4" />
+          <BrandIcon icon={LogOut} size="sm" />
           {variant === "default" && <span className="ml-2">Выйти</span>}
         </Button>
       </AlertDialogTrigger>
@@ -173,7 +174,7 @@ function NavList({
               active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <BrandIcon icon={Icon} size="sm" tone={active ? "default" : "muted"} />
             {item.label}
           </Link>
         );
@@ -201,7 +202,7 @@ function NavList({
                   active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <BrandIcon icon={Icon} size="sm" tone={active ? "default" : "muted"} />
                 {item.label}
               </Link>
             );

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Search } from "lucide-react";
+import { Plus, Building2, Search, Folder } from "lucide-react";
 import { useState } from "react";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
@@ -142,7 +142,14 @@ function PropertiesList() {
                   {p.base_rate && <div>Ставка: {formatMoney(p.base_rate, p.currency)}</div>}
                   {p.cadastral_no && <div>Кадастр: {p.cadastral_no}</div>}
                   {p.folder_id && (
-                    <div className="truncate">📁 {folderBreadcrumb(folders, p.folder_id)}</div>
+                    <div className="flex items-center gap-1 truncate">
+                      <Folder
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                      <span className="truncate">{folderBreadcrumb(folders, p.folder_id)}</span>
+                    </div>
                   )}
                 </div>
               </Card>
