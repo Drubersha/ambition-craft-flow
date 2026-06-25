@@ -218,57 +218,72 @@ function IdentitySwitcher() {
   const mctx = useManagerContext();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Only demo logins (signInAsDemo sets `demo.kind`) get the role switcher.
+  // Standard registered accounts never see it.
+  const [isDemo] = useState(
+    () => typeof window !== "undefined" && !!localStorage.getItem("demo.kind"),
+  );
+  const showManagerPicker = mctx.status === "ready" && role !== "tenant";
   const { data: tenants } = useQuery({
     queryKey: ["tenants-for-switcher"],
+    enabled: isDemo && role === "tenant",
     queryFn: async () => {
       const { data, error } = await supabase.from("tenants").select("id, name").order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  // Standard accounts that aren't linked managers have nothing to switch.
+  if (!isDemo && !showManagerPicker) return null;
+
   return (
     <div className="space-y-2 px-3 py-2 border-b bg-muted/30">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        Демо: войти как
-      </div>
-      <Select
-        value={role}
-        onValueChange={(v) => {
-          const next = v as DemoRole;
-          setRole(next);
-          if (next !== "tenant" && pathname.startsWith("/me")) {
-            navigate({ to: "/dashboard" });
-          } else if (next === "tenant" && !pathname.startsWith("/me")) {
-            navigate({ to: "/me" });
-          }
-        }}
-      >
-        <SelectTrigger className="h-8 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
-          <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
-          <SelectItem value="tenant">{ROLE_LABELS.tenant}</SelectItem>
-          <SelectItem value="developer">{ROLE_LABELS.developer}</SelectItem>
-          <SelectItem value="moderator">{ROLE_LABELS.moderator}</SelectItem>
-        </SelectContent>
-      </Select>
-      {role === "tenant" && (
-        <Select value={tenantId ?? ""} onValueChange={(v) => setTenantId(v || null)}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Выберите арендатора" />
-          </SelectTrigger>
-          <SelectContent>
-            {(tenants ?? []).map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {isDemo && (
+        <>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Демо: войти как
+          </div>
+          <Select
+            value={role}
+            onValueChange={(v) => {
+              const next = v as DemoRole;
+              setRole(next);
+              if (next !== "tenant" && pathname.startsWith("/me")) {
+                navigate({ to: "/dashboard" });
+              } else if (next === "tenant" && !pathname.startsWith("/me")) {
+                navigate({ to: "/me" });
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
+              <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
+              <SelectItem value="tenant">{ROLE_LABELS.tenant}</SelectItem>
+              <SelectItem value="developer">{ROLE_LABELS.developer}</SelectItem>
+              <SelectItem value="moderator">{ROLE_LABELS.moderator}</SelectItem>
+            </SelectContent>
+          </Select>
+          {role === "tenant" && (
+            <Select value={tenantId ?? ""} onValueChange={(v) => setTenantId(v || null)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Выберите арендатора" />
+              </SelectTrigger>
+              <SelectContent>
+                {(tenants ?? []).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </>
       )}
-      {mctx.status === "ready" && role !== "tenant" && (
+      {showManagerPicker && (
         <div className="space-y-1">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
             Активный арендодатель
