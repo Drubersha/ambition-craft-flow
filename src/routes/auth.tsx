@@ -31,13 +31,13 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
   head: () => ({
     meta: [
-      { title: "Вход — RentFlow" },
+      { title: "Вход — LeasePlease" },
       {
         name: "description",
-        content: "Вход и регистрация в RentFlow — системе учёта коммерческой аренды.",
+        content: "Вход и регистрация в LeasePlease — системе учёта коммерческой аренды.",
       },
-      { property: "og:title", content: "Вход — RentFlow" },
-      { property: "og:description", content: "Вход и регистрация в RentFlow." },
+      { property: "og:title", content: "Вход — LeasePlease" },
+      { property: "og:description", content: "Вход и регистрация в LeasePlease." },
       { property: "og:url", content: "/auth" },
     ],
     links: [{ rel: "canonical", href: "/auth" }],
@@ -96,7 +96,7 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4 py-10">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>RentFlow — вход</CardTitle>
+          <CardTitle>LeasePlease — вход</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>

@@ -1,4 +1,4 @@
-# Self-hosting RentFlow
+# Self-hosting LeasePlease
 
 Полностью автономный стек: приложение + Supabase в Docker на вашем сервере.
 
@@ -36,7 +36,7 @@ JWT_SECRET="$(openssl rand -base64 48)" node scripts/gen-keys.mjs
 Скопировать вывод (`JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`) в `.env`. Также проставить:
 
 - `POSTGRES_PASSWORD` — любой надёжный пароль
-- `SITE_URL` — публичный URL фронтенда, например `https://rentflow.example.com`
+- `SITE_URL` — публичный URL фронтенда, например `https://leaseplease.example.com`
 - `VITE_SUPABASE_URL` — публичный URL Supabase gateway, `https://api.example.com` (или `http://SERVER_IP:8000` без домена)
 - `SUPABASE_URL` — внутренний адрес для server-функций: `http://kong:8000`
 - `VITE_SUPABASE_PUBLISHABLE_KEY` = `SUPABASE_PUBLISHABLE_KEY` = `ANON_KEY`
@@ -83,7 +83,7 @@ SQL
 `Caddyfile`:
 
 ```
-rentflow.example.com {
+leaseplease.example.com {
   reverse_proxy app:3000
 }
 api.example.com {

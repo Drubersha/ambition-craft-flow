@@ -82,12 +82,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RentFlow — учёт аренды" },
+      { title: "LeasePlease — учёт аренды" },
       {
         name: "description",
-        content: "RentFlow: учёт объектов, арендаторов, договоров и платежей.",
+        content: "LeasePlease: учёт объектов, арендаторов, договоров и платежей.",
       },
-      { property: "og:title", content: "RentFlow — учёт аренды" },
+      { property: "og:title", content: "LeasePlease — учёт аренды" },
       {
         property: "og:description",
         content: "Управление коммерческой арендой: объекты, договоры, платежи.",

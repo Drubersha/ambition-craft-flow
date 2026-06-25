@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyRoles } from "@/lib/my-roles.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export type DemoRole = "owner" | "manager" | "tenant" | "developer" | "moderator";
 
@@ -37,8 +38,15 @@ export function DemoIdentityProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setTenantIdState(readTenantId());
     let active = true;
-    fetchRoles()
-      .then((res) => {
+
+    async function load() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        if (active) setServerRoles([]);
+        return;
+      }
+      try {
+        const res = await fetchRoles();
         if (!active) return;
         const roles = res?.roles ?? [];
         setServerRoles(roles);
@@ -58,10 +66,12 @@ export function DemoIdentityProvider({ children }: { children: ReactNode }) {
                 ? "moderator"
                 : "owner",
           );
-      })
-      .catch(() => {
+      } catch {
         if (active) setServerRoles([]);
-      });
+      }
+    }
+
+    load();
     return () => {
       active = false;
     };
