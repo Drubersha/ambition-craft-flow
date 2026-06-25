@@ -328,7 +328,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold">RentFlow</span>
+          <span className="font-semibold">LeasePlease</span>
           <div className="ml-auto">
             <NotificationsBell />
           </div>
@@ -354,7 +354,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SheetTitle className="sr-only">Навигация</SheetTitle>
               <div className="flex h-14 items-center gap-2 px-4 border-b">
                 <Building2 className="h-5 w-5 text-primary" />
-                <span className="font-semibold">RentFlow</span>
+                <span className="font-semibold">LeasePlease</span>
               </div>
               <IdentitySwitcher />
               <div className="py-3 flex-1 overflow-y-auto">
@@ -367,7 +367,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Sheet>
           <div className="flex items-center gap-2 min-w-0">
             <Building2 className="h-5 w-5 text-primary shrink-0" />
-            <span className="font-semibold truncate">RentFlow</span>
+            <span className="font-semibold truncate">LeasePlease</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <NotificationsBell />

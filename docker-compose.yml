@@ -1,7 +1,7 @@
-# Self-hosted RentFlow: app + Supabase stack
+# Self-hosted LeasePlease: app + Supabase stack
 # Based on the official supabase/docker reference, trimmed to the services this app uses.
 
-name: rentflow
+name: leaseplease
 
 services:
   app:
