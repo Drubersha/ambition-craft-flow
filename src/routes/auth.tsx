@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { signInAsDemo } from "@/lib/demo-auth";
 import type { DemoKind } from "@/lib/demo-auth.functions";
+import { verifyDemoGate } from "@/lib/demo-gate.functions";
 import {
   Dialog,
   DialogContent,
@@ -18,11 +19,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const DEMO_CREDENTIALS: Record<DemoKind, { login: string; password: string; label: string }> = {
-  demo: { login: "admin", password: "admin", label: "Демо режим 1" },
-  demo2: { login: "demo", password: "demo", label: "Демо режим 2" },
-  moderator: { login: "admin", password: "admin", label: "Модератор" },
-  developer: { login: "admin", password: "admin", label: "Администратор" },
+const DEMO_LABELS: Record<DemoKind, string> = {
+  demo: "Демо режим 1",
+  demo2: "Демо режим 2",
+  moderator: "Модератор",
+  developer: "Администратор",
 };
 
 export const Route = createFileRoute("/auth")({
@@ -69,15 +70,18 @@ function AuthPage() {
   async function submitGate(e: React.FormEvent) {
     e.preventDefault();
     if (!gateKind) return;
-    const creds = DEMO_CREDENTIALS[gateKind];
-    if (gateLogin !== creds.login || gatePassword !== creds.password) {
-      toast.error("Неверный логин или пароль");
-      return;
-    }
     const kind = gateKind;
-    setGateKind(null);
     setDemoLoading(kind);
     try {
+      const { ok } = await verifyDemoGate({
+        data: { kind, login: gateLogin, password: gatePassword },
+      });
+      if (!ok) {
+        toast.error("Неверный логин или пароль");
+        setDemoLoading(null);
+        return;
+      }
+      setGateKind(null);
       await signInAsDemo(kind);
       toast.success("Добро пожаловать");
       navigate({ to: "/" });
@@ -158,7 +162,7 @@ function AuthPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Вход — {gateKind ? DEMO_CREDENTIALS[gateKind].label : ""}</DialogTitle>
+            <DialogTitle>Вход — {gateKind ? DEMO_LABELS[gateKind] : ""}</DialogTitle>
             <DialogDescription>Введите логин и пароль для доступа</DialogDescription>
           </DialogHeader>
           <form onSubmit={submitGate} className="space-y-3">
