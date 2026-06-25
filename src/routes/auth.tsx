@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { BrandLogo } from "@/components/brand-logo";
 
 const DEMO_LABELS: Record<DemoKind, string> = {
   demo: "Демо режим 1",
@@ -95,8 +96,9 @@ function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4 py-10">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>LeasePlease — вход</CardTitle>
+        <CardHeader className="items-center text-center space-y-3">
+          <BrandLogo variant="lockupWithSlogan" size="lg" clickable to="/" />
+          <CardTitle className="text-base font-medium text-muted-foreground">Вход</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
