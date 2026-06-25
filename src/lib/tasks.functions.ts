@@ -164,6 +164,7 @@ export const acceptSuggestion = createServerFn({ method: "POST" })
     const { data: maxRow } = await sb
       .from("tasks")
       .select("position")
+      .eq("owner_id", s.owner_id)
       .eq("status", "accepted")
       .order("position", { ascending: false })
       .limit(1)
