@@ -58,8 +58,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
 
   async function handleLogout() {
     setLoading(true);
-    try {
-      await logActivitySafe({ action: "logout" });
+    await logActivitySafe({ action: "logout" });
     await queryClient.cancelQueries();
     queryClient.clear();
     if (typeof window !== "undefined" && localStorage.getItem("demo.kind") === "demo2") {
