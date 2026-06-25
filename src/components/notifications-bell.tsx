@@ -23,6 +23,7 @@ import {
 } from "@/lib/notifications.functions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { BrandIcon } from "@/components/brand-icon";
 
 const KIND_ICON: Record<string, any> = {
   property: Building2,
@@ -140,7 +141,7 @@ export function NotificationsBell() {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Уведомления" className="relative">
-          <Bell className="h-5 w-5" />
+          <BrandIcon icon={Bell} size="md" />
           {unread > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center">
               {unread > 99 ? "99+" : unread}
@@ -195,7 +196,7 @@ export function NotificationsBell() {
                     !n.read_at && "bg-primary/5",
                   )}
                 >
-                  <Icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+              <BrandIcon icon={Icon} size="sm" tone="muted" className="mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-sm font-medium truncate">{n.title}</div>
