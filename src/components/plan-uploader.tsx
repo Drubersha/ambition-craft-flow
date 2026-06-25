@@ -63,7 +63,7 @@ export function PlanUploader({
       if (currentPath) {
         await supabase.storage.from(BUCKET).remove([currentPath]);
       }
-      const safeName = filename.replace(/[^\w.\-]+/g, "_");
+      const safeName = filename.replace(/[^\w.-]+/g, "_");
       const path = `${pathPrefix}/${Date.now()}_${safeName}`;
       const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
         contentType: "image/png",
