@@ -52,9 +52,19 @@ function NewProperty() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl sm:text-2xl font-bold">Новый объект</h1>
-      <PropertyForm formId="property-new-form" onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <PropertyForm
+        formId="property-new-form"
+        onSubmit={(v) => mut.mutate(v)}
+        submitting={mut.isPending}
+      />
       <MobileActionBar>
-        <Button type="submit" form="property-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+        <Button
+          type="submit"
+          form="property-new-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
           {mut.isPending ? "Сохранение..." : "Создать объект"}
         </Button>
       </MobileActionBar>

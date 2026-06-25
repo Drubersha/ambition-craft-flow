@@ -50,7 +50,14 @@ export function DemoIdentityProvider({ children }: { children: ReactNode }) {
         const allowed: DemoRole[] = ["owner", "manager", "tenant"];
         for (const r of PRIVILEGED) if (roles.includes(r)) allowed.push(r);
         if (stored && allowed.includes(stored)) setRoleState(stored);
-        else setRoleState(roles.includes("developer") ? "developer" : roles.includes("moderator") ? "moderator" : "owner");
+        else
+          setRoleState(
+            roles.includes("developer")
+              ? "developer"
+              : roles.includes("moderator")
+                ? "moderator"
+                : "owner",
+          );
       })
       .catch(() => {
         if (active) setServerRoles([]);

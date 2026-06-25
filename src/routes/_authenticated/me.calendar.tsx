@@ -31,7 +31,9 @@ function MyCalendar() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("charges")
-        .select("id, due_date, total, paid_total, status, contract:contracts!inner(number, currency, tenant_id)")
+        .select(
+          "id, due_date, total, paid_total, status, contract:contracts!inner(number, currency, tenant_id)",
+        )
         .eq("contract.tenant_id", tenantId!)
         .gte("due_date", monthStart.toISOString().slice(0, 10))
         .lte("due_date", monthEnd.toISOString().slice(0, 10))
@@ -65,27 +67,39 @@ function MyCalendar() {
     cells.push({ date: d, inMonth: d.getMonth() === monthStart.getMonth() });
   }
 
-  const selectedItems = selected ? byDay.get(selected) ?? [] : [];
+  const selectedItems = selected ? (byDay.get(selected) ?? []) : [];
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">Календарь оплат</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="text-sm font-medium min-w-[140px] text-center">
             {monthStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
           </div>
-          <Button variant="outline" size="icon" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
       <Card className="p-2">
         <div className="grid grid-cols-7 gap-1 text-[10px] text-muted-foreground uppercase mb-1">
-          {["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map((d) => <div key={d} className="text-center">{d}</div>)}
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => (
+            <div key={d} className="text-center">
+              {d}
+            </div>
+          ))}
         </div>
         <div className="grid grid-cols-7 gap-1">
           {cells.map(({ date, inMonth }, i) => {
@@ -108,10 +122,12 @@ function MyCalendar() {
               >
                 <div className="font-medium">{date.getDate()}</div>
                 {items.length > 0 && (
-                  <div className={cn(
-                    "mt-1 inline-block h-2 w-2 rounded-full",
-                    hasOverdue ? "bg-destructive" : hasPaid ? "bg-green-500" : "bg-primary",
-                  )} />
+                  <div
+                    className={cn(
+                      "mt-1 inline-block h-2 w-2 rounded-full",
+                      hasOverdue ? "bg-destructive" : hasPaid ? "bg-green-500" : "bg-primary",
+                    )}
+                  />
                 )}
               </button>
             );
@@ -123,14 +139,26 @@ function MyCalendar() {
         <Card className="p-3 space-y-2">
           <div className="text-sm font-medium">Платежи на {formatDate(selected)}</div>
           {selectedItems.map((c: any) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 text-sm border-b last:border-0 py-1">
+            <div
+              key={c.id}
+              className="flex items-center justify-between gap-3 text-sm border-b last:border-0 py-1"
+            >
               <div>
                 <div>{c.contract?.number ? `Договор № ${c.contract.number}` : "Договор"}</div>
                 <div className="text-xs text-muted-foreground">
-                  Оплачено {formatMoney(c.paid_total, c.contract?.currency)} из {formatMoney(c.total, c.contract?.currency)}
+                  Оплачено {formatMoney(c.paid_total, c.contract?.currency)} из{" "}
+                  {formatMoney(c.total, c.contract?.currency)}
                 </div>
               </div>
-              <Badge variant={c.status === "paid" ? "default" : c.status === "overdue" ? "destructive" : "secondary"}>
+              <Badge
+                variant={
+                  c.status === "paid"
+                    ? "default"
+                    : c.status === "overdue"
+                      ? "destructive"
+                      : "secondary"
+                }
+              >
                 {CHARGE_STATUS_LABELS[c.status]}
               </Badge>
             </div>

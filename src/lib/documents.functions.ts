@@ -52,10 +52,9 @@ export const getDocumentSignedUrl = createServerFn({ method: "POST" })
     }
 
     if (!allowed) {
-      const { data: isTenantDoc } = await context.supabase.rpc(
-        "tenant_can_access_document",
-        { _doc_id: doc.id },
-      );
+      const { data: isTenantDoc } = await context.supabase.rpc("tenant_can_access_document", {
+        _doc_id: doc.id,
+      });
       if (isTenantDoc === true) allowed = true;
     }
 

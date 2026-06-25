@@ -81,15 +81,28 @@ export function ChargesListView() {
             <Link key={c.id} to="/charges/$id" params={{ id: c.id }}>
               <Card className="p-3 hover:border-primary flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm break-words">{c.contract?.tenant?.name} · № {c.contract?.number}</div>
+                  <div className="font-medium text-sm break-words">
+                    {c.contract?.tenant?.name} · № {c.contract?.number}
+                  </div>
                   <div className="text-xs text-muted-foreground break-words">
-                    {c.contract?.property?.name} · {formatDate(c.period_start)} — {formatDate(c.period_end)}
+                    {c.contract?.property?.name} · {formatDate(c.period_start)} —{" "}
+                    {formatDate(c.period_end)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Оплачено {formatMoney(c.paid_total, c.contract?.currency)} из {formatMoney(c.total, c.contract?.currency)}
+                    Оплачено {formatMoney(c.paid_total, c.contract?.currency)} из{" "}
+                    {formatMoney(c.total, c.contract?.currency)}
                   </div>
                 </div>
-                <Badge className="shrink-0 whitespace-nowrap" variant={c.status === "paid" ? "default" : c.status === "overdue" ? "destructive" : "secondary"}>
+                <Badge
+                  className="shrink-0 whitespace-nowrap"
+                  variant={
+                    c.status === "paid"
+                      ? "default"
+                      : c.status === "overdue"
+                        ? "destructive"
+                        : "secondary"
+                  }
+                >
                   {CHARGE_STATUS_LABELS[c.status]}
                 </Badge>
               </Card>
@@ -218,7 +231,13 @@ function AutoChargesButton() {
         <AlertDialogFooter>
           <AlertDialogCancel>Отмена</AlertDialogCancel>
           {planned.length > 0 && (
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); mut.mutate(); }} disabled={mut.isPending}>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                mut.mutate();
+              }}
+              disabled={mut.isPending}
+            >
               {mut.isPending ? "Создаём..." : "Создать"}
             </AlertDialogAction>
           )}

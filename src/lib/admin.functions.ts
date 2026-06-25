@@ -57,11 +57,29 @@ export const getUserOverview = createServerFn({ method: "POST" })
     const [profile, userRoles, props, tenants, contracts, payments, tasks] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").eq("id", data.userId).maybeSingle(),
       supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId),
-      supabaseAdmin.from("properties").select("id, name, status, area_total").eq("owner_id", data.userId),
+      supabaseAdmin
+        .from("properties")
+        .select("id, name, status, area_total")
+        .eq("owner_id", data.userId),
       supabaseAdmin.from("tenants").select("id, name, phone, email").eq("owner_id", data.userId),
-      supabaseAdmin.from("contracts").select("id, number, kind, status, start_date, end_date, rate, area, payment_period, currency").eq("owner_id", data.userId),
-      supabaseAdmin.from("payments").select("id, amount, paid_at, charge_id").eq("owner_id", data.userId).order("paid_at", { ascending: false }).limit(50),
-      supabaseAdmin.from("tasks").select("id, title, status, priority, created_at").eq("owner_id", data.userId).order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin
+        .from("contracts")
+        .select(
+          "id, number, kind, status, start_date, end_date, rate, area, payment_period, currency",
+        )
+        .eq("owner_id", data.userId),
+      supabaseAdmin
+        .from("payments")
+        .select("id, amount, paid_at, charge_id")
+        .eq("owner_id", data.userId)
+        .order("paid_at", { ascending: false })
+        .limit(50),
+      supabaseAdmin
+        .from("tasks")
+        .select("id, title, status, priority, created_at")
+        .eq("owner_id", data.userId)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
     return {
@@ -88,7 +106,10 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
-    const { error } = await supabaseAdmin.from("profiles").update(patch as never).eq("id", data.userId);
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update(patch as never)
+      .eq("id", data.userId);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
@@ -112,9 +133,15 @@ export const ownerSetRole = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.grant) {
-      await supabaseAdmin.from("user_roles").upsert({ user_id: data.userId, role: data.role } as never, { onConflict: "user_id,role" });
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.userId, role: data.role } as never, { onConflict: "user_id,role" });
     } else {
-      await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId).eq("role", data.role);
+      await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("role", data.role);
     }
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
@@ -131,12 +158,15 @@ export type CreatableRole = "owner" | "tenant" | "manager" | "moderator" | "deve
 
 export const adminCreateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { email: string; password: string; fullName?: string; role: CreatableRole }) => input)
+  .inputValidator(
+    (input: { email: string; password: string; fullName?: string; role: CreatableRole }) => input,
+  )
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (roles.length === 0) throw new Error("Forbidden");
     const email = data.email.trim().toLowerCase();
-    if (!email || !data.password || data.password.length < 8) throw new Error("Email и пароль (≥8 символов) обязательны");
+    if (!email || !data.password || data.password.length < 8)
+      throw new Error("Email и пароль (≥8 символов) обязательны");
     const baseRole: "owner" | "tenant" = data.role === "tenant" ? "tenant" : "owner";
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
@@ -149,10 +179,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     const newId = created.user?.id;
     if (!newId) throw new Error("Не удалось создать пользователя");
     if (data.role !== baseRole) {
-      await supabaseAdmin.from("user_roles").upsert(
-        { user_id: newId, role: data.role } as never,
-        { onConflict: "user_id,role" },
-      );
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: newId, role: data.role } as never, { onConflict: "user_id,role" });
     }
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
@@ -194,12 +223,18 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
     if (roles.length === 0) throw new Error("Forbidden");
     if (data.memberUserId === data.ownerUserId) throw new Error("Нельзя привязать к самому себе");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("user_roles").upsert(
-      { user_id: data.memberUserId, role: "tenant" } as never,
-      { onConflict: "user_id,role" },
-    );
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: data.memberUserId, role: "tenant" } as never, {
+        onConflict: "user_id,role",
+      });
     const { error } = await supabaseAdmin.from("user_links").upsert(
-      { owner_user_id: data.ownerUserId, member_user_id: data.memberUserId, role: "tenant", created_by: context.userId } as never,
+      {
+        owner_user_id: data.ownerUserId,
+        member_user_id: data.memberUserId,
+        role: "tenant",
+        created_by: context.userId,
+      } as never,
       { onConflict: "owner_user_id,member_user_id,role" },
     );
     if (error) throw new Error(error.message);
@@ -216,28 +251,35 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
 
 export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input)
+  .inputValidator(
+    (input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input,
+  )
   .handler(async ({ data, context }) => {
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (!roles.includes("moderator") && !roles.includes("developer")) throw new Error("Forbidden");
     const email = data.email.trim().toLowerCase();
     if (!email) throw new Error("Email обязателен");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: srcRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.sourceUserId);
+    const { data: srcRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.sourceUserId);
     const existing = new Set((srcRoles ?? []).map((r: any) => r.role));
     const hasOwner = existing.has("owner");
     const hasTenant = existing.has("tenant");
-    if (hasOwner && hasTenant) throw new Error("У пользователя уже есть и арендодатель, и арендатор");
+    if (hasOwner && hasTenant)
+      throw new Error("У пользователя уже есть и арендодатель, и арендатор");
     const newRole: "owner" | "tenant" = hasOwner ? "tenant" : "owner";
 
     // Same email as source → just grant the missing role to the existing auth user (no new account).
     const { data: srcAuth } = await supabaseAdmin.auth.admin.getUserById(data.sourceUserId);
     const srcEmail = (srcAuth?.user?.email ?? "").toLowerCase();
     if (srcEmail && email === srcEmail) {
-      await supabaseAdmin.from("user_roles").upsert(
-        { user_id: data.sourceUserId, role: newRole } as never,
-        { onConflict: "user_id,role" },
-      );
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.sourceUserId, role: newRole } as never, {
+          onConflict: "user_id,role",
+        });
       await supabaseAdmin.from("activity_logs").insert({
         user_id: context.userId,
         acted_as_user_id: data.sourceUserId,
@@ -249,8 +291,13 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
       return { ok: true, userId: data.sourceUserId, role: newRole, sameAccount: true };
     }
 
-    if (!data.password || data.password.length < 8) throw new Error("Пароль ≥8 символов обязателен");
-    const { data: srcProfile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", data.sourceUserId).maybeSingle();
+    if (!data.password || data.password.length < 8)
+      throw new Error("Пароль ≥8 символов обязателен");
+    const { data: srcProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", data.sourceUserId)
+      .maybeSingle();
     const fullName = data.fullName?.trim() || srcProfile?.full_name || email;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -264,7 +311,12 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     const ownerId = newRole === "owner" ? newId : data.sourceUserId;
     const memberId = newRole === "tenant" ? newId : data.sourceUserId;
     await supabaseAdmin.from("user_links").upsert(
-      { owner_user_id: ownerId, member_user_id: memberId, role: "tenant", created_by: context.userId } as never,
+      {
+        owner_user_id: ownerId,
+        member_user_id: memberId,
+        role: "tenant",
+        created_by: context.userId,
+      } as never,
       { onConflict: "owner_user_id,member_user_id,role" },
     );
     await supabaseAdmin.from("activity_logs").insert({

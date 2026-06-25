@@ -52,9 +52,7 @@ export const ConfirmButton = forwardRef<HTMLButtonElement, ConfirmButtonProps>(
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{title}</AlertDialogTitle>
-            {description && (
-              <AlertDialogDescription>{description}</AlertDialogDescription>
-            )}
+            {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{cancelText}</AlertDialogCancel>

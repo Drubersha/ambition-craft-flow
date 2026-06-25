@@ -24,7 +24,8 @@ function ContractsList() {
   const { data, isLoading } = useQuery({
     queryKey: ["contracts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contracts")
+      const { data, error } = await supabase
+        .from("contracts")
         .select("*, tenant:tenants(name), property:properties(name, folder_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -45,7 +46,11 @@ function ContractsList() {
     }
     if (!q) return true;
     const s = q.toLowerCase();
-    return (c.number?.toLowerCase() || "").includes(s) || c.tenant?.name.toLowerCase().includes(s) || c.property?.name.toLowerCase().includes(s);
+    return (
+      (c.number?.toLowerCase() || "").includes(s) ||
+      c.tenant?.name.toLowerCase().includes(s) ||
+      c.property?.name.toLowerCase().includes(s)
+    );
   });
 
   return (
@@ -55,35 +60,60 @@ function ContractsList() {
         description="Все договоры аренды"
         action={
           <Button asChild size="sm">
-            <Link to="/contracts/new"><Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Добавить</span></Link>
+            <Link to="/contracts/new">
+              <Plus className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Добавить</span>
+            </Link>
           </Button>
         }
       />
       <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" aria-label="Поиск договоров" type="search" placeholder="Поиск по номеру, арендатору, объекту" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input
+          className="pl-9"
+          aria-label="Поиск договоров"
+          type="search"
+          placeholder="Поиск по номеру, арендатору, объекту"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="w-full sm:max-w-xs">
           <FolderPicker
             value={folderFilterEnabled ? folderId : null}
-            onChange={(id) => { setFolderId(id); setFolderFilterEnabled(true); }}
+            onChange={(id) => {
+              setFolderId(id);
+              setFolderFilterEnabled(true);
+            }}
             placeholder="Фильтр по папке (вкл. вложенные)"
           />
         </div>
         {folderFilterEnabled && (
-          <button type="button"
+          <button
+            type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => { setFolderFilterEnabled(false); setFolderId(null); }}
-          >Сбросить</button>
+            onClick={() => {
+              setFolderFilterEnabled(false);
+              setFolderId(null);
+            }}
+          >
+            Сбросить
+          </button>
         )}
       </div>
-      {isLoading ? <div>Загрузка...</div> : filtered.length === 0 ? (
+      {isLoading ? (
+        <div>Загрузка...</div>
+      ) : filtered.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold">Договоров нет</h3>
           <p className="text-sm text-muted-foreground mb-4">Создайте первый договор.</p>
-          <Button asChild><Link to="/contracts/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link></Button>
+          <Button asChild>
+            <Link to="/contracts/new">
+              <Plus className="h-4 w-4 mr-1" /> Добавить
+            </Link>
+          </Button>
         </Card>
       ) : (
         <div className="space-y-2">
@@ -93,7 +123,9 @@ function ContractsList() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium break-all">{c.number ? `№ ${c.number}` : "Без номера"}</span>
+                      <span className="font-medium break-all">
+                        {c.number ? `№ ${c.number}` : "Без номера"}
+                      </span>
                       <Badge variant={c.status === "active" ? "default" : "secondary"}>
                         {CONTRACT_STATUS_LABELS[c.status]}
                       </Badge>
@@ -105,7 +137,9 @@ function ContractsList() {
                       {formatDate(c.start_date)} → {formatDate(c.end_date)} · {c.area ?? "—"} м²
                     </div>
                   </div>
-                  <div className="text-right font-semibold shrink-0 text-sm sm:text-base whitespace-nowrap">{formatMoney(c.rate, c.currency)}</div>
+                  <div className="text-right font-semibold shrink-0 text-sm sm:text-base whitespace-nowrap">
+                    {formatMoney(c.rate, c.currency)}
+                  </div>
                 </div>
               </Card>
             </Link>

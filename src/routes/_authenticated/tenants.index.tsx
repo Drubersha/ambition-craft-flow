@@ -19,7 +19,10 @@ function TenantsList() {
   const { data, isLoading } = useQuery({
     queryKey: ["tenants"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tenants").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -43,13 +46,23 @@ function TenantsList() {
         description="База контактов арендаторов"
         action={
           <Button asChild size="sm">
-            <Link to="/tenants/new"><Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Добавить</span></Link>
+            <Link to="/tenants/new">
+              <Plus className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Добавить</span>
+            </Link>
           </Button>
         }
       />
       <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" aria-label="Поиск арендаторов" type="search" placeholder="Поиск по имени, ИНН, телефону, email" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input
+          className="pl-9"
+          aria-label="Поиск арендаторов"
+          type="search"
+          placeholder="Поиск по имени, ИНН, телефону, email"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
       {isLoading ? (
         <div>Загрузка...</div>
@@ -58,7 +71,11 @@ function TenantsList() {
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold">Арендаторов нет</h3>
           <p className="text-sm text-muted-foreground mb-4">Добавьте первого арендатора.</p>
-          <Button asChild><Link to="/tenants/new"><Plus className="h-4 w-4 mr-1" /> Добавить</Link></Button>
+          <Button asChild>
+            <Link to="/tenants/new">
+              <Plus className="h-4 w-4 mr-1" /> Добавить
+            </Link>
+          </Button>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -38,10 +38,7 @@ export function MobileCollapsible({
         >
           <ChevronDown
             aria-hidden="true"
-            className={cn(
-              "h-4 w-4 shrink-0 transition-transform md:hidden",
-              !open && "-rotate-90",
-            )}
+            className={cn("h-4 w-4 shrink-0 transition-transform md:hidden", !open && "-rotate-90")}
           />
           <span className="truncate">{title}</span>
         </button>

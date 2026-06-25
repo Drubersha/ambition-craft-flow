@@ -18,7 +18,11 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { ids?: string[]; all?: boolean }) => input)
   .handler(async ({ data, context }) => {
-    let q = context.supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", context.userId).is("read_at", null);
+    let q = context.supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", context.userId)
+      .is("read_at", null);
     if (!data.all && data.ids && data.ids.length) q = q.in("id", data.ids);
     const { error } = await q;
     if (error) throw new Error(error.message);

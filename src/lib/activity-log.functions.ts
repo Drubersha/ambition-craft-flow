@@ -72,16 +72,20 @@ export const getActivityLogs = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Enrich with profile names
-    const ids = Array.from(new Set((rows ?? []).flatMap((r) => [r.user_id, r.acted_as_user_id].filter(Boolean) as string[])));
+    const ids = Array.from(
+      new Set(
+        (rows ?? []).flatMap((r) => [r.user_id, r.acted_as_user_id].filter(Boolean) as string[]),
+      ),
+    );
     const profiles = ids.length
-      ? (await context.supabase.from("profiles").select("id, full_name").in("id", ids)).data ?? []
+      ? ((await context.supabase.from("profiles").select("id, full_name").in("id", ids)).data ?? [])
       : [];
     const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
     return {
       rows: (rows ?? []).map((r) => ({
         ...r,
-        user_name: r.user_id ? nameById.get(r.user_id) ?? null : null,
-        acted_as_name: r.acted_as_user_id ? nameById.get(r.acted_as_user_id) ?? null : null,
+        user_name: r.user_id ? (nameById.get(r.user_id) ?? null) : null,
+        acted_as_name: r.acted_as_user_id ? (nameById.get(r.acted_as_user_id) ?? null) : null,
       })),
       total: count ?? 0,
     };

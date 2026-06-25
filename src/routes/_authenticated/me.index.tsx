@@ -27,7 +27,9 @@ function MeDashboard() {
         .eq("status", "active");
       const { data: charges } = await supabase
         .from("charges")
-        .select("id, total, paid_total, due_date, status, contract:contracts!inner(tenant_id, currency)")
+        .select(
+          "id, total, paid_total, due_date, status, contract:contracts!inner(tenant_id, currency)",
+        )
         .eq("contract.tenant_id", tenantId!);
       const all = charges ?? [];
       const debt = all
@@ -56,7 +58,9 @@ function MeDashboard() {
             {formatMoney(data?.debt ?? 0, (data?.contracts[0] as any)?.currency ?? "RUB")}
           </div>
           {(data?.overdue ?? 0) > 0 && (
-            <Badge variant="destructive" className="mt-2">Просрочено: {data?.overdue}</Badge>
+            <Badge variant="destructive" className="mt-2">
+              Просрочено: {data?.overdue}
+            </Badge>
           )}
         </Card>
         <Card className="p-4">
@@ -64,10 +68,17 @@ function MeDashboard() {
           {data?.upcoming ? (
             <>
               <div className="text-xl font-semibold mt-1">
-                {formatMoney(Number(data.upcoming.total) - Number(data.upcoming.paid_total || 0), (data.upcoming.contract as any)?.currency ?? "RUB")}
+                {formatMoney(
+                  Number(data.upcoming.total) - Number(data.upcoming.paid_total || 0),
+                  (data.upcoming.contract as any)?.currency ?? "RUB",
+                )}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">до {formatDate(data.upcoming.due_date)}</div>
-              <Badge variant="secondary" className="mt-2 text-[10px]">{CHARGE_STATUS_LABELS[data.upcoming.status]}</Badge>
+              <div className="text-xs text-muted-foreground mt-1">
+                до {formatDate(data.upcoming.due_date)}
+              </div>
+              <Badge variant="secondary" className="mt-2 text-[10px]">
+                {CHARGE_STATUS_LABELS[data.upcoming.status]}
+              </Badge>
             </>
           ) : (
             <div className="text-sm text-muted-foreground mt-2">Нет предстоящих</div>

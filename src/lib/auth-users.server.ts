@@ -27,9 +27,7 @@ function pick(u: any): AuthUser {
 }
 
 /** Iterate all auth users, stopping at MAX_PAGES as a safety cap. */
-export async function listAllAuthUsersPaginated(
-  supabaseAdmin: any,
-): Promise<AuthUser[]> {
+export async function listAllAuthUsersPaginated(supabaseAdmin: any): Promise<AuthUser[]> {
   const out: AuthUser[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({

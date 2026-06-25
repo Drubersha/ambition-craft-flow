@@ -7,7 +7,13 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Plus, PiggyBank, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { getCurrentPeriod, formatPeriod, type BudgetPlan, type BudgetCategory, type BudgetExpense } from "@/lib/budget";
+import {
+  getCurrentPeriod,
+  formatPeriod,
+  type BudgetPlan,
+  type BudgetCategory,
+  type BudgetExpense,
+} from "@/lib/budget";
 import { formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/budgets/")({
@@ -69,11 +75,16 @@ function BudgetsIndex() {
         <h1 className="text-xl sm:text-2xl font-bold">Бюджет</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        План расходов создаётся для каждой папки объектов. Внутри плана — статьи расхода с лимитами и обновление по выбранному числу месяца.
+        План расходов создаётся для каждой папки объектов. Внутри плана — статьи расхода с лимитами
+        и обновление по выбранному числу месяца.
       </p>
 
       {data!.folders.length === 0 && (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">Нет папок. Создайте папку в разделе «Объекты».</CardContent></Card>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Нет папок. Создайте папку в разделе «Объекты».
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -85,7 +96,11 @@ function BudgetsIndex() {
                 <CardContent className="p-4 space-y-3">
                   <div className="font-medium">{f.name}</div>
                   <div className="text-xs text-muted-foreground">План не создан</div>
-                  <Button size="sm" onClick={() => createPlan.mutate(f.id)} disabled={createPlan.isPending}>
+                  <Button
+                    size="sm"
+                    onClick={() => createPlan.mutate(f.id)}
+                    disabled={createPlan.isPending}
+                  >
                     <Plus className="h-4 w-4 mr-1" /> Создать план
                   </Button>
                 </CardContent>
@@ -108,14 +123,28 @@ function BudgetsIndex() {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium truncate">{f.name}</div>
-                    {over && <Badge variant="destructive" className="shrink-0"><AlertTriangle className="h-3 w-3 mr-1" />Перерасход</Badge>}
-                    {warn && <Badge className="bg-amber-500 hover:bg-amber-500 shrink-0">Близко к лимиту</Badge>}
+                    {over && (
+                      <Badge variant="destructive" className="shrink-0">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Перерасход
+                      </Badge>
+                    )}
+                    {warn && (
+                      <Badge className="bg-amber-500 hover:bg-amber-500 shrink-0">
+                        Близко к лимиту
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">{formatPeriod(period)}</div>
                   <div className="flex items-baseline justify-between">
                     <div className="text-sm">
-                      <span className={over ? "text-destructive font-semibold" : "font-semibold"}>{formatMoney(totalSpent, plan.currency)}</span>
-                      <span className="text-muted-foreground"> / {formatMoney(totalLimit, plan.currency)}</span>
+                      <span className={over ? "text-destructive font-semibold" : "font-semibold"}>
+                        {formatMoney(totalSpent, plan.currency)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        / {formatMoney(totalLimit, plan.currency)}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground">{pct.toFixed(0)}%</div>
                   </div>

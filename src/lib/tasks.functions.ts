@@ -56,7 +56,10 @@ export const analyzeMessage = createServerFn({ method: "POST" })
     }
     if (msg.analyzed_at) return { ok: false, reason: "already" };
     if (msg.sender_role !== "tenant") {
-      await sb.from("chat_messages").update({ analyzed_at: new Date().toISOString() }).eq("id", msg.id);
+      await sb
+        .from("chat_messages")
+        .update({ analyzed_at: new Date().toISOString() })
+        .eq("id", msg.id);
       return { ok: false, reason: "not_tenant" };
     }
 
@@ -124,7 +127,10 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       return { ok: false, reason: "ai_error", error: String(e) };
     }
 
-    await sb.from("chat_messages").update({ analyzed_at: new Date().toISOString() }).eq("id", msg.id);
+    await sb
+      .from("chat_messages")
+      .update({ analyzed_at: new Date().toISOString() })
+      .eq("id", msg.id);
 
     if (!parsed.is_task || !parsed.title) return { ok: true, created: false };
 
@@ -190,7 +196,11 @@ export const dismissSuggestion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = await admin();
     const allowed = await allowedOwnerIds(context.supabase, context.userId);
-    await sb.from("task_suggestions").update({ status: "dismissed" }).eq("id", data.id).in("owner_id", allowed);
+    await sb
+      .from("task_suggestions")
+      .update({ status: "dismissed" })
+      .eq("id", data.id)
+      .in("owner_id", allowed);
     return { ok: true };
   });
 

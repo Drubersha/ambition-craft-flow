@@ -36,7 +36,10 @@ export function useFolderMarkings(folderId: string | null | undefined) {
 }
 
 /** Properties visible on this folder's plan = props in folder + all descendants. */
-export function useFolderPlanProperties(folderId: string | null | undefined, allFolderIds: string[]) {
+export function useFolderPlanProperties(
+  folderId: string | null | undefined,
+  allFolderIds: string[],
+) {
   return useQuery({
     queryKey: ["folder-plan-properties", folderId, allFolderIds.join(",")],
     enabled: !!folderId && allFolderIds.length > 0,
@@ -48,7 +51,8 @@ export function useFolderPlanProperties(folderId: string | null | undefined, all
         .order("name");
       if (error) throw error;
       const ids = (props ?? []).map((p) => p.id);
-      if (ids.length === 0) return { properties: props ?? [], activeContracts: {} as Record<string, any> };
+      if (ids.length === 0)
+        return { properties: props ?? [], activeContracts: {} as Record<string, any> };
       const { data: contracts, error: e2 } = await supabase
         .from("contracts")
         .select("id,property_id,rate,currency,payment_period,area,status,kind,tenant:tenants(name)")

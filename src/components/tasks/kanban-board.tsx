@@ -45,12 +45,17 @@ function Column({
   return (
     <Card className="p-2 flex flex-col min-h-[200px]">
       <div className="flex items-center justify-between px-1 pb-2 border-b mb-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </h3>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
       <div
         ref={setNodeRef}
-        className={cn("flex-1 space-y-2 min-h-[120px] rounded p-1", isOver && "bg-primary/5 ring-1 ring-primary/30")}
+        className={cn(
+          "flex-1 space-y-2 min-h-[120px] rounded p-1",
+          isOver && "bg-primary/5 ring-1 ring-primary/30",
+        )}
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((t) => (
@@ -107,7 +112,9 @@ export function KanbanBoard({ tenantFilter }: { tenantFilter: string | "all" }) 
         qc.invalidateQueries({ queryKey: ["tasks"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [qc]);
 
   const grouped = useMemo(() => {
@@ -180,7 +187,11 @@ export function KanbanBoard({ tenantFilter }: { tenantFilter: string | "all" }) 
       <div className="mt-4">
         <div className="flex items-center gap-2 mb-2">
           <Button variant="ghost" size="sm" onClick={() => setShowArchive((v) => !v)}>
-            {showArchive ? <ChevronDown className="h-4 w-4 mr-1" /> : <ChevronRight className="h-4 w-4 mr-1" />}
+            {showArchive ? (
+              <ChevronDown className="h-4 w-4 mr-1" />
+            ) : (
+              <ChevronRight className="h-4 w-4 mr-1" />
+            )}
             Архив ({(grouped.get("archived") ?? []).length})
           </Button>
           {(grouped.get("done") ?? []).length > 0 && (

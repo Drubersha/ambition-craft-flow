@@ -79,9 +79,12 @@ export const TENANT_KIND_LABELS: Record<string, string> = {
 
 export function monthlyFromRate(rate: number, period: string): number {
   switch (period) {
-    case "quarterly": return rate / 3;
-    case "yearly": return rate / 12;
-    default: return rate;
+    case "quarterly":
+      return rate / 3;
+    case "yearly":
+      return rate / 12;
+    default:
+      return rate;
   }
 }
 
@@ -94,7 +97,12 @@ export function monthlyPayment(rate: number, period: string, area: number): numb
   return monthlyFromRate(rate, period) * (area || 0);
 }
 
-export function computeDepositWithArea(rate: number, period: string, area: number, percent: number): number {
+export function computeDepositWithArea(
+  rate: number,
+  period: string,
+  area: number,
+  percent: number,
+): number {
   return Math.round(monthlyPayment(rate, period, area) * (percent || 0)) / 100;
 }
 
@@ -107,7 +115,13 @@ export function monthsInRange(start: string, end: string): number {
   return Math.max(1, months);
 }
 
-export function chargeTotalForPeriod(rate: number, period: string, start: string, end: string, area = 1): number {
+export function chargeTotalForPeriod(
+  rate: number,
+  period: string,
+  start: string,
+  end: string,
+  area = 1,
+): number {
   if (period === "one_time") return Math.round(rate * (area || 1) * 100) / 100;
   const monthly = monthlyFromRate(rate, period) * (area || 0);
   return Math.round(monthly * monthsInRange(start, end) * 100) / 100;
@@ -164,7 +178,7 @@ export function splitContractPeriods(
   }
 
   while (cursor <= upTo) {
-    let ps = cursor < start ? start : cursor;
+    const ps = cursor < start ? start : cursor;
     let pe = periodEnd(cursor);
     if (hardEnd && pe > hardEnd) pe = hardEnd;
     if (pe > upTo) pe = upTo;

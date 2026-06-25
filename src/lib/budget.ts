@@ -35,7 +35,10 @@ function toISO(d: Date): string {
  * Текущий период плана. Если today до reset_day этого месяца, период
  * начался в предыдущем месяце. period_end = день перед reset_day следующего цикла.
  */
-export function getCurrentPeriod(resetDay: number, today: Date = new Date()): { start: string; end: string } {
+export function getCurrentPeriod(
+  resetDay: number,
+  today: Date = new Date(),
+): { start: string; end: string } {
   const day = Math.max(1, Math.min(28, Math.floor(resetDay) || 1));
   const y = today.getFullYear();
   const m = today.getMonth();

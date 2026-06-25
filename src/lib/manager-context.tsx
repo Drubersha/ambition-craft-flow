@@ -10,7 +10,12 @@ const SELECTED_KEY = "manager.selectedOwnerId";
 type State =
   | { status: "loading" }
   | { status: "not-manager" }
-  | { status: "ready"; owners: LinkedOwner[]; selectedOwnerId: string; setSelectedOwnerId: (id: string) => void };
+  | {
+      status: "ready";
+      owners: LinkedOwner[];
+      selectedOwnerId: string;
+      setSelectedOwnerId: (id: string) => void;
+    };
 
 const Ctx = createContext<State>({ status: "loading" });
 
@@ -28,9 +33,16 @@ export function ManagerContextProvider({ children }: { children: ReactNode }) {
   const [hasSession, setHasSession] = useState(false);
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => { if (active) setHasSession(!!data.session); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (active) setHasSession(!!s); });
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (active) setHasSession(!!s);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const q = useQuery({
@@ -90,14 +102,22 @@ export function useManagerContext(): State {
  *
  * Returns `null` while loading or when no resolution is possible yet.
  */
-export function useEffectiveOwnerId(): { ownerId: string | null; isLinkedManager: boolean; isLoading: boolean } {
+export function useEffectiveOwnerId(): {
+  ownerId: string | null;
+  isLinkedManager: boolean;
+  isLoading: boolean;
+} {
   const mctx = useManagerContext();
   const { role } = useDemoIdentity();
   const [meId, setMeId] = useState<string | null>(null);
   useEffect(() => {
     let a = true;
-    supabase.auth.getUser().then(({ data }) => { if (a) setMeId(data.user?.id ?? null); });
-    return () => { a = false; };
+    supabase.auth.getUser().then(({ data }) => {
+      if (a) setMeId(data.user?.id ?? null);
+    });
+    return () => {
+      a = false;
+    };
   }, []);
 
   if (mctx.status === "loading") return { ownerId: null, isLinkedManager: false, isLoading: true };

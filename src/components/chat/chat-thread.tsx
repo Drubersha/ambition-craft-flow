@@ -97,7 +97,12 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       .channel(`chat-${threadId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `thread_id=eq.${threadId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `thread_id=eq.${threadId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["chat-messages", threadId] });
           qc.invalidateQueries({ queryKey: ["chat-threads"] });
@@ -117,9 +122,13 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
   useEffect(() => {
     if (!threadId) return;
     const patch = myRole === "tenant" ? { unread_tenant: 0 } : { unread_owner: 0 };
-    supabase.from("chat_threads").update(patch).eq("id", threadId).then(() => {
-      qc.invalidateQueries({ queryKey: ["chat-threads"] });
-    });
+    supabase
+      .from("chat_threads")
+      .update(patch)
+      .eq("id", threadId)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["chat-threads"] });
+      });
   }, [threadId, myRole, qc, messages?.length]);
 
   async function send() {
@@ -191,26 +200,27 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
           </p>
         )}
         {(messages ?? []).map((m) => {
-          const mine = m.sender_role === myRole || (myRole !== "tenant" && m.sender_role !== "tenant");
+          const mine =
+            m.sender_role === myRole || (myRole !== "tenant" && m.sender_role !== "tenant");
           const atts = (attachments ?? []).filter((a) => a.message_id === m.id);
           return (
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div className="flex flex-col items-stretch gap-1 max-w-[80%]">
                 <div
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm shadow-sm",
-                  mine ? "bg-primary text-primary-foreground" : "bg-muted",
-                )}
-              >
-                {m.sender_label && (
-                  <div className={cn("text-[10px] mb-1 opacity-70")}>{m.sender_label}</div>
-                )}
-                {m.body && <div className="whitespace-pre-wrap break-words">{m.body}</div>}
-                {atts.map((a) => (
-                  <AttachmentRow key={a.id} attachment={a} mine={mine} />
-                ))}
-                <div className={cn("text-[10px] mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
-              </div>
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm shadow-sm",
+                    mine ? "bg-primary text-primary-foreground" : "bg-muted",
+                  )}
+                >
+                  {m.sender_label && (
+                    <div className={cn("text-[10px] mb-1 opacity-70")}>{m.sender_label}</div>
+                  )}
+                  {m.body && <div className="whitespace-pre-wrap break-words">{m.body}</div>}
+                  {atts.map((a) => (
+                    <AttachmentRow key={a.id} attachment={a} mine={mine} />
+                  ))}
+                  <div className={cn("text-[10px] mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
+                </div>
                 {myRole !== "tenant" && m.sender_role === "tenant" && (
                   <button
                     type="button"
@@ -242,7 +252,10 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => { setPendingFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+              onClick={() => {
+                setPendingFile(null);
+                if (fileRef.current) fileRef.current.value = "";
+              }}
             >
               ×
             </button>
@@ -296,7 +309,9 @@ function AttachmentRow({ attachment, mine }: { attachment: Attachment; mine: boo
       .then(({ data }) => {
         if (active) setUrl(data?.signedUrl ?? null);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [attachment.storage_path]);
 
   const isImage = (attachment.mime ?? "").startsWith("image/");

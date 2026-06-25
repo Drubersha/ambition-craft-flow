@@ -9,7 +9,8 @@ export function PaymentsListView() {
   const { data, isLoading } = useQuery({
     queryKey: ["payments"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("payments")
+      const { data, error } = await supabase
+        .from("payments")
         .select("*, charge:charges(id, contract:contracts(number, currency, tenant:tenants(name)))")
         .order("paid_at", { ascending: false });
       if (error) throw error;
@@ -32,9 +33,12 @@ export function PaymentsListView() {
         <Link key={p.id} to="/charges/$id" params={{ id: p.charge_id }}>
           <Card className="p-3 hover:border-primary flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-sm">{formatMoney(p.amount, p.charge?.contract?.currency)}</div>
+              <div className="font-medium text-sm">
+                {formatMoney(p.amount, p.charge?.contract?.currency)}
+              </div>
               <div className="text-xs text-muted-foreground break-words">
-                {formatDate(p.paid_at)} · {p.charge?.contract?.tenant?.name} · № {p.charge?.contract?.number}
+                {formatDate(p.paid_at)} · {p.charge?.contract?.tenant?.name} · №{" "}
+                {p.charge?.contract?.number}
                 {p.method ? ` · ${p.method}` : ""}
               </div>
             </div>

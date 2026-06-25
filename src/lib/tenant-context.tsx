@@ -10,7 +10,14 @@ export type TenantContextState =
   | { status: "loading" }
   | { status: "no-link"; reason: "no-link" | "no-email" | "no-tenant-row" }
   | { status: "multi"; tenants: ResolvedTenant[]; select: (id: string) => void }
-  | { status: "ready"; tenantId: string; source: "demo" | "real"; tenant?: ResolvedTenant; tenants: ResolvedTenant[]; select: (id: string) => void };
+  | {
+      status: "ready";
+      tenantId: string;
+      source: "demo" | "real";
+      tenant?: ResolvedTenant;
+      tenants: ResolvedTenant[];
+      select: (id: string) => void;
+    };
 
 /**
  * Resolve the active tenant for the `/me/*` cabinet.

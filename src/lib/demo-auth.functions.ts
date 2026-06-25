@@ -7,11 +7,22 @@ export type DemoKind = "demo" | "demo2" | "moderator" | "developer";
 // privileged kinds (moderator/developer) — those must come from server env
 // vars (DEMO_MODERATOR_PASSWORD / DEMO_ADMIN_PASSWORD) and are only honored
 // when DEMO_PRIVILEGED_ENABLED=1 on the server (non-prod deployments).
-export const DEMO_ACCOUNTS: Record<DemoKind, { email: string; full_name: string; roles: string[] }> = {
+export const DEMO_ACCOUNTS: Record<
+  DemoKind,
+  { email: string; full_name: string; roles: string[] }
+> = {
   demo: { email: "demo@rentflow.local", full_name: "Демо-арендодатель", roles: ["owner"] },
   demo2: { email: "demo2@rentflow.local", full_name: "Демо-арендодатель 2", roles: ["owner"] },
-  moderator: { email: "moderator@rentflow.local", full_name: "Модератор", roles: ["moderator", "owner"] },
-  developer: { email: "admin@rentflow.local", full_name: "Администратор", roles: ["developer", "owner"] },
+  moderator: {
+    email: "moderator@rentflow.local",
+    full_name: "Модератор",
+    roles: ["moderator", "owner"],
+  },
+  developer: {
+    email: "admin@rentflow.local",
+    full_name: "Администратор",
+    roles: ["developer", "owner"],
+  },
 };
 
 // Owner-kind demo passwords are intentionally public — those accounts hold
@@ -31,7 +42,9 @@ function getPrivilegedPasswordFromEnv(kind: DemoKind): string | null {
 }
 
 function privilegedDemoEnabled(): boolean {
-  return process.env.DEMO_PRIVILEGED_ENABLED === "1" || process.env.DEMO_PRIVILEGED_ENABLED === "true";
+  return (
+    process.env.DEMO_PRIVILEGED_ENABLED === "1" || process.env.DEMO_PRIVILEGED_ENABLED === "true"
+  );
 }
 
 export const ensureDemoAccount = createServerFn({ method: "POST" })
@@ -77,14 +90,18 @@ export const ensureDemoAccount = createServerFn({ method: "POST" })
     }
     if (!user) throw new Error("Cannot create demo user");
     // Ensure profile
-    await supabaseAdmin.from("profiles").upsert({ id: user.id, full_name: acc.full_name }, { onConflict: "id" });
+    await supabaseAdmin
+      .from("profiles")
+      .upsert({ id: user.id, full_name: acc.full_name }, { onConflict: "id" });
     // Ensure roles (only assign developer/moderator if privileged demo is enabled)
     const allowedRoles = acc.roles.filter((r) => {
       if (r === "developer" || r === "moderator") return privilegedDemoEnabled();
       return true;
     });
     for (const r of allowedRoles) {
-      await supabaseAdmin.from("user_roles").upsert({ user_id: user.id, role: r as any }, { onConflict: "user_id,role" });
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: user.id, role: r as any }, { onConflict: "user_id,role" });
     }
     return { ok: true };
   });
@@ -138,16 +155,36 @@ export const resetDemo2Account = createServerFn({ method: "POST" })
     if (context.userId !== uid && !isDev) throw new Error("Forbidden");
     // Tables to wipe (activity_logs intentionally preserved).
     const ownerTables = [
-      "payments", "charge_items", "charges", "contracts", "tenants",
-      "property_markings", "properties", "tasks", "task_suggestions",
-      "lead_events", "leads", "budget_expenses", "budget_plans", "budget_categories",
-      "chat_attachments", "chat_messages", "chat_threads",
-      "documents", "folders",
+      "payments",
+      "charge_items",
+      "charges",
+      "contracts",
+      "tenants",
+      "property_markings",
+      "properties",
+      "tasks",
+      "task_suggestions",
+      "lead_events",
+      "leads",
+      "budget_expenses",
+      "budget_plans",
+      "budget_categories",
+      "chat_attachments",
+      "chat_messages",
+      "chat_threads",
+      "documents",
+      "folders",
     ];
     for (const t of ownerTables) {
-      await supabaseAdmin.from(t as any).delete().eq("owner_id", uid);
+      await supabaseAdmin
+        .from(t as any)
+        .delete()
+        .eq("owner_id", uid);
     }
     await supabaseAdmin.from("notifications").delete().eq("user_id", uid);
-    await supabaseAdmin.from("user_links").delete().or(`owner_user_id.eq.${uid},member_user_id.eq.${uid}`);
+    await supabaseAdmin
+      .from("user_links")
+      .delete()
+      .or(`owner_user_id.eq.${uid},member_user_id.eq.${uid}`);
     return { ok: true };
   });

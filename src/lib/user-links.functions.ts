@@ -31,8 +31,13 @@ export const listMyLinks = createServerFn({ method: "GET" })
     const ids = Array.from(new Set((links ?? []).map((l: any) => l.member_user_id)));
     const profilesById = new Map<string, { full_name: string | null; email: string | null }>();
     if (ids.length > 0) {
-      const { data: profs } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
-      (profs ?? []).forEach((p: any) => profilesById.set(p.id, { full_name: p.full_name, email: null }));
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      (profs ?? []).forEach((p: any) =>
+        profilesById.set(p.id, { full_name: p.full_name, email: null }),
+      );
       const { getAuthUsersByIds } = await import("@/lib/auth-users.server");
       const authById = await getAuthUsersByIds(supabaseAdmin, ids);
       authById.forEach((u, id) => {
@@ -61,21 +66,29 @@ export const linkUserByEmail = createServerFn({ method: "POST" })
     if (memberId === context.userId) throw new Error("Нельзя привязать самого себя");
 
     const { error: linkErr } = await supabaseAdmin.from("user_links").upsert(
-      { owner_user_id: context.userId, member_user_id: memberId, role: data.role, created_by: context.userId } as never,
+      {
+        owner_user_id: context.userId,
+        member_user_id: memberId,
+        role: data.role,
+        created_by: context.userId,
+      } as never,
       { onConflict: "owner_user_id,member_user_id,role" },
     );
     if (linkErr) throw new Error(linkErr.message);
-    await supabaseAdmin.from("user_roles").upsert(
-      { user_id: memberId, role: data.role } as never,
-      { onConflict: "user_id,role" },
-    );
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: memberId, role: data.role } as never, { onConflict: "user_id,role" });
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
       acted_as_user_id: memberId,
       action: "create",
       entity_type: "user_link",
       entity_id: memberId,
-      metadata: { owner_user_id: context.userId, member_user_id: memberId, role: data.role } as never,
+      metadata: {
+        owner_user_id: context.userId,
+        member_user_id: memberId,
+        role: data.role,
+      } as never,
     });
     return { ok: true, memberId };
   });
@@ -85,7 +98,11 @@ export const unlinkUser = createServerFn({ method: "POST" })
   .inputValidator((input: { linkId: string }) => input)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: link } = await supabaseAdmin.from("user_links").select("*").eq("id", data.linkId).maybeSingle();
+    const { data: link } = await supabaseAdmin
+      .from("user_links")
+      .select("*")
+      .eq("id", data.linkId)
+      .maybeSingle();
     if (!link) throw new Error("Связь не найдена");
     const roles = await getCallerRoles(context.supabase, context.userId);
     if (link.owner_user_id !== context.userId && !isAdminRoles(roles)) {
@@ -113,14 +130,20 @@ export const moderatorLinkUser = createServerFn({ method: "POST" })
     if (!isAdminRoles(roles)) throw new Error("Forbidden");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("user_links").upsert(
-      { owner_user_id: data.ownerUserId, member_user_id: data.memberUserId, role: data.role, created_by: context.userId } as never,
+      {
+        owner_user_id: data.ownerUserId,
+        member_user_id: data.memberUserId,
+        role: data.role,
+        created_by: context.userId,
+      } as never,
       { onConflict: "owner_user_id,member_user_id,role" },
     );
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("user_roles").upsert(
-      { user_id: data.memberUserId, role: data.role } as never,
-      { onConflict: "user_id,role" },
-    );
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: data.memberUserId, role: data.role } as never, {
+        onConflict: "user_id,role",
+      });
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
       acted_as_user_id: data.memberUserId,
@@ -147,14 +170,19 @@ export const listLinksForUser = createServerFn({ method: "POST" })
       .from("user_links")
       .select("id, owner_user_id, member_user_id, role, created_at")
       .eq("owner_user_id", data.userId);
-    const ids = Array.from(new Set([
-      ...(asMember ?? []).map((l: any) => l.owner_user_id),
-      ...(asOwner ?? []).map((l: any) => l.member_user_id),
-    ]));
+    const ids = Array.from(
+      new Set([
+        ...(asMember ?? []).map((l: any) => l.owner_user_id),
+        ...(asOwner ?? []).map((l: any) => l.member_user_id),
+      ]),
+    );
     const nameById = new Map<string, string | null>();
     const emailById = new Map<string, string | null>();
     if (ids.length > 0) {
-      const { data: profs } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
       (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
       const { getAuthUsersByIds } = await import("@/lib/auth-users.server");
       const authById = await getAuthUsersByIds(supabaseAdmin, ids);

@@ -92,9 +92,7 @@ function LeadsPage() {
         .select("*, property:properties(name, currency)")
         .order("created_at", { ascending: false });
       const { data, error } =
-        filter === "active"
-          ? await q.eq("status", "active")
-          : await q.neq("status", "active");
+        filter === "active" ? await q.eq("status", "active") : await q.neq("status", "active");
       if (error) throw error;
       return (data ?? []) as unknown as Lead[];
     },
@@ -245,7 +243,10 @@ function LeadCard({ lead }: { lead: Lead }) {
       const patch: Record<string, unknown> = { stage: next };
       if (vars.inn) patch.inn = vars.inn;
 
-      const { error } = await supabase.from("leads" as any).update(patch).eq("id", lead.id);
+      const { error } = await supabase
+        .from("leads" as any)
+        .update(patch)
+        .eq("id", lead.id);
       if (error) throw error;
       await supabase.from("lead_events" as any).insert({
         lead_id: lead.id,
@@ -287,14 +288,18 @@ function LeadCard({ lead }: { lead: Lead }) {
       <Card className="p-3 space-y-2">
         <div className="font-medium text-sm break-words">{lead.full_name}</div>
         <div className="flex flex-wrap gap-1">
-          <Badge variant="outline" className="text-[10px]">{SOURCE_LABELS[lead.source]}</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {SOURCE_LABELS[lead.source]}
+          </Badge>
           {lead.budget != null && (
             <Badge variant="outline" className="text-[10px]">
               {formatMoney(lead.budget, lead.property?.currency ?? "RUB")}
             </Badge>
           )}
           {lead.desired_area != null && (
-            <Badge variant="outline" className="text-[10px]">{lead.desired_area} м²</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {lead.desired_area} м²
+            </Badge>
           )}
         </div>
         {lead.property && (
@@ -304,19 +309,30 @@ function LeadCard({ lead }: { lead: Lead }) {
           </div>
         )}
         {lead.phone && (
-          <a href={`tel:${lead.phone}`} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground">
+          <a
+            href={`tel:${lead.phone}`}
+            className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
+          >
             <Phone className="h-3 w-3" /> {lead.phone}
           </a>
         )}
         {lead.email && (
-          <a href={`mailto:${lead.email}`} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground truncate">
+          <a
+            href={`mailto:${lead.email}`}
+            className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground truncate"
+          >
             <Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{lead.email}</span>
           </a>
         )}
         {lead.inn && <div className="text-xs text-muted-foreground">ИНН: {lead.inn}</div>}
 
         <div className="flex gap-1 pt-1">
-          <Button size="sm" className="flex-1 h-8" onClick={handlePass} disabled={advance.isPending}>
+          <Button
+            size="sm"
+            className="flex-1 h-8"
+            onClick={handlePass}
+            disabled={advance.isPending}
+          >
             <Check className="h-3.5 w-3.5 mr-1" />
             {lead.stage === "signed" ? "Закрыть" : "Прошёл"}
           </Button>
@@ -404,9 +420,7 @@ function FailDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Лид не прошёл этап</DialogTitle>
-          <DialogDescription>
-            Укажите причину — лид будет перемещён в архив.
-          </DialogDescription>
+          <DialogDescription>Укажите причину — лид будет перемещён в архив.</DialogDescription>
         </DialogHeader>
         <Textarea
           value={reason}
@@ -602,7 +616,13 @@ function LeadFormDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Новый лид</DialogTitle>
@@ -625,10 +645,14 @@ function LeadFormDialog({
           <div className="grid gap-1">
             <Label>Источник</Label>
             <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {Object.entries(SOURCE_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -636,31 +660,52 @@ function LeadFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1">
               <Label>Бюджет, ₽/мес</Label>
-              <Input type="number" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} />
+              <Input
+                type="number"
+                min="0"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              />
             </div>
             <div className="grid gap-1">
               <Label>Площадь, м²</Label>
-              <Input type="number" min="0" value={desired_area} onChange={(e) => setArea(e.target.value)} />
+              <Input
+                type="number"
+                min="0"
+                value={desired_area}
+                onChange={(e) => setArea(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-1">
             <Label>Объект *</Label>
             <Select value={property_id} onValueChange={setPropertyId}>
-              <SelectTrigger><SelectValue placeholder="Выберите объект" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите объект" />
+              </SelectTrigger>
               <SelectContent>
                 {(properties ?? []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1">
             <Label>Комментарий</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={2000} />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              maxLength={2000}
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Отмена
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
             {mut.isPending ? "Сохраняем..." : "Создать"}
           </Button>
@@ -708,14 +753,14 @@ function ArchiveList({ leads }: { leads: Lead[] }) {
               <Badge variant={l.status === "won" ? "default" : "secondary"} className="text-[10px]">
                 {l.status === "won" ? "Выигран" : "Отказ"}
               </Badge>
-              <Badge variant="outline" className="text-[10px]">{SOURCE_LABELS[l.source]}</Badge>
+              <Badge variant="outline" className="text-[10px]">
+                {SOURCE_LABELS[l.source]}
+              </Badge>
               <Badge variant="outline" className="text-[10px]">
                 {STAGES.find((s) => s.key === l.stage)?.short}
               </Badge>
             </div>
-            {l.property && (
-              <div className="text-xs text-muted-foreground">{l.property.name}</div>
-            )}
+            {l.property && <div className="text-xs text-muted-foreground">{l.property.name}</div>}
             {l.archived_reason && (
               <div className="text-xs text-muted-foreground break-words">
                 Причина: {l.archived_reason}
