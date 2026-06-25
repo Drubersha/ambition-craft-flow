@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type LogInput = {
@@ -26,6 +27,16 @@ export const logActivity = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export async function logActivitySafe(input: LogInput) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    await logActivity({ data: input });
+  } catch {
+    /* ignore logging errors */
+  }
+}
 
 export type ActivityLogFilters = {
   user_id?: string | null;
