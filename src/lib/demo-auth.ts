@@ -18,9 +18,7 @@ export async function signInAsDemo(kind: DemoKind): Promise<void> {
       const res = await startPrivilegedDemoSession({ data: { kind } });
       action_link = res.action_link;
     } catch (e: any) {
-      throw new Error(
-        e?.message ?? "Привилегированный демо-вход недоступен в этом окружении",
-      );
+      throw new Error(e?.message ?? "Привилегированный демо-вход недоступен в этом окружении");
     }
     if (typeof window !== "undefined") {
       const role = kind === "developer" ? "developer" : "moderator";
@@ -34,7 +32,9 @@ export async function signInAsDemo(kind: DemoKind): Promise<void> {
   const password = DEMO_OWNER_PASSWORDS[kind];
   const { error } = await supabase.auth.signInWithPassword({ email: acc.email, password });
   if (error) {
-    throw new Error("Демо-аккаунт временно недоступен. Попробуйте позже или обратитесь к администратору.");
+    throw new Error(
+      "Демо-аккаунт временно недоступен. Попробуйте позже или обратитесь к администратору.",
+    );
   }
   if (typeof window !== "undefined") {
     localStorage.setItem("active_account_kind", "owner");

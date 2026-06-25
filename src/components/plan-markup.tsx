@@ -34,20 +34,34 @@ const DRAFT_COLOR = "hsl(142 71% 45%)";
 
 function fmt(n: number, currency: string) {
   try {
-    return new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+    return new Intl.NumberFormat("ru-RU", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(n);
   } catch {
     return `${Math.round(n)} ${currency}`;
   }
 }
 
-function shapeToPath(m: Marking, ctx: PlanOverlayCtx): { d?: string; circle?: { cx: number; cy: number; r: number }; point?: { cx: number; cy: number } } {
+function shapeToPath(
+  m: Marking,
+  ctx: PlanOverlayCtx,
+): {
+  d?: string;
+  circle?: { cx: number; cy: number; r: number };
+  point?: { cx: number; cy: number };
+} {
   if (m.shape === "polygon") {
     const pts = (m.coords as any).points as [number, number][];
     if (!pts || pts.length < 2) return {};
-    const d = pts.map(([x, y], i) => {
-      const p = ctx.toPx(x, y);
-      return `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`;
-    }).join(" ") + " Z";
+    const d =
+      pts
+        .map(([x, y], i) => {
+          const p = ctx.toPx(x, y);
+          return `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+        })
+        .join(" ") + " Z";
     return { d };
   }
   if (m.shape === "circle") {
@@ -88,7 +102,10 @@ export function PlanMarkup({
 }) {
   const navigate = useNavigate();
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
-  const propsById = useMemo(() => Object.fromEntries(properties.map((p) => [p.id, p])), [properties]);
+  const propsById = useMemo(
+    () => Object.fromEntries(properties.map((p) => [p.id, p])),
+    [properties],
+  );
   const isDrawing = edit.mode === "draw";
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -118,7 +135,9 @@ export function PlanMarkup({
           pointerEvents: isDrawing ? "auto" : "none",
           cursor: isDrawing ? "crosshair" : "default",
         }}
-        onPointerDown={(e) => { if (isDrawing) e.stopPropagation(); }}
+        onPointerDown={(e) => {
+          if (isDrawing) e.stopPropagation();
+        }}
         onClick={handleSvgClick}
         onDoubleClick={handleSvgDouble}
         onMouseLeave={() => setHover(null)}
@@ -132,7 +151,9 @@ export function PlanMarkup({
             stroke: color,
             strokeWidth: 2,
             style: { cursor: isDrawing ? "crosshair" : "pointer", pointerEvents: "all" as const },
-            onPointerDown: (e: React.PointerEvent) => { e.stopPropagation(); },
+            onPointerDown: (e: React.PointerEvent) => {
+              e.stopPropagation();
+            },
             onMouseEnter: (e: React.MouseEvent<SVGElement>) => {
               const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
               setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -149,12 +170,21 @@ export function PlanMarkup({
           };
           if (s.d) return <path key={m.id} d={s.d} {...common} />;
           if (s.circle) return <circle key={m.id} {...s.circle} {...common} />;
-          if (s.point) return (
-            <g key={m.id} {...common}>
-              <circle cx={s.point.cx} cy={s.point.cy} r={10} fill={color} fillOpacity={0.9} stroke="white" strokeWidth={2} />
-              <circle cx={s.point.cx} cy={s.point.cy} r={3} fill="white" />
-            </g>
-          );
+          if (s.point)
+            return (
+              <g key={m.id} {...common}>
+                <circle
+                  cx={s.point.cx}
+                  cy={s.point.cy}
+                  r={10}
+                  fill={color}
+                  fillOpacity={0.9}
+                  stroke="white"
+                  strokeWidth={2}
+                />
+                <circle cx={s.point.cx} cy={s.point.cy} r={3} fill="white" />
+              </g>
+            );
           return null;
         })}
 
@@ -162,7 +192,12 @@ export function PlanMarkup({
         {isDrawing && edit.tool === "polygon" && edit.draft.length > 0 && (
           <g>
             <polyline
-              points={edit.draft.map(([x, y]) => { const p = ctx.toPx(x, y); return `${p.x},${p.y}`; }).join(" ")}
+              points={edit.draft
+                .map(([x, y]) => {
+                  const p = ctx.toPx(x, y);
+                  return `${p.x},${p.y}`;
+                })
+                .join(" ")}
               fill="none"
               stroke={DRAFT_COLOR}
               strokeWidth={2}
@@ -192,9 +227,18 @@ export function PlanMarkup({
 }
 
 function Tooltip({
-  x, y, containerW, containerH, property, contracts = [], ahchContracts = [],
+  x,
+  y,
+  containerW,
+  containerH,
+  property,
+  contracts = [],
+  ahchContracts = [],
 }: {
-  x: number; y: number; containerW: number; containerH: number;
+  x: number;
+  y: number;
+  containerW: number;
+  containerH: number;
   property: PropertyLite;
   contracts?: ActiveContractLite[];
   ahchContracts?: ActiveContractLite[];
@@ -209,7 +253,8 @@ function Tooltip({
   const occupied = contracts.reduce((sum, c) => sum + (c.area ?? area), 0);
   const free = Math.max(0, area - occupied);
   const freePct = area > 0 ? Math.round((free / area) * 100) : 0;
-  const singleFull = contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
+  const singleFull =
+    contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
   const showOccupancy = contracts.length > 0 && !singleFull;
   const ahchArea = ahchContracts.reduce((sum, c) => sum + (c.area ?? 0), 0);
   const ahchPct = area > 0 ? Math.round((ahchArea / area) * 100) : 0;
@@ -247,13 +292,17 @@ function Tooltip({
       {showOccupancy && (
         <div className="flex justify-between gap-2 text-[10px]">
           <span className="text-muted-foreground">Свободно</span>
-          <span className="font-medium">{free} м² ({freePct}%)</span>
+          <span className="font-medium">
+            {free} м² ({freePct}%)
+          </span>
         </div>
       )}
       {ahchArea > 0 && (
         <div className="flex justify-between gap-2 text-[10px]">
           <span className="text-muted-foreground">АХЧ</span>
-          <span className="font-medium">{ahchArea} м² ({ahchPct}%)</span>
+          <span className="font-medium">
+            {ahchArea} м² ({ahchPct}%)
+          </span>
         </div>
       )}
       {contracts.length > 0 && (
@@ -269,7 +318,9 @@ function Tooltip({
               <div key={c.id} className="space-y-0.5">
                 <div className="flex justify-between gap-1 text-[10px]">
                   <span className="truncate text-muted-foreground">{c.tenantName || "—"}</span>
-                  <span className="font-medium shrink-0">{cArea} м² ({pct}%)</span>
+                  <span className="font-medium shrink-0">
+                    {cArea} м² ({pct}%)
+                  </span>
                 </div>
                 <div className="flex justify-between gap-1 text-[10px]">
                   <span className="text-muted-foreground">Месячный платёж</span>

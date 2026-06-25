@@ -18,12 +18,20 @@ function NewTenant() {
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
-      const { data, error } = await supabase.from("tenants").insert({
-        owner_id: ownerId,
-        name: v.name, kind: v.kind as any,
-        inn: v.inn || null, phone: v.phone || null, email: v.email || null,
-        contact_person: v.contact_person || null, notes: v.notes || null,
-      }).select().single();
+      const { data, error } = await supabase
+        .from("tenants")
+        .insert({
+          owner_id: ownerId,
+          name: v.name,
+          kind: v.kind as any,
+          inn: v.inn || null,
+          phone: v.phone || null,
+          email: v.email || null,
+          contact_person: v.contact_person || null,
+          notes: v.notes || null,
+        })
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -37,9 +45,19 @@ function NewTenant() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl sm:text-2xl font-bold">Новый арендатор</h1>
-      <TenantForm formId="tenant-new-form" onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending} />
+      <TenantForm
+        formId="tenant-new-form"
+        onSubmit={(v) => mut.mutate(v)}
+        submitting={mut.isPending}
+      />
       <MobileActionBar>
-        <Button type="submit" form="tenant-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+        <Button
+          type="submit"
+          form="tenant-new-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
           {mut.isPending ? "Сохранение..." : "Создать арендатора"}
         </Button>
       </MobileActionBar>

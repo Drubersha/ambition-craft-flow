@@ -35,8 +35,10 @@ function EditTenant() {
   const { data: contracts } = useQuery({
     queryKey: ["tenant-contracts", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contracts")
-        .select("*, property:properties(name)").eq("tenant_id", id)
+      const { data, error } = await supabase
+        .from("contracts")
+        .select("*, property:properties(name)")
+        .eq("tenant_id", id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -45,11 +47,18 @@ function EditTenant() {
 
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
-      const { error } = await supabase.from("tenants").update({
-        name: v.name, kind: v.kind as any,
-        inn: v.inn || null, phone: v.phone || null, email: v.email || null,
-        contact_person: v.contact_person || null, notes: v.notes || null,
-      }).eq("id", id);
+      const { error } = await supabase
+        .from("tenants")
+        .update({
+          name: v.name,
+          kind: v.kind as any,
+          inn: v.inn || null,
+          phone: v.phone || null,
+          email: v.email || null,
+          contact_person: v.contact_person || null,
+          notes: v.notes || null,
+        })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -65,7 +74,11 @@ function EditTenant() {
       const { error } = await supabase.from("tenants").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tenants"] }); toast.success("Удалено"); navigate({ to: "/tenants" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tenants"] });
+      toast.success("Удалено");
+      navigate({ to: "/tenants" });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -74,16 +87,17 @@ function EditTenant() {
   const filteredContracts = (contracts ?? []).filter((c: any) => {
     if (!contractQuery) return true;
     const s = contractQuery.toLowerCase();
-    return (
-      c.number.toLowerCase().includes(s) ||
-      (c.property?.name ?? "").toLowerCase().includes(s)
-    );
+    return c.number.toLowerCase().includes(s) || (c.property?.name ?? "").toLowerCase().includes(s);
   });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" asChild><Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link></Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/tenants">
+            <ArrowLeft className="h-4 w-4 mr-1" /> К списку
+          </Link>
+        </Button>
         <ConfirmButton
           variant="destructive"
           size="sm"
@@ -94,7 +108,8 @@ function EditTenant() {
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
+          <Trash2 className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">Удалить</span>
         </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
@@ -102,11 +117,16 @@ function EditTenant() {
         <TenantForm
           formId="tenant-form"
           initial={{
-            name: data.name, kind: data.kind,
-            inn: data.inn ?? "", phone: data.phone ?? "", email: data.email ?? "",
-            contact_person: data.contact_person ?? "", notes: data.notes ?? "",
+            name: data.name,
+            kind: data.kind,
+            inn: data.inn ?? "",
+            phone: data.phone ?? "",
+            email: data.email ?? "",
+            contact_person: data.contact_person ?? "",
+            notes: data.notes ?? "",
           }}
-          onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
+          onSubmit={(v) => mut.mutate(v)}
+          submitting={mut.isPending}
         />
       </MobileCollapsible>
 
@@ -114,17 +134,22 @@ function EditTenant() {
         title="Договоры арендатора"
         action={
           <Button size="sm" asChild>
-            <Link to="/contracts/new" search={{ tenant: id } as any}>Новый</Link>
+            <Link to="/contracts/new" search={{ tenant: id } as any}>
+              Новый
+            </Link>
           </Button>
         }
       >
-        {(!contracts || contracts.length === 0) ? (
+        {!contracts || contracts.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Договоров пока нет.</p>
         ) : (
           <div className="space-y-2">
             {contracts.length > 3 && (
               <div className="relative">
-                <Search aria-hidden="true" className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search
+                  aria-hidden="true"
+                  className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"
+                />
                 <Input
                   type="search"
                   aria-label="Быстрый поиск по договорам"
@@ -137,22 +162,25 @@ function EditTenant() {
             )}
             {filteredContracts.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-3">Ничего не найдено.</p>
-            ) : filteredContracts.map((c: any) => (
-              <Link key={c.id} to="/contracts/$id" params={{ id: c.id }}>
-                <Card className="p-3 hover:border-primary transition-colors">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium break-all">№ {c.number}</span>
-                      <Badge variant="secondary">{CONTRACT_STATUS_LABELS[c.status]}</Badge>
+            ) : (
+              filteredContracts.map((c: any) => (
+                <Link key={c.id} to="/contracts/$id" params={{ id: c.id }}>
+                  <Card className="p-3 hover:border-primary transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="font-medium break-all">№ {c.number}</span>
+                        <Badge variant="secondary">{CONTRACT_STATUS_LABELS[c.status]}</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 break-words">
+                        {c.property?.name} · {c.area ?? "—"} м² · {formatMoney(c.rate, c.currency)}{" "}
+                        · {formatDate(c.start_date)} → {formatDate(c.end_date)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1 break-words">
-                      {c.property?.name} · {c.area ?? "—"} м² · {formatMoney(c.rate, c.currency)} · {formatDate(c.start_date)} → {formatDate(c.end_date)}
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
+                  </Card>
+                </Link>
+              ))
+            )}
           </div>
         )}
       </MobileCollapsible>

@@ -45,7 +45,10 @@ function PropertiesList() {
   const { data, isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -72,20 +75,33 @@ function PropertiesList() {
         description="Помещения и здания в аренде"
         action={
           <Button asChild size="sm">
-            <Link to="/properties/new"><Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Добавить</span></Link>
+            <Link to="/properties/new">
+              <Plus className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Добавить</span>
+            </Link>
           </Button>
         }
       />
 
       <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" aria-label="Поиск объектов" type="search" placeholder="Поиск по названию, адресу, кадастру" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input
+          className="pl-9"
+          aria-label="Поиск объектов"
+          type="search"
+          placeholder="Поиск по названию, адресу, кадастру"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="w-full sm:max-w-xs">
           <FolderPicker
             value={folderFilterEnabled ? folderId : null}
-            onChange={(id) => { setFolderId(id); setFolderFilterEnabled(true); }}
+            onChange={(id) => {
+              setFolderId(id);
+              setFolderFilterEnabled(true);
+            }}
             placeholder="Фильтр по папке"
           />
         </div>
@@ -93,7 +109,10 @@ function PropertiesList() {
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => { setFolderFilterEnabled(false); setFolderId(null); }}
+            onClick={() => {
+              setFolderFilterEnabled(false);
+              setFolderId(null);
+            }}
           >
             Сбросить
           </button>
@@ -117,10 +136,14 @@ function PropertiesList() {
                   <Badge variant="secondary">{PROPERTY_STATUS_LABELS[p.status]}</Badge>
                 </div>
                 <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
-                  <div>{PROPERTY_TYPE_LABELS[p.type]} · {p.area_total} м²</div>
+                  <div>
+                    {PROPERTY_TYPE_LABELS[p.type]} · {p.area_total} м²
+                  </div>
                   {p.base_rate && <div>Ставка: {formatMoney(p.base_rate, p.currency)}</div>}
                   {p.cadastral_no && <div>Кадастр: {p.cadastral_no}</div>}
-                  {p.folder_id && <div className="truncate">📁 {folderBreadcrumb(folders, p.folder_id)}</div>}
+                  {p.folder_id && (
+                    <div className="truncate">📁 {folderBreadcrumb(folders, p.folder_id)}</div>
+                  )}
                 </div>
               </Card>
             </Link>
@@ -136,9 +159,13 @@ function EmptyState() {
     <Card className="p-12 text-center">
       <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
       <h3 className="font-semibold">Объектов ещё нет</h3>
-      <p className="text-sm text-muted-foreground mb-4">Добавьте первый объект, чтобы начать учёт.</p>
+      <p className="text-sm text-muted-foreground mb-4">
+        Добавьте первый объект, чтобы начать учёт.
+      </p>
       <Button asChild>
-        <Link to="/properties/new"><Plus className="h-4 w-4 mr-1" /> Добавить объект</Link>
+        <Link to="/properties/new">
+          <Plus className="h-4 w-4 mr-1" /> Добавить объект
+        </Link>
       </Button>
     </Card>
   );

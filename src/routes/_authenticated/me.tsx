@@ -65,11 +65,14 @@ function TenantLayout() {
           Ваш аккаунт привязан к нескольким записям арендатора. Выберите, от чьего имени работать.
         </p>
         <Select onValueChange={(v) => ctx.select(v)}>
-          <SelectTrigger><SelectValue placeholder="Выберите арендатора" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите арендатора" />
+          </SelectTrigger>
           <SelectContent>
             {ctx.tenants.map((t) => (
               <SelectItem key={t.id} value={t.id}>
-                {t.name}{t.owner_name ? ` — ${t.owner_name}` : ""}
+                {t.name}
+                {t.owner_name ? ` — ${t.owner_name}` : ""}
               </SelectItem>
             ))}
           </SelectContent>
@@ -97,7 +100,10 @@ function TenantLayout() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => { setRole("owner"); navigate({ to: "/dashboard" }); }}
+          onClick={() => {
+            setRole("owner");
+            navigate({ to: "/dashboard" });
+          }}
         >
           <LogOut className="h-4 w-4 mr-1" /> Выйти из режима
         </Button>

@@ -21,12 +21,22 @@ function Thumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    supabase.storage.from("chat-attachments").createSignedUrl(path, 3600).then(({ data }) => {
-      if (active) setUrl(data?.signedUrl ?? null);
-    });
-    return () => { active = false; };
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (active) setUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      active = false;
+    };
   }, [path]);
-  if (!url) return <div className="h-20 w-full rounded bg-muted flex items-center justify-center"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>;
+  if (!url)
+    return (
+      <div className="h-20 w-full rounded bg-muted flex items-center justify-center">
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
   return <img src={url} alt="Вложение задачи" className="h-20 w-full rounded object-cover" />;
 }
 
@@ -49,9 +59,17 @@ export function TaskCard({
     opacity: isDragging ? 0.4 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} className="bg-background border rounded-md p-2 shadow-sm space-y-2">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-background border rounded-md p-2 shadow-sm space-y-2"
+    >
       <div className="flex items-start gap-1">
-        <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground mt-0.5">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none text-muted-foreground hover:text-foreground mt-0.5"
+        >
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
@@ -72,7 +90,9 @@ export function TaskCard({
         >
           {task.priority === "high" ? "высокий" : task.priority === "low" ? "низкий" : "обычный"}
         </Badge>
-        {tenantName && <span className="text-[10px] text-muted-foreground truncate">{tenantName}</span>}
+        {tenantName && (
+          <span className="text-[10px] text-muted-foreground truncate">{tenantName}</span>
+        )}
       </div>
     </div>
   );

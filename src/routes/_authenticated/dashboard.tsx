@@ -14,17 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   formatMoney,
   formatDate,
@@ -160,9 +151,7 @@ function Dashboard() {
     queryKey: ["dashboard-raw"],
     queryFn: async () => {
       const [pr, co, ch, py] = await Promise.all([
-        supabase
-          .from("properties")
-          .select("id,name,type,status,area_total,base_rate,currency"),
+        supabase.from("properties").select("id,name,type,status,area_total,base_rate,currency"),
         supabase
           .from("contracts")
           .select(
@@ -171,9 +160,7 @@ function Dashboard() {
         supabase
           .from("charges")
           .select("id,contract_id,total,paid_total,status,due_date,period_start,period_end"),
-        supabase
-          .from("payments")
-          .select("id,charge_id,amount,paid_at,method"),
+        supabase.from("payments").select("id,charge_id,amount,paid_at,method"),
       ]);
       if (pr.error) throw pr.error;
       if (co.error) throw co.error;
@@ -458,8 +445,18 @@ function Dashboard() {
         }
       >
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Kpi icon={Building2} label="Общая площадь" value={`${formatNum(kpi.totalArea)} м²`} hint={showKpiHints ? kpiHints.totalArea : undefined} />
-          <Kpi icon={Building2} label="Объектов" value={kpi.propsCount} hint={showKpiHints ? kpiHints.propsCount : undefined} />
+          <Kpi
+            icon={Building2}
+            label="Общая площадь"
+            value={`${formatNum(kpi.totalArea)} м²`}
+            hint={showKpiHints ? kpiHints.totalArea : undefined}
+          />
+          <Kpi
+            icon={Building2}
+            label="Объектов"
+            value={kpi.propsCount}
+            hint={showKpiHints ? kpiHints.propsCount : undefined}
+          />
           <Kpi
             icon={Percent}
             label="Занятость"
@@ -468,8 +465,18 @@ function Dashboard() {
             sub={<Progress value={kpi.occupancy} className="mt-2 h-1.5" />}
             hint={showKpiHints ? kpiHints.occupancy : undefined}
           />
-          <Kpi icon={Wallet} label="Арендный доход" value={formatMoney(kpi.rentIncome)} hint={showKpiHints ? kpiHints.rentIncome : undefined} />
-          <Kpi icon={Wallet} label="Месячные платежи" value={formatMoney(kpi.monthlyIncome)} hint={showKpiHints ? kpiHints.monthlyIncome : undefined} />
+          <Kpi
+            icon={Wallet}
+            label="Арендный доход"
+            value={formatMoney(kpi.rentIncome)}
+            hint={showKpiHints ? kpiHints.rentIncome : undefined}
+          />
+          <Kpi
+            icon={Wallet}
+            label="Месячные платежи"
+            value={formatMoney(kpi.monthlyIncome)}
+            hint={showKpiHints ? kpiHints.monthlyIncome : undefined}
+          />
           <Kpi
             icon={TrendingUp}
             label="Средняя ставка"
@@ -577,9 +584,13 @@ function Dashboard() {
 }
 
 function periodLabel(p: Period) {
-  return { day: "Сегодня", month: "Месяц", quarter: "Квартал", year: "Год", custom: "Произвольный" }[
-    p
-  ];
+  return {
+    day: "Сегодня",
+    month: "Месяц",
+    quarter: "Квартал",
+    year: "Год",
+    custom: "Произвольный",
+  }[p];
 }
 
 function formatNum(n: number) {
@@ -675,9 +686,7 @@ function MultiSelectPopover({
   onChange: (v: string[]) => void;
 }) {
   const [q, setQ] = useState("");
-  const visible = options.filter((o) =>
-    o.label.toLowerCase().includes(q.toLowerCase()),
-  );
+  const visible = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -760,7 +769,8 @@ function PropertiesTable({
         const avgRate =
           leased > 0
             ? active.reduce(
-                (s, c) => s + monthlyFromRate(Number(c.rate), c.payment_period) * Number(c.area || 0),
+                (s, c) =>
+                  s + monthlyFromRate(Number(c.rate), c.payment_period) * Number(c.area || 0),
                 0,
               ) / leased
             : Number(p.base_rate || 0);
@@ -769,7 +779,12 @@ function PropertiesTable({
         let derivedStatus = p.status;
         if (occ >= 99.5) derivedStatus = "occupied";
         else if (occ > 0) derivedStatus = "partial";
-        else if (p.status !== "ahch" && p.status !== "partial_ahch" && p.status !== "maintenance" && p.status !== "archived") {
+        else if (
+          p.status !== "ahch" &&
+          p.status !== "partial_ahch" &&
+          p.status !== "maintenance" &&
+          p.status !== "archived"
+        ) {
           derivedStatus = "free";
         }
         return {
@@ -1393,9 +1408,7 @@ function FinanceSection({
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
                   <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
-                  <RTooltip
-                    formatter={(v: any) => `${formatNum(Number(v))} ₽/м²/мес`}
-                  />
+                  <RTooltip formatter={(v: any) => `${formatNum(Number(v))} ₽/м²/мес`} />
                   <Bar dataKey="rate" fill="var(--success)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -1444,7 +1457,10 @@ function BudgetPlanVsFact() {
     };
     const planLimitByPlan = new Map<string, number>();
     for (const c of data.categories as any[]) {
-      planLimitByPlan.set(c.plan_id, (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0));
+      planLimitByPlan.set(
+        c.plan_id,
+        (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0),
+      );
     }
     const factByPlan = new Map<string, number>();
     for (const e of data.expenses as any[]) {
@@ -1483,7 +1499,10 @@ function BudgetPlanVsFact() {
                 <Bar dataKey="plan" name="План" fill="var(--info)" radius={[0, 4, 4, 0]} />
                 <Bar dataKey="fact" name="Факт" radius={[0, 4, 4, 0]}>
                   {rows.map((r, i) => (
-                    <Cell key={i} fill={r.fact > r.plan ? "var(--destructive)" : "var(--success)"} />
+                    <Cell
+                      key={i}
+                      fill={r.fact > r.plan ? "var(--destructive)" : "var(--success)"}
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -1528,7 +1547,14 @@ function BudgetExpenseStructure() {
   }, [data]);
 
   const total = slices.reduce((s, r) => s + r.value, 0);
-  const palette = ["var(--info)", "var(--success)", "var(--warning)", "var(--destructive)", "var(--primary)", "var(--accent)"];
+  const palette = [
+    "var(--info)",
+    "var(--success)",
+    "var(--warning)",
+    "var(--destructive)",
+    "var(--primary)",
+    "var(--accent)",
+  ];
 
   return (
     <Card>
@@ -1555,7 +1581,9 @@ function BudgetExpenseStructure() {
                   dataKey="value"
                   nameKey="name"
                   outerRadius={90}
-                  label={(e: any) => `${e.name} ${total > 0 ? ((e.value / total) * 100).toFixed(0) : 0}%`}
+                  label={(e: any) =>
+                    `${e.name} ${total > 0 ? ((e.value / total) * 100).toFixed(0) : 0}%`
+                  }
                 >
                   {slices.map((_, i) => (
                     <Cell key={i} fill={palette[i % palette.length]} />
@@ -1598,8 +1626,11 @@ function ProfitSummary() {
   };
   const inYear = (s: string) => new Date(s).getFullYear() === y;
 
-  const sumBy = (arr: { amount: number | string; spent_at?: string; paid_at?: string }[], field: "spent_at" | "paid_at", pred: (s: string) => boolean) =>
-    arr.reduce((s, r) => (pred((r as any)[field]) ? s + Number(r.amount || 0) : s), 0);
+  const sumBy = (
+    arr: { amount: number | string; spent_at?: string; paid_at?: string }[],
+    field: "spent_at" | "paid_at",
+    pred: (s: string) => boolean,
+  ) => arr.reduce((s, r) => (pred((r as any)[field]) ? s + Number(r.amount || 0) : s), 0);
 
   const incomeMonth = sumBy((data?.payments ?? []) as any, "paid_at", inMonth);
   const incomeYear = sumBy((data?.payments ?? []) as any, "paid_at", inYear);
@@ -1610,7 +1641,7 @@ function ProfitSummary() {
   const marginMonth = incomeMonth > 0 ? (profitMonth / incomeMonth) * 100 : null;
   const marginYear = incomeYear > 0 ? (profitYear / incomeYear) * 100 : null;
 
-  const profitColor = (v: number) => v < 0 ? "text-destructive" : "text-foreground";
+  const profitColor = (v: number) => (v < 0 ? "text-destructive" : "text-foreground");
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1620,7 +1651,9 @@ function ProfitSummary() {
             <TrendingDown className="h-4 w-4" />
             <span>Расходы за месяц</span>
           </div>
-          <div className="mt-1 text-lg sm:text-xl font-bold break-words">{formatMoney(expenseMonth)}</div>
+          <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+            {formatMoney(expenseMonth)}
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -1629,7 +1662,9 @@ function ProfitSummary() {
             <TrendingDown className="h-4 w-4" />
             <span>Расходы за год</span>
           </div>
-          <div className="mt-1 text-lg sm:text-xl font-bold break-words">{formatMoney(expenseYear)}</div>
+          <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+            {formatMoney(expenseYear)}
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -1638,7 +1673,11 @@ function ProfitSummary() {
             <PiggyBank className="h-4 w-4" />
             <span>Прибыль за месяц</span>
           </div>
-          <div className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}>{formatMoney(profitMonth)}</div>
+          <div
+            className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}
+          >
+            {formatMoney(profitMonth)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1">
             Маржа: {marginMonth === null ? "—" : `${marginMonth.toFixed(1)}%`}
           </div>
@@ -1650,7 +1689,11 @@ function ProfitSummary() {
             <PiggyBank className="h-4 w-4" />
             <span>Прибыль за год</span>
           </div>
-          <div className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}>{formatMoney(profitYear)}</div>
+          <div
+            className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}
+          >
+            {formatMoney(profitYear)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1">
             Маржа: {marginYear === null ? "—" : `${marginYear.toFixed(1)}%`}
           </div>

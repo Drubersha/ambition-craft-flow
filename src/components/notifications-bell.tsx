@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Building2, Users, FileText, Wallet, TrendingUp, MessageSquare, AlertTriangle, ShieldCheck } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  Users,
+  FileText,
+  Wallet,
+  TrendingUp,
+  MessageSquare,
+  AlertTriangle,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { listMyNotifications, markNotificationsRead, deleteNotifications } from "@/lib/notifications.functions";
+import {
+  listMyNotifications,
+  markNotificationsRead,
+  deleteNotifications,
+} from "@/lib/notifications.functions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -41,11 +55,16 @@ export function NotificationsBell() {
   const [hasSession, setHasSession] = useState(false);
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => { if (active) setHasSession(!!data.session); });
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (active) setHasSession(!!session);
     });
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
   const { data } = useQuery({
     queryKey: ["notifications"],
@@ -69,7 +88,12 @@ export function NotificationsBell() {
         .channel(`notif:${uid}:${Math.random().toString(36).slice(2)}`)
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${uid}`,
+          },
           (payload: any) => {
             qc.invalidateQueries({ queryKey: ["notifications"] });
             const n = payload.new;
@@ -78,12 +102,22 @@ export function NotificationsBell() {
         )
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${uid}`,
+          },
           () => qc.invalidateQueries({ queryKey: ["notifications"] }),
         )
         .on(
           "postgres_changes",
-          { event: "DELETE", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${uid}`,
+          },
           () => qc.invalidateQueries({ queryKey: ["notifications"] }),
         )
         .subscribe();
@@ -146,7 +180,9 @@ export function NotificationsBell() {
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
           {items.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-muted-foreground">Пока нет уведомлений</div>
+            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+              Пока нет уведомлений
+            </div>
           ) : (
             items.map((n: any) => {
               const Icon = KIND_ICON[n.kind] ?? Bell;
@@ -163,11 +199,17 @@ export function NotificationsBell() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-sm font-medium truncate">{n.title}</div>
-                      <div className="text-[10px] text-muted-foreground shrink-0">{timeAgo(n.created_at)}</div>
+                      <div className="text-[10px] text-muted-foreground shrink-0">
+                        {timeAgo(n.created_at)}
+                      </div>
                     </div>
-                    {n.body && <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>}
+                    {n.body && (
+                      <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
+                    )}
                   </div>
-                  {!n.read_at && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />}
+                  {!n.read_at && (
+                    <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                  )}
                 </button>
               );
             })

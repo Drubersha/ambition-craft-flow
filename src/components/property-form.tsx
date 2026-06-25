@@ -3,7 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from "@/lib/format";
 import { FolderPicker } from "@/components/folder-picker";
 
@@ -64,45 +70,102 @@ export function PropertyForm({
       }}
       className="space-y-4 max-w-2xl"
     >
-      <Field label="Название *"><Input required value={v.name} onChange={(e) => set("name", e.target.value)} /></Field>
-      <Field label="Адрес *"><Input required value={v.address} onChange={(e) => set("address", e.target.value)} /></Field>
+      <Field label="Название *">
+        <Input required value={v.name} onChange={(e) => set("name", e.target.value)} />
+      </Field>
+      <Field label="Адрес *">
+        <Input required value={v.address} onChange={(e) => set("address", e.target.value)} />
+      </Field>
       <div className="grid sm:grid-cols-2 gap-3">
         <Field label="Тип">
           <Select value={v.type} onValueChange={(x) => set("type", x)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {Object.entries(PROPERTY_TYPE_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {Object.entries(PROPERTY_TYPE_LABELS).map(([k, l]) => (
+                <SelectItem key={k} value={k}>
+                  {l}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Field>
         <Field label="Статус">
           <Select value={v.status} onValueChange={(x) => set("status", x)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {Object.entries(PROPERTY_STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {Object.entries(PROPERTY_STATUS_LABELS).map(([k, l]) => (
+                <SelectItem key={k} value={k}>
+                  {l}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Field>
       </div>
-      <Field label="Кадастровый номер"><Input value={v.cadastral_no} onChange={(e) => set("cadastral_no", e.target.value)} /></Field>
+      <Field label="Кадастровый номер">
+        <Input value={v.cadastral_no} onChange={(e) => set("cadastral_no", e.target.value)} />
+      </Field>
       <div className="grid sm:grid-cols-2 gap-3">
-        <Field label="Общая площадь, м² *"><Input type="number" step="0.01" required value={v.area_total} onChange={(e) => set("area_total", e.target.value)} /></Field>
-        <Field label="Полезная площадь, м²"><Input type="number" step="0.01" value={v.area_usable} onChange={(e) => set("area_usable", e.target.value)} /></Field>
+        <Field label="Общая площадь, м² *">
+          <Input
+            type="number"
+            step="0.01"
+            required
+            value={v.area_total}
+            onChange={(e) => set("area_total", e.target.value)}
+          />
+        </Field>
+        <Field label="Полезная площадь, м²">
+          <Input
+            type="number"
+            step="0.01"
+            value={v.area_usable}
+            onChange={(e) => set("area_usable", e.target.value)}
+          />
+        </Field>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <Field label="Этаж"><Input value={v.floor} onChange={(e) => set("floor", e.target.value)} /></Field>
-        <Field label="Номер помещения"><Input value={v.room_no} onChange={(e) => set("room_no", e.target.value)} /></Field>
+        <Field label="Этаж">
+          <Input value={v.floor} onChange={(e) => set("floor", e.target.value)} />
+        </Field>
+        <Field label="Номер помещения">
+          <Input value={v.room_no} onChange={(e) => set("room_no", e.target.value)} />
+        </Field>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <Field label="Базовая ставка"><Input type="number" step="0.01" value={v.base_rate} onChange={(e) => set("base_rate", e.target.value)} /></Field>
-        <Field label="Валюта"><Input value={v.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></Field>
+        <Field label="Базовая ставка">
+          <Input
+            type="number"
+            step="0.01"
+            value={v.base_rate}
+            onChange={(e) => set("base_rate", e.target.value)}
+          />
+        </Field>
+        <Field label="Валюта">
+          <Input
+            value={v.currency}
+            onChange={(e) => set("currency", e.target.value.toUpperCase())}
+          />
+        </Field>
       </div>
-      <Field label="Описание"><Textarea rows={3} value={v.description} onChange={(e) => set("description", e.target.value)} /></Field>
+      <Field label="Описание">
+        <Textarea
+          rows={3}
+          value={v.description}
+          onChange={(e) => set("description", e.target.value)}
+        />
+      </Field>
       <Field label="Папка">
         <FolderPicker value={v.folder_id} onChange={(id) => set("folder_id", id)} />
       </Field>
       {!hideSubmit && (
-        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">{submitting ? "Сохранение..." : "Сохранить"}</Button>
+        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+          {submitting ? "Сохранение..." : "Сохранить"}
+        </Button>
       )}
     </form>
   );

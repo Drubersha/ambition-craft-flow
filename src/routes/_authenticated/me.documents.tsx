@@ -34,28 +34,29 @@ function MyDocs() {
       // Contract documents
       if (ids.length > 0) {
         queries.push(
-          (supabase
+          supabase
             .from("documents")
-            .select("id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind")
+            .select(
+              "id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind",
+            )
             .eq("owner_kind", "contract" as any)
-            .in("ref_id", ids) as unknown) as PromiseLike<any>,
+            .in("ref_id", ids) as unknown as PromiseLike<any>,
         );
       }
       // Tenant documents
       queries.push(
-        (supabase
+        supabase
           .from("documents")
           .select("id, label, storage_path, mime_type, size_bytes, created_at, ref_id, owner_kind")
           .eq("owner_kind", "tenant" as any)
-          .eq("ref_id", tenantId!) as unknown) as PromiseLike<any>,
+          .eq("ref_id", tenantId!) as unknown as PromiseLike<any>,
       );
 
       const results = await Promise.all(queries);
       const docs = results
-        .flatMap((r) => (r.error ? [] : r.data ?? []))
+        .flatMap((r) => (r.error ? [] : (r.data ?? [])))
         .sort(
-          (a: any, b: any) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
       return { contracts: contracts ?? [], docs };
     },
@@ -108,7 +109,8 @@ function DocRow({ doc, contracts }: { doc: any; contracts: any[] }) {
   }
 
   const title =
-    doc.label ?? (typeof doc.storage_path === "string" ? doc.storage_path.split("/").pop() : "Документ");
+    doc.label ??
+    (typeof doc.storage_path === "string" ? doc.storage_path.split("/").pop() : "Документ");
   const subtitle =
     doc.owner_kind === "contract" && contract?.number
       ? `Договор № ${contract.number} · ${formatDate(doc.created_at)}`

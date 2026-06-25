@@ -32,7 +32,13 @@ export function PlanViewer({
   const [fullscreen, setFullscreen] = useState(false);
   return (
     <>
-      <Stage src={src} alt={alt} className={cn(height, className)} overlay={overlay} onFullscreen={() => setFullscreen(true)} />
+      <Stage
+        src={src}
+        alt={alt}
+        className={cn(height, className)}
+        overlay={overlay}
+        onFullscreen={() => setFullscreen(true)}
+      />
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] p-2 sm:p-3">
           <Stage src={src} alt={alt} overlay={overlay} className="h-full" />
@@ -43,8 +49,18 @@ export function PlanViewer({
 }
 
 function Stage({
-  src, alt, className, onFullscreen, overlay,
-}: { src: string; alt: string; className?: string; onFullscreen?: () => void; overlay?: (ctx: PlanOverlayCtx) => ReactNode }) {
+  src,
+  alt,
+  className,
+  onFullscreen,
+  overlay,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  onFullscreen?: () => void;
+  overlay?: (ctx: PlanOverlayCtx) => ReactNode;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
@@ -55,10 +71,17 @@ function Stage({
   const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
 
-  const reset = useCallback(() => { setScale(1); setTx(0); setTy(0); }, []);
+  const reset = useCallback(() => {
+    setScale(1);
+    setTx(0);
+    setTy(0);
+  }, []);
 
   // Recenter on src change
-  useEffect(() => { setLoaded(false); reset(); }, [src, reset]);
+  useEffect(() => {
+    setLoaded(false);
+    reset();
+  }, [src, reset]);
 
   // Track rendered image size so overlay can size to match.
   useEffect(() => {
@@ -125,7 +148,9 @@ function Stage({
       zoomAt((pinchRef.current.scale * dist) / pinchRef.current.dist, cx, cy);
     }
   };
-  const onTouchEnd = () => { pinchRef.current = null; };
+  const onTouchEnd = () => {
+    pinchRef.current = null;
+  };
 
   const onDoubleClick = (e: React.MouseEvent) => {
     if (scale > 1.01) reset();
@@ -133,13 +158,25 @@ function Stage({
   };
 
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "+" || e.key === "=") { zoomAt(scale * 1.2); e.preventDefault(); }
-    else if (e.key === "-") { zoomAt(scale / 1.2); e.preventDefault(); }
-    else if (e.key === "0") { reset(); e.preventDefault(); }
+    if (e.key === "+" || e.key === "=") {
+      zoomAt(scale * 1.2);
+      e.preventDefault();
+    } else if (e.key === "-") {
+      zoomAt(scale / 1.2);
+      e.preventDefault();
+    } else if (e.key === "0") {
+      reset();
+      e.preventDefault();
+    }
   };
 
   return (
-    <div className={cn("relative w-full rounded border bg-muted overflow-hidden select-none", className)}>
+    <div
+      className={cn(
+        "relative w-full rounded border bg-muted overflow-hidden select-none",
+        className,
+      )}
+    >
       <div
         ref={containerRef}
         className="absolute inset-0 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing focus:outline-none"
@@ -196,18 +233,48 @@ function Stage({
       </div>
 
       <div className="absolute top-2 right-2 flex gap-1 bg-background/80 backdrop-blur rounded-md p-1 shadow">
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => zoomAt(scale / 1.25)} aria-label="Уменьшить">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={() => zoomAt(scale / 1.25)}
+          aria-label="Уменьшить"
+        >
           <Minus className="h-4 w-4" />
         </Button>
-        <div className="px-2 self-center text-xs tabular-nums w-12 text-center">{Math.round(scale * 100)}%</div>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => zoomAt(scale * 1.25)} aria-label="Увеличить">
+        <div className="px-2 self-center text-xs tabular-nums w-12 text-center">
+          {Math.round(scale * 100)}%
+        </div>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={() => zoomAt(scale * 1.25)}
+          aria-label="Увеличить"
+        >
           <Plus className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={reset} aria-label="Сбросить">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={reset}
+          aria-label="Сбросить"
+        >
           <RotateCcw className="h-4 w-4" />
         </Button>
         {onFullscreen && (
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={onFullscreen} aria-label="Во весь экран">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={onFullscreen}
+            aria-label="Во весь экран"
+          >
             <Maximize2 className="h-4 w-4" />
           </Button>
         )}

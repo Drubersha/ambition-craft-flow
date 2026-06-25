@@ -24,12 +24,22 @@ function PhotoThumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    supabase.storage.from("chat-attachments").createSignedUrl(path, 3600).then(({ data }) => {
-      if (active) setUrl(data?.signedUrl ?? null);
-    });
-    return () => { active = false; };
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (active) setUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      active = false;
+    };
   }, [path]);
-  if (!url) return <div className="h-14 w-14 rounded bg-muted flex items-center justify-center"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>;
+  if (!url)
+    return (
+      <div className="h-14 w-14 rounded bg-muted flex items-center justify-center">
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
   return <img src={url} alt="Вложение из сообщения" className="h-14 w-14 rounded object-cover" />;
 }
 
@@ -68,7 +78,9 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
         qc.invalidateQueries({ queryKey: ["task-suggestions"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [qc]);
 
   if (!suggestions || suggestions.length === 0) return null;
@@ -86,7 +98,10 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium text-sm">{s.title}</span>
-                <Badge variant={s.priority === "high" ? "destructive" : "secondary"} className="text-[10px]">
+                <Badge
+                  variant={s.priority === "high" ? "destructive" : "secondary"}
+                  className="text-[10px]"
+                >
                   {s.priority === "high" ? "высокий" : s.priority === "low" ? "низкий" : "обычный"}
                 </Badge>
                 {s.tenant_id && tenants?.get(s.tenant_id) && (
@@ -111,7 +126,8 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
                   }
                 }}
               >
-                <Check className="h-3 w-3 mr-1" />Создать
+                <Check className="h-3 w-3 mr-1" />
+                Создать
               </Button>
               <Button
                 size="sm"
@@ -121,7 +137,8 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
                   qc.invalidateQueries({ queryKey: ["task-suggestions"] });
                 }}
               >
-                <X className="h-3 w-3 mr-1" />Скрыть
+                <X className="h-3 w-3 mr-1" />
+                Скрыть
               </Button>
             </div>
           </div>

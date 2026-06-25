@@ -71,6 +71,9 @@ function fitWithin(w: number, h: number, max: number) {
 
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Не удалось создать PNG"))), "image/png"),
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Не удалось создать PNG"))),
+      "image/png",
+    ),
   );
 }

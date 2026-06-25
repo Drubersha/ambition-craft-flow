@@ -50,6 +50,7 @@ docker compose logs -f app
 ```
 
 Через ~30 сек:
+
 - приложение: <http://SERVER_IP:3000>
 - Supabase API: <http://SERVER_IP:8000>
 

@@ -24,22 +24,36 @@ function NewContract() {
   const mut = useMutation({
     mutationFn: async (v: ContractFormValues) => {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
-      const { data, error } = await supabase.from("contracts").insert({
-        owner_id: ownerId,
-        tenant_id: v.tenant_id, property_id: v.property_id,
-        number: v.number || null, cadastral_no: v.cadastral_no || null,
-        area: v.area ? Number(v.area) : null,
-        rate: Number(v.rate) || 0, currency: v.currency || "RUB",
-        payment_period: v.payment_period as any, status: v.status as any,
-        kind: v.kind as any,
-        start_date: v.start_date, end_date: v.end_date || null,
-        notes: v.notes || null,
-        termination_terms: v.termination_terms || null,
-        deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
-        deposit_amount: v.deposit_percent
-          ? computeDepositWithArea(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0, Number(v.deposit_percent))
-          : null,
-      }).select().single();
+      const { data, error } = await supabase
+        .from("contracts")
+        .insert({
+          owner_id: ownerId,
+          tenant_id: v.tenant_id,
+          property_id: v.property_id,
+          number: v.number || null,
+          cadastral_no: v.cadastral_no || null,
+          area: v.area ? Number(v.area) : null,
+          rate: Number(v.rate) || 0,
+          currency: v.currency || "RUB",
+          payment_period: v.payment_period as any,
+          status: v.status as any,
+          kind: v.kind as any,
+          start_date: v.start_date,
+          end_date: v.end_date || null,
+          notes: v.notes || null,
+          termination_terms: v.termination_terms || null,
+          deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
+          deposit_amount: v.deposit_percent
+            ? computeDepositWithArea(
+                Number(v.rate) || 0,
+                v.payment_period,
+                Number(v.area) || 0,
+                Number(v.deposit_percent),
+              )
+            : null,
+        })
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -56,10 +70,17 @@ function NewContract() {
       <ContractForm
         formId="contract-new-form"
         initial={{ tenant_id: sp.tenant ?? "", property_id: sp.property ?? "" }}
-        onSubmit={(v) => mut.mutate(v)} submitting={mut.isPending}
+        onSubmit={(v) => mut.mutate(v)}
+        submitting={mut.isPending}
       />
       <MobileActionBar>
-        <Button type="submit" form="contract-new-form" size="lg" className="flex-1 min-h-11" disabled={mut.isPending}>
+        <Button
+          type="submit"
+          form="contract-new-form"
+          size="lg"
+          className="flex-1 min-h-11"
+          disabled={mut.isPending}
+        >
           {mut.isPending ? "Сохранение..." : "Создать договор"}
         </Button>
       </MobileActionBar>

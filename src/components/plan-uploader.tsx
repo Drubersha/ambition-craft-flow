@@ -31,12 +31,19 @@ export function PlanUploader({
 
   useEffect(() => {
     let cancel = false;
-    if (!currentPath) { setUrl(null); return; }
+    if (!currentPath) {
+      setUrl(null);
+      return;
+    }
     (async () => {
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(currentPath, 60 * 60);
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(currentPath, 60 * 60);
       if (!cancel && !error) setUrl(data.signedUrl);
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [currentPath]);
 
   const handleFile = async (file: File) => {
@@ -95,9 +102,15 @@ export function PlanUploader({
           {isLegacyPdf ? (
             <div className="space-y-2">
               <div className="rounded border bg-muted p-4 text-sm text-muted-foreground">
-                Старый файл в формате PDF. Загрузите его заново — он будет конвертирован в универсальный формат с зумом.
+                Старый файл в формате PDF. Загрузите его заново — он будет конвертирован в
+                универсальный формат с зумом.
               </div>
-              <a href={url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
                 Открыть текущий PDF
               </a>
             </div>
@@ -106,11 +119,21 @@ export function PlanUploader({
           )}
           <div className="flex gap-2 flex-wrap">
             <label>
-              <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden"
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                className="hidden"
                 disabled={disabled || busy}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                  e.target.value = "";
+                }}
+              />
               <Button type="button" variant="outline" size="sm" disabled={disabled || busy} asChild>
-                <span><Upload className="h-4 w-4 mr-1" /> Заменить</span>
+                <span>
+                  <Upload className="h-4 w-4 mr-1" /> Заменить
+                </span>
               </Button>
             </label>
             <ConfirmButton
@@ -129,9 +152,17 @@ export function PlanUploader({
         </div>
       ) : (
         <label className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer text-sm text-muted-foreground hover:bg-muted/50 rounded">
-          <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden"
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            className="hidden"
             disabled={disabled || busy}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+              e.target.value = "";
+            }}
+          />
           {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileText className="h-8 w-8" />}
           <div>{busy ? "Обработка..." : "Загрузить план (PNG, JPG, WEBP, PDF)"}</div>
         </label>

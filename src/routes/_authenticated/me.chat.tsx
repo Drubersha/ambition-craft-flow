@@ -20,7 +20,11 @@ function MyChat() {
     queryKey: ["me-tenant-name", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
-      const { data } = await supabase.from("tenants").select("name").eq("id", tenantId!).maybeSingle();
+      const { data } = await supabase
+        .from("tenants")
+        .select("name")
+        .eq("id", tenantId!)
+        .maybeSingle();
       return data;
     },
   });

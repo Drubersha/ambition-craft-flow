@@ -37,12 +37,14 @@ GRANT  EXECUTE ON FUNCTION public.my_chat_role(uuid) TO authenticated;
 Заменить политики (старые `owner manages ...` дропаются, существующие данные не трогаются):
 
 `chat_threads`:
+
 - owner ALL: `owner_id = auth.uid()`
 - manager ALL: `is_linked_member(owner_id, auth.uid(), 'manager')`
 - tenant SELECT: `my_chat_role(id) = 'tenant'`
 - tenant UPDATE (только для счётчиков): `my_chat_role(id) = 'tenant'`
 
 `chat_messages`:
+
 - owner ALL: `owner_id = auth.uid()` (без локального ограничения `sender_role` — это сохранит работу demo-импersonации)
 - manager ALL: `is_linked_member(owner_id, auth.uid(), 'manager')`
 - tenant SELECT: `my_chat_role(thread_id) = 'tenant'`
@@ -74,6 +76,7 @@ USING (bucket_id = 'chat-attachments'
 ### 3. Серверная `ensureChatThread`
 
 Новая server fn `src/lib/chat.functions.ts → ensureChatThread({ tenantId })`:
+
 1. `requireSupabaseAuth` → есть `userId`, `claims.email`.
 2. Берём `tenants.owner_id` (через `supabaseAdmin`, читая только `id, owner_id, email`).
 3. Авторизуем caller:
@@ -88,6 +91,7 @@ USING (bucket_id = 'chat-attachments'
 ### 4. Клиент `chat-thread.tsx`
 
 Подгружаем сам thread, чтобы знать `owner_id`:
+
 - `useQuery(['chat-thread', threadId])` → `{ id, owner_id, tenant_id }` (RLS уже разрешит).
 - `send()`:
   - `owner_id: thread.owner_id` (не `auth.uid()`);
@@ -116,6 +120,7 @@ USING (bucket_id = 'chat-attachments'
 ## Acceptance / проверка
 
 После применения миграции прогнать вручную или через Playwright:
+
 - owner логинится → видит все свои чаты, отправляет сообщение → `unread_tenant++`;
 - manager (linked) → видит threads привязанного owner, может писать;
 - real tenant (email совпадает с `tenants.email`) → `/me/chat` подгружает только свой thread, отправка сообщения и вложения работает, owner получает `unread_owner++`;
@@ -125,6 +130,7 @@ USING (bucket_id = 'chat-attachments'
 ## Технические детали (для разработчика)
 
 Файлы:
+
 - новая миграция `supabase/migrations/<ts>_chat_rls_multi_role.sql` — функция `my_chat_role`, дроп старых политик, создание новых для 3 таблиц чата и `storage.objects` (chat-attachments);
 - новый `src/lib/chat.functions.ts` с `ensureChatThread` (createServerFn + requireSupabaseAuth);
 - правки `src/components/chat/chat-thread.tsx` (use thread.owner_id, новый ensureChatThread обёртка);

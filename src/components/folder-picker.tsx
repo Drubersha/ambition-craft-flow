@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useFolders, buildTree, flatten, descendantIds } from "@/lib/folders";
 
 const NONE = "__none__";
@@ -24,7 +30,9 @@ export function FolderPicker({
 }) {
   const { data } = useFolders();
   const folders = data ?? [];
-  const excluded = excludeDescendantsOf ? descendantIds(folders, excludeDescendantsOf) : new Set<string>();
+  const excluded = excludeDescendantsOf
+    ? descendantIds(folders, excludeDescendantsOf)
+    : new Set<string>();
   const list = flatten(buildTree(folders)).filter((n) => !excluded.has(n.id));
 
   const selectValue = value ?? (includeRoot ? ROOT : NONE);
@@ -37,7 +45,9 @@ export function FolderPicker({
         else onChange(v);
       }}
     >
-      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
       <SelectContent>
         {includeAll && <SelectItem value={NONE}>Все папки</SelectItem>}
         {!includeAll && (
@@ -47,7 +57,8 @@ export function FolderPicker({
         )}
         {list.map((n) => (
           <SelectItem key={n.id} value={n.id}>
-            {"\u00A0\u00A0".repeat(n.depth)}{n.name}
+            {"\u00A0\u00A0".repeat(n.depth)}
+            {n.name}
           </SelectItem>
         ))}
       </SelectContent>

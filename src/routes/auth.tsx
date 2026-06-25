@@ -31,7 +31,10 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Вход — RentFlow" },
-      { name: "description", content: "Вход и регистрация в RentFlow — системе учёта коммерческой аренды." },
+      {
+        name: "description",
+        content: "Вход и регистрация в RentFlow — системе учёта коммерческой аренды.",
+      },
       { property: "og:title", content: "Вход — RentFlow" },
       { property: "og:description", content: "Вход и регистрация в RentFlow." },
       { property: "og:url", content: "/auth" },
@@ -88,34 +91,71 @@ function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4 py-10">
       <Card className="w-full max-w-md">
-        <CardHeader><CardTitle>RentFlow — вход</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>RentFlow — вход</CardTitle>
+        </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="signin">Вход</TabsTrigger>
               <TabsTrigger value="signup">Регистрация</TabsTrigger>
             </TabsList>
-            <TabsContent value="signin"><SignInForm onDone={() => navigate({ to: "/" })} /></TabsContent>
-            <TabsContent value="signup"><SignUpForm onDone={() => setTab("signin")} /></TabsContent>
+            <TabsContent value="signin">
+              <SignInForm onDone={() => navigate({ to: "/" })} />
+            </TabsContent>
+            <TabsContent value="signup">
+              <SignUpForm onDone={() => setTab("signin")} />
+            </TabsContent>
           </Tabs>
           <div className="mt-6 pt-4 border-t space-y-2">
-            <div className="text-xs text-muted-foreground text-center">Быстрый вход для демонстрации</div>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("demo")}>
+            <div className="text-xs text-muted-foreground text-center">
+              Быстрый вход для демонстрации
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={demoLoading !== null}
+              onClick={() => openGate("demo")}
+            >
               {demoLoading === "demo" ? "..." : "Зайти в демо режим 1"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("demo2")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={demoLoading !== null}
+              onClick={() => openGate("demo2")}
+            >
               {demoLoading === "demo2" ? "..." : "Зайти в демо режим 2 (авто-очистка при выходе)"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("moderator")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={demoLoading !== null}
+              onClick={() => openGate("moderator")}
+            >
               {demoLoading === "moderator" ? "..." : "Зайти как модератор"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={demoLoading !== null} onClick={() => openGate("developer")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={demoLoading !== null}
+              onClick={() => openGate("developer")}
+            >
               {demoLoading === "developer" ? "..." : "Зайти как администратор"}
             </Button>
           </div>
         </CardContent>
       </Card>
-      <Dialog open={gateKind !== null} onOpenChange={(o) => { if (!o) setGateKind(null); }}>
+      <Dialog
+        open={gateKind !== null}
+        onOpenChange={(o) => {
+          if (!o) setGateKind(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Вход — {gateKind ? DEMO_CREDENTIALS[gateKind].label : ""}</DialogTitle>
@@ -124,14 +164,26 @@ function AuthPage() {
           <form onSubmit={submitGate} className="space-y-3">
             <div className="space-y-1">
               <Label>Логин</Label>
-              <Input value={gateLogin} onChange={(e) => setGateLogin(e.target.value)} autoFocus required />
+              <Input
+                value={gateLogin}
+                onChange={(e) => setGateLogin(e.target.value)}
+                autoFocus
+                required
+              />
             </div>
             <div className="space-y-1">
               <Label>Пароль</Label>
-              <Input type="password" value={gatePassword} onChange={(e) => setGatePassword(e.target.value)} required />
+              <Input
+                type="password"
+                value={gatePassword}
+                onChange={(e) => setGatePassword(e.target.value)}
+                required
+              />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setGateKind(null)}>Отмена</Button>
+              <Button type="button" variant="outline" onClick={() => setGateKind(null)}>
+                Отмена
+              </Button>
               <Button type="submit">Войти</Button>
             </DialogFooter>
           </form>
@@ -141,15 +193,29 @@ function AuthPage() {
   );
 }
 
-function KindPicker({ value, onChange }: { value: AccountKind; onChange: (v: AccountKind) => void }) {
+function KindPicker({
+  value,
+  onChange,
+}: {
+  value: AccountKind;
+  onChange: (v: AccountKind) => void;
+}) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {(["owner", "tenant"] as AccountKind[]).map((k) => (
-        <button key={k} type="button" onClick={() => onChange(k)}
-          className={"rounded-md border p-3 text-sm text-left transition-colors " +
-            (value === k ? "border-primary bg-primary/5" : "hover:bg-muted")}>
+        <button
+          key={k}
+          type="button"
+          onClick={() => onChange(k)}
+          className={
+            "rounded-md border p-3 text-sm text-left transition-colors " +
+            (value === k ? "border-primary bg-primary/5" : "hover:bg-muted")
+          }
+        >
           <div className="font-medium">{k === "owner" ? "Арендодатель" : "Арендатор"}</div>
-          <div className="text-xs text-muted-foreground">{k === "owner" ? "Управляю объектами и арендой" : "Снимаю помещения"}</div>
+          <div className="text-xs text-muted-foreground">
+            {k === "owner" ? "Управляю объектами и арендой" : "Снимаю помещения"}
+          </div>
         </button>
       ))}
     </div>
@@ -173,11 +239,16 @@ function SignInForm({ onDone }: { onDone: () => void }) {
       if (error) throw error;
       const userId = data.user?.id;
       if (!userId) throw new Error("Нет сессии");
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
       const has = (roles ?? []).some((r: any) => r.role === kind);
       if (!has) {
         await supabase.auth.signOut();
-        throw new Error(`У этого аккаунта нет роли «${kind === "owner" ? "Арендодатель" : "Арендатор"}»`);
+        throw new Error(
+          `У этого аккаунта нет роли «${kind === "owner" ? "Арендодатель" : "Арендатор"}»`,
+        );
       }
       localStorage.setItem("active_account_kind", kind);
       // Sync demo identity so the existing UI honors the choice.
@@ -197,9 +268,22 @@ function SignInForm({ onDone }: { onDone: () => void }) {
         <Label>Войти как</Label>
         <KindPicker value={kind} onChange={setKind} />
       </div>
-      <div className="space-y-1"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-      <div className="space-y-1"><Label>Пароль</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
-      <Button type="submit" className="w-full" disabled={loading}>{loading ? "..." : "Войти"}</Button>
+      <div className="space-y-1">
+        <Label>Email</Label>
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+      <div className="space-y-1">
+        <Label>Пароль</Label>
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "..." : "Войти"}
+      </Button>
     </form>
   );
 }
@@ -216,7 +300,8 @@ function SignUpForm({ onDone }: { onDone: () => void }) {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
-        email, password,
+        email,
+        password,
         options: {
           emailRedirectTo: window.location.origin,
           data: { signup_role: kind, full_name: name || null },
@@ -238,10 +323,27 @@ function SignUpForm({ onDone }: { onDone: () => void }) {
         <Label>Регистрация как</Label>
         <KindPicker value={kind} onChange={setKind} />
       </div>
-      <div className="space-y-1"><Label>Имя</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-      <div className="space-y-1"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-      <div className="space-y-1"><Label>Пароль</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
-      <Button type="submit" className="w-full" disabled={loading}>{loading ? "..." : "Создать аккаунт"}</Button>
+      <div className="space-y-1">
+        <Label>Имя</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <div className="space-y-1">
+        <Label>Email</Label>
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+      <div className="space-y-1">
+        <Label>Пароль</Label>
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "..." : "Создать аккаунт"}
+      </Button>
     </form>
   );
 }

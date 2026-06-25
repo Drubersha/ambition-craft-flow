@@ -30,16 +30,24 @@ function EditProperty() {
 
   const mut = useMutation({
     mutationFn: async (v: PropertyFormValues) => {
-      const { error } = await supabase.from("properties").update({
-        name: v.name, address: v.address, type: v.type as any, status: v.status as any,
-        cadastral_no: v.cadastral_no || null,
-        area_total: Number(v.area_total) || 0,
-        area_usable: v.area_usable ? Number(v.area_usable) : null,
-        floor: v.floor || null, room_no: v.room_no || null,
-        base_rate: v.base_rate ? Number(v.base_rate) : null,
-        currency: v.currency || "RUB", description: v.description || null,
-        folder_id: v.folder_id,
-      }).eq("id", id);
+      const { error } = await supabase
+        .from("properties")
+        .update({
+          name: v.name,
+          address: v.address,
+          type: v.type as any,
+          status: v.status as any,
+          cadastral_no: v.cadastral_no || null,
+          area_total: Number(v.area_total) || 0,
+          area_usable: v.area_usable ? Number(v.area_usable) : null,
+          floor: v.floor || null,
+          room_no: v.room_no || null,
+          base_rate: v.base_rate ? Number(v.base_rate) : null,
+          currency: v.currency || "RUB",
+          description: v.description || null,
+          folder_id: v.folder_id,
+        })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -69,7 +77,9 @@ function EditProperty() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" /> К списку</Link>
+          <Link to="/properties">
+            <ArrowLeft className="h-4 w-4 mr-1" /> К списку
+          </Link>
         </Button>
         <ConfirmButton
           variant="destructive"
@@ -81,7 +91,8 @@ function EditProperty() {
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Удалить</span>
+          <Trash2 className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">Удалить</span>
         </ConfirmButton>
       </div>
       <h1 className="text-xl sm:text-2xl font-bold break-words">{data.name}</h1>
@@ -90,10 +101,18 @@ function EditProperty() {
         <PropertyForm
           formId="property-form"
           initial={{
-            name: data.name, address: data.address, type: data.type, cadastral_no: data.cadastral_no ?? "",
-            area_total: String(data.area_total ?? ""), area_usable: data.area_usable ? String(data.area_usable) : "",
-            floor: data.floor ?? "", room_no: data.room_no ?? "", status: data.status,
-            base_rate: data.base_rate ? String(data.base_rate) : "", currency: data.currency, description: data.description ?? "",
+            name: data.name,
+            address: data.address,
+            type: data.type,
+            cadastral_no: data.cadastral_no ?? "",
+            area_total: String(data.area_total ?? ""),
+            area_usable: data.area_usable ? String(data.area_usable) : "",
+            floor: data.floor ?? "",
+            room_no: data.room_no ?? "",
+            status: data.status,
+            base_rate: data.base_rate ? String(data.base_rate) : "",
+            currency: data.currency,
+            description: data.description ?? "",
             folder_id: data.folder_id ?? null,
           }}
           onSubmit={(v) => mut.mutate(v)}
@@ -107,7 +126,8 @@ function EditProperty() {
           currentPath={data.plan_path}
           currentMime={data.plan_mime}
           onChange={async (p) => {
-            const { error } = await supabase.from("properties")
+            const { error } = await supabase
+              .from("properties")
               .update({ plan_path: p.path, plan_mime: p.mime })
               .eq("id", id);
             if (error) throw error;

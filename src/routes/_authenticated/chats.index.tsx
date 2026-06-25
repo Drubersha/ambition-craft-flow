@@ -98,7 +98,9 @@ function ChatsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm truncate">{tenant.name}</span>
                     {thread?.unread_owner ? (
-                      <Badge variant="default" className="h-5 text-[10px]">{thread.unread_owner}</Badge>
+                      <Badge variant="default" className="h-5 text-[10px]">
+                        {thread.unread_owner}
+                      </Badge>
                     ) : null}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">

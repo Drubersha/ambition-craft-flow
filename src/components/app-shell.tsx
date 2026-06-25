@@ -35,7 +35,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ROLE_LABELS, useDemoIdentity, type DemoRole } from "@/lib/demo-identity";
 import { useManagerContext } from "@/lib/manager-context";
 import { useServerFn } from "@tanstack/react-start";
@@ -52,11 +58,19 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
 
   async function handleLogout() {
     setLoading(true);
-    try { await logActivity({ data: { action: "logout" } }); } catch { /* ignore */ }
+    try {
+      await logActivity({ data: { action: "logout" } });
+    } catch {
+      /* ignore */
+    }
     await queryClient.cancelQueries();
     queryClient.clear();
     if (typeof window !== "undefined" && localStorage.getItem("demo.kind") === "demo2") {
-      try { await resetDemo2Account(); } catch { /* ignore */ }
+      try {
+        await resetDemo2Account();
+      } catch {
+        /* ignore */
+      }
     }
     await supabase.auth.signOut();
     if (typeof window !== "undefined") {
@@ -133,22 +147,25 @@ const ADMIN_NAV = [
   { to: "/admin/users", label: "Пользователи", icon: ShieldCheck },
 ] as const;
 
-function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role: DemoRole; isAdmin: boolean }) {
+function NavList({
+  onNavigate,
+  role,
+  isAdmin,
+}: {
+  onNavigate?: () => void;
+  role: DemoRole;
+  isAdmin: boolean;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items =
-    role === "tenant"
-      ? TENANT_NAV
-      : role === "developer" || role === "moderator"
-      ? []
-      : OWNER_NAV;
+    role === "tenant" ? TENANT_NAV : role === "developer" || role === "moderator" ? [] : OWNER_NAV;
   const showAdmin = isAdmin || role === "developer" || role === "moderator";
   return (
     <nav className="flex flex-col gap-1 px-2">
       {items.map((item) => {
         const Icon = item.icon;
         const active =
-          pathname === item.to ||
-          (item.to !== "/me" && pathname.startsWith(item.to + "/"));
+          pathname === item.to || (item.to !== "/me" && pathname.startsWith(item.to + "/"));
         return (
           <Link
             key={item.to}
@@ -156,9 +173,7 @@ function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role:
             onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-11",
-              active
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground hover:bg-muted",
+              active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -168,14 +183,27 @@ function NavList({ onNavigate, role, isAdmin }: { onNavigate?: () => void; role:
       })}
       {showAdmin && (
         <>
-          <div className={cn("px-3 text-[10px] uppercase tracking-wide text-muted-foreground", items.length > 0 && "mt-3")}>Администрирование</div>
+          <div
+            className={cn(
+              "px-3 text-[10px] uppercase tracking-wide text-muted-foreground",
+              items.length > 0 && "mt-3",
+            )}
+          >
+            Администрирование
+          </div>
           {ADMIN_NAV.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (
-              <Link key={item.to} to={item.to} onClick={onNavigate}
-                className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-11",
-                  active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted")}>
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-11",
+                  active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
+                )}
+              >
                 <Icon className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
@@ -195,10 +223,7 @@ function IdentitySwitcher() {
   const { data: tenants } = useQuery({
     queryKey: ["tenants-for-switcher"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tenants")
-        .select("id, name")
-        .order("name");
+      const { data, error } = await supabase.from("tenants").select("id, name").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -220,7 +245,9 @@ function IdentitySwitcher() {
           }
         }}
       >
-        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
         <SelectContent>
           <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
           <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
@@ -230,16 +257,15 @@ function IdentitySwitcher() {
         </SelectContent>
       </Select>
       {role === "tenant" && (
-        <Select
-          value={tenantId ?? ""}
-          onValueChange={(v) => setTenantId(v || null)}
-        >
+        <Select value={tenantId ?? ""} onValueChange={(v) => setTenantId(v || null)}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Выберите арендатора" />
           </SelectTrigger>
           <SelectContent>
             {(tenants ?? []).map((t) => (
-              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -249,10 +275,7 @@ function IdentitySwitcher() {
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
             Активный арендодатель
           </div>
-          <Select
-            value={mctx.selectedOwnerId}
-            onValueChange={(v) => mctx.setSelectedOwnerId(v)}
-          >
+          <Select value={mctx.selectedOwnerId} onValueChange={(v) => mctx.setSelectedOwnerId(v)}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Выберите арендодателя" />
             </SelectTrigger>
@@ -277,11 +300,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [hasSession, setHasSession] = useState(false);
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => { if (active) setHasSession(!!data.session); });
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (active) setHasSession(!!session);
     });
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
   const rolesQ = useQuery({
     queryKey: ["admin-roles"],
@@ -290,7 +318,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     enabled: hasSession,
     retry: false,
   });
-  const isAdmin = (rolesQ.data?.roles?.length ?? 0) > 0 || role === "developer" || role === "moderator";
+  const isAdmin =
+    (rolesQ.data?.roles?.length ?? 0) > 0 || role === "developer" || role === "moderator";
 
   return (
     <div className="flex min-h-[100dvh] bg-muted/20">
@@ -300,7 +329,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="h-4 w-4" />
           </div>
           <span className="font-semibold">RentFlow</span>
-        <div className="ml-auto"><NotificationsBell /></div>
+          <div className="ml-auto">
+            <NotificationsBell />
+          </div>
         </div>
         <IdentitySwitcher />
         <div className="flex-1 overflow-y-auto py-3">
@@ -315,7 +346,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="md:hidden flex h-14 items-center gap-2 border-b bg-background px-3 sticky top-0 z-20">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Меню"><Menu className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Меню">
+                <Menu className="h-5 w-5" />
+              </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 max-w-[85vw] p-0 flex flex-col">
               <SheetTitle className="sr-only">Навигация</SheetTitle>

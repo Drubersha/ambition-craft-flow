@@ -60,7 +60,12 @@ describe("splitContractPeriods", () => {
     ]);
   });
   it("one_time returns a single segment", () => {
-    const out = splitContractPeriods("2024-01-15", "2024-06-20", "one_time", new Date("2024-12-31"));
+    const out = splitContractPeriods(
+      "2024-01-15",
+      "2024-06-20",
+      "one_time",
+      new Date("2024-12-31"),
+    );
     expect(out).toEqual([{ period_start: "2024-01-15", period_end: "2024-06-20" }]);
   });
   it("returns empty when start is after today and no end", () => {
@@ -68,7 +73,12 @@ describe("splitContractPeriods", () => {
     expect(out).toEqual([]);
   });
   it("quarterly creates one segment per calendar quarter", () => {
-    const out = splitContractPeriods("2024-01-01", "2024-09-30", "quarterly", new Date("2024-12-31"));
+    const out = splitContractPeriods(
+      "2024-01-01",
+      "2024-09-30",
+      "quarterly",
+      new Date("2024-12-31"),
+    );
     expect(out.length).toBe(3);
     expect(out[0]).toEqual({ period_start: "2024-01-01", period_end: "2024-03-31" });
     expect(out[2].period_end).toBe("2024-09-30");

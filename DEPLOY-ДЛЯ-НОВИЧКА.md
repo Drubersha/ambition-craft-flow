@@ -115,18 +115,18 @@ nano .env
 
 Откроется редактор прямо в терминале. Стрелками двигайся, заменяй значения после `=`. Нужно поменять вот эти строки:
 
-| Строка | Что поставить |
-|--------|---------------|
-| `VITE_SUPABASE_URL=` | `http://СЕРВЕР_IP:8000` (с твоим настоящим IP) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY=` | значение `ANON_KEY` из шага 5 |
-| `SUPABASE_PUBLISHABLE_KEY=` | то же значение `ANON_KEY` |
-| `SUPABASE_SERVICE_ROLE_KEY=` | значение `SERVICE_ROLE_KEY` из шага 5 |
-| `POSTGRES_PASSWORD=` | любой свой надёжный пароль (запомни!) |
-| `JWT_SECRET=` | значение `JWT_SECRET` из шага 5 |
-| `SITE_URL=` | `http://СЕРВЕР_IP:3000` |
-| `ANON_KEY=` | значение `ANON_KEY` из шага 5 |
-| `SERVICE_ROLE_KEY=` | значение `SERVICE_ROLE_KEY` из шага 5 |
-| `DASHBOARD_PASSWORD=` | любой свой пароль для админ-панели |
+| Строка                           | Что поставить                                  |
+| -------------------------------- | ---------------------------------------------- |
+| `VITE_SUPABASE_URL=`             | `http://СЕРВЕР_IP:8000` (с твоим настоящим IP) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY=` | значение `ANON_KEY` из шага 5                  |
+| `SUPABASE_PUBLISHABLE_KEY=`      | то же значение `ANON_KEY`                      |
+| `SUPABASE_SERVICE_ROLE_KEY=`     | значение `SERVICE_ROLE_KEY` из шага 5          |
+| `POSTGRES_PASSWORD=`             | любой свой надёжный пароль (запомни!)          |
+| `JWT_SECRET=`                    | значение `JWT_SECRET` из шага 5                |
+| `SITE_URL=`                      | `http://СЕРВЕР_IP:3000`                        |
+| `ANON_KEY=`                      | значение `ANON_KEY` из шага 5                  |
+| `SERVICE_ROLE_KEY=`              | значение `SERVICE_ROLE_KEY` из шага 5          |
+| `DASHBOARD_PASSWORD=`            | любой свой пароль для админ-панели             |
 
 Строку `SUPABASE_URL=http://kong:8000` **не трогай** — это внутренний адрес.
 
@@ -182,30 +182,37 @@ http://СЕРВЕР_IP:3000
 ## Если что-то пошло не так
 
 **Смотрим логи приложения:**
+
 ```bash
 docker compose logs -f app
 ```
+
 (выйти из просмотра — `Ctrl+C`)
 
 **Логи базы данных:**
+
 ```bash
 docker compose logs -f db
 ```
 
 **Перезапустить всё:**
+
 ```bash
 docker compose restart
 ```
 
 **Остановить полностью:**
+
 ```bash
 docker compose down
 ```
 
 **Снести всё вместе с базой (если хочется начать с нуля):**
+
 ```bash
 docker compose down -v
 ```
+
 ⚠️ Удалит все данные!
 
 ---
@@ -236,12 +243,14 @@ docker compose up -d --build app
 Сейчас порты `3000` и `8000` открыты всему интернету по HTTP — этого достаточно для тестов в локальной сети или закрытого пилота, но **не для публичного запуска**. Минимум что стоит сделать:
 
 1. **Включи firewall** и оставь открытыми только нужное:
+
    ```bash
    sudo ufw allow OpenSSH
    sudo ufw allow 3000
    sudo ufw allow 8000
    sudo ufw enable
    ```
+
    Порт `5432` (Postgres) наружу не выставляй — он и так доступен только внутри Docker-сети.
 
 2. **Не используй пароли из шаблона.** В `.env` всё должно быть уникальным — особенно `POSTGRES_PASSWORD`, `JWT_SECRET`, `DASHBOORD_PASSWORD`.

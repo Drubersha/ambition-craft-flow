@@ -83,9 +83,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "RentFlow — учёт аренды" },
-      { name: "description", content: "RentFlow: учёт объектов, арендаторов, договоров и платежей." },
+      {
+        name: "description",
+        content: "RentFlow: учёт объектов, арендаторов, договоров и платежей.",
+      },
       { property: "og:title", content: "RentFlow — учёт аренды" },
-      { property: "og:description", content: "Управление коммерческой арендой: объекты, договоры, платежи." },
+      {
+        property: "og:description",
+        content: "Управление коммерческой арендой: объекты, договоры, платежи.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
