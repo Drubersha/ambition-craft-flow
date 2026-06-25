@@ -47,7 +47,7 @@ import { useManagerContext } from "@/lib/manager-context";
 import { useServerFn } from "@tanstack/react-start";
 import { getCurrentAdminRoles } from "@/lib/admin.functions";
 import { resetDemo2Account } from "@/lib/demo-auth.functions";
-import { logActivity } from "@/lib/activity-log.functions";
+import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
@@ -59,10 +59,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
   async function handleLogout() {
     setLoading(true);
     try {
-      await logActivity({ data: { action: "logout" } });
-    } catch {
-      /* ignore */
-    }
+      await logActivitySafe({ action: "logout" });
     await queryClient.cancelQueries();
     queryClient.clear();
     if (typeof window !== "undefined" && localStorage.getItem("demo.kind") === "demo2") {
