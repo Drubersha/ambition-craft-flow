@@ -14,6 +14,10 @@ name: Deploy to server
 on:
   push:
     branches: [main]
+  schedule:
+    # Ежедневный деплой в 00:01 по Москве (MSK = UTC+3 → 21:01 UTC).
+    # GitHub Actions использует UTC. Поменяй время — пересчитай в UTC.
+    - cron: "1 21 * * *"
   workflow_dispatch:
 
 concurrency:
