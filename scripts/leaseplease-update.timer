@@ -1,0 +1,10 @@
+[Unit]
+Description=Run LeasePlease update daily at 00:01
+
+[Timer]
+OnCalendar=*-*-* 00:01:00
+Persistent=true
+Unit=leaseplease-update.service
+
+[Install]
+WantedBy=timers.target

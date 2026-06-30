@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets & local-only overrides — must never be committed.
+# Each environment keeps its own .env on disk; the repo only ships .env.example.
+.env
+*.bak
+docker-compose.override.yml
