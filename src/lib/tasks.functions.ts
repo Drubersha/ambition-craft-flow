@@ -75,13 +75,20 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .eq("message_id", msg.id);
     const photos = (atts ?? []).filter((a) => (a.mime ?? "").startsWith("image/"));
 
-    // Sign URLs for images so the model can see them
-    const imageUrls: string[] = [];
+    // Fetch image bytes server-side so any provider (incl. local ollama, which
+    // doesn't fetch remote URLs) can read them.
+    const imageDatas: Uint8Array[] = [];
     for (const p of photos) {
       const { data: signed } = await sb.storage
         .from("chat-attachments")
         .createSignedUrl(p.storage_path, 600);
-      if (signed?.signedUrl) imageUrls.push(signed.signedUrl);
+      if (!signed?.signedUrl) continue;
+      try {
+        const resp = await fetch(signed.signedUrl);
+        if (resp.ok) imageDatas.push(new Uint8Array(await resp.arrayBuffer()));
+      } catch (e) {
+        console.error("[analyzeMessage] image fetch failed", e);
+      }
     }
 
     // Recent context
@@ -96,12 +103,11 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .map((m) => `[${m.sender_role}] ${m.body ?? "(вложение)"}`)
       .join("\n");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) return { ok: false, reason: "no_key" };
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
+    const { createAiProvider, getAiModelName } = await import("./ai-gateway.server");
+    const gateway = createAiProvider();
+    if (!gateway) return { ok: false, reason: "no_key" };
 
-    const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [
+    const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: Uint8Array }> = [
       {
         type: "text",
         text:
@@ -111,13 +117,13 @@ export const analyzeMessage = createServerFn({ method: "POST" })
           "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
           `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${msg.body ?? "(только вложение)"}`,
       },
-      ...imageUrls.map((u) => ({ type: "image" as const, image: new URL(u) })),
+      ...imageDatas.map((d) => ({ type: "image" as const, image: d })),
     ];
 
     let parsed: z.infer<typeof TaskSchema>;
     try {
       const res = await generateText({
-        model: gateway.chatModel("google/gemini-2.5-flash"),
+        model: gateway.chatModel(getAiModelName()),
         experimental_output: Output.object({ schema: TaskSchema }),
         messages: [{ role: "user", content: userContent as never }],
       });
@@ -143,7 +149,7 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       description: parsed.description ?? null,
       priority: parsed.priority,
       photo_paths: photos.map((p) => p.storage_path),
-      model: "google/gemini-2.5-flash",
+      model: getAiModelName(),
     });
     return { ok: true, created: true };
   });
