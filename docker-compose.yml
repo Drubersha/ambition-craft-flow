@@ -109,17 +109,21 @@ services:
   kong:
     image: kong:2.8.1
     restart: unless-stopped
+    # Kong does not interpolate ${...} in a directly-mounted declarative config,
+    # so render the template (substituting SUPABASE_ANON_KEY / SUPABASE_SERVICE_KEY)
+    # at startup — the same approach the official supabase/docker compose uses.
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
     ports:
       - "8000:8000/tcp"
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
     volumes:
-      - ./supabase/volumes/kong.yml:/var/lib/kong/kong.yml:ro
+      - ./supabase/volumes/kong.yml:/home/kong/temp.yml:ro
     depends_on:
       auth:
         condition: service_started

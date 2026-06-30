@@ -21,6 +21,17 @@ const TaskSchema = z.object({
   priority: z.enum(["low", "normal", "high"]).default("normal"),
 });
 
+/** Extract and validate a TaskSchema object from a raw model text response. */
+function parseTaskJson(text: string): z.infer<typeof TaskSchema> {
+  let raw = (text ?? "").trim();
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) raw = fence[1].trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) raw = raw.slice(start, end + 1);
+  return TaskSchema.parse(JSON.parse(raw));
+}
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -75,13 +86,13 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .eq("message_id", msg.id);
     const photos = (atts ?? []).filter((a) => (a.mime ?? "").startsWith("image/"));
 
-    // Sign URLs for images so the model can see them
-    const imageUrls: string[] = [];
+    // Download images so the model can see them. Passing raw bytes (instead of
+    // signed URLs) keeps analysis working with fully self-hosted / offline
+    // providers that can't reach back into Supabase storage.
+    const images: Uint8Array[] = [];
     for (const p of photos) {
-      const { data: signed } = await sb.storage
-        .from("chat-attachments")
-        .createSignedUrl(p.storage_path, 600);
-      if (signed?.signedUrl) imageUrls.push(signed.signedUrl);
+      const { data: blob } = await sb.storage.from("chat-attachments").download(p.storage_path);
+      if (blob) images.push(new Uint8Array(await blob.arrayBuffer()));
     }
 
     // Recent context
@@ -96,32 +107,45 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .map((m) => `[${m.sender_role}] ${m.body ?? "(вложение)"}`)
       .join("\n");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) return { ok: false, reason: "no_key" };
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
+    const { resolveAiConfig } = await import("./ai-gateway.server");
+    const ai = resolveAiConfig();
+    if (!ai) return { ok: false, reason: "no_key" };
 
-    const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [
-      {
-        type: "text",
-        text:
-          "Ты помощник управляющего арендой. Проанализируй последнее сообщение арендатора и фото к нему. " +
-          "Определи, описывает ли арендатор задачу/проблему/запрос, который нужно выполнить (поломка, заявка, просьба). " +
-          "Если да — сформулируй короткий title (до 80 символов) и description, выбери priority: low/normal/high. " +
-          "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
-          `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${msg.body ?? "(только вложение)"}`,
-      },
-      ...imageUrls.map((u) => ({ type: "image" as const, image: new URL(u) })),
-    ];
+    const promptText =
+      "Ты помощник управляющего арендой. Проанализируй последнее сообщение арендатора и фото к нему. " +
+      "Определи, описывает ли арендатор задачу/проблему/запрос, который нужно выполнить (поломка, заявка, просьба). " +
+      "Если да — сформулируй короткий title (до 80 символов) и description, выбери priority: low/normal/high. " +
+      "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
+      `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${msg.body ?? "(только вложение)"}`;
+
+    const imageParts = images.map((bytes) => ({ type: "image" as const, image: bytes }));
 
     let parsed: z.infer<typeof TaskSchema>;
     try {
-      const res = await generateText({
-        model: gateway.chatModel("google/gemini-2.5-flash"),
-        experimental_output: Output.object({ schema: TaskSchema }),
-        messages: [{ role: "user", content: userContent as never }],
-      });
-      parsed = (res as { experimental_output: z.infer<typeof TaskSchema> }).experimental_output;
+      if (ai.kind === "lovable") {
+        const res = await generateText({
+          model: ai.provider.chatModel(ai.model),
+          experimental_output: Output.object({ schema: TaskSchema }),
+          messages: [
+            { role: "user", content: [{ type: "text", text: promptText }, ...imageParts] as never },
+          ],
+        });
+        parsed = (res as { experimental_output: z.infer<typeof TaskSchema> }).experimental_output;
+      } else {
+        // Local / OpenAI-compatible models can't be relied on to support the
+        // json_schema response format, so ask for raw JSON and parse it.
+        const jsonText =
+          promptText +
+          "\n\nОтветь СТРОГО одним JSON-объектом без markdown и пояснений, по схеме: " +
+          '{"is_task": boolean, "title": string, "description": string, "priority": "low"|"normal"|"high"}.';
+        const res = await generateText({
+          model: ai.provider.chatModel(ai.model),
+          messages: [
+            { role: "user", content: [{ type: "text", text: jsonText }, ...imageParts] as never },
+          ],
+        });
+        parsed = parseTaskJson(res.text);
+      }
     } catch (e) {
       console.error("[analyzeMessage] AI error", e);
       return { ok: false, reason: "ai_error", error: String(e) };
@@ -143,7 +167,7 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       description: parsed.description ?? null,
       priority: parsed.priority,
       photo_paths: photos.map((p) => p.storage_path),
-      model: "google/gemini-2.5-flash",
+      model: ai.model,
     });
     return { ok: true, created: true };
   });
