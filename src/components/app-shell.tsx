@@ -311,13 +311,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
   const [hasSession, setHasSession] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (active) setHasSession(!!data.session);
+      if (!active) return;
+      setHasSession(!!data.session);
+      setEmail(data.session?.user?.email ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (active) setHasSession(!!session);
+      if (!active) return;
+      setHasSession(!!session);
+      setEmail(session?.user?.email ?? null);
     });
     return () => {
       active = false;
@@ -392,9 +397,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={role === "tenant" ? "/me" : "/dashboard"}
             />
           </div>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2 min-w-0">
+            <div className="flex flex-col items-end leading-tight min-w-0">
+              {email && <span className="text-xs font-medium truncate max-w-[45vw]">{email}</span>}
+              <span className="text-[10px] text-muted-foreground">{ROLE_LABELS[role]}</span>
+            </div>
             <NotificationsBell />
             <LogoutButton variant="ghost" />
+          </div>
+        </header>
+        <header className="hidden md:flex h-14 items-center border-b bg-background px-6 sticky top-0 z-20">
+          <div className="ml-auto flex flex-col items-end leading-tight">
+            {email && <span className="text-sm font-medium">{email}</span>}
             <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
           </div>
         </header>
