@@ -30,3 +30,21 @@ The production server runs the stack with Docker Compose and is meant to track `
   ```
   Trigger on demand with `systemctl start leaseplease-update.service`. Logs go to `/var/log/leaseplease-deploy.log` (override with `DEPLOY_LOG`).
 - Remember: `VITE_*` values are baked in at build time, so the script always rebuilds (`--build`); changing them requires a rebuild, which the update performs automatically.
+
+## Backups (data)
+
+Code is recoverable from git; the irreplaceable part is **data**, so backups cover Postgres (all schemas: `public`, `auth`, `storage`) + the uploaded `storage` files + a copy of `.env`.
+
+- `scripts/backup.sh <label>` writes `BACKUP_ROOT` (default `/root/leaseplease-backups`)`/<label>/<timestamp>/` with `db.sql.gz`, `storage.tar.gz`, `env.backup`, `code-commit.txt`, and keeps the newest `BACKUP_KEEP` (default 2) per label.
+- Two restore points are maintained automatically:
+  - **Pre-change:** `deploy.yml` runs `scripts/backup.sh predeploy` before updating app code on every deploy.
+  - **Previous day:** the `leaseplease-backup.timer` systemd unit runs `scripts/backup.sh daily` at 00:00 (one minute before the 00:01 deploy).
+- Install the daily timer once on the server:
+  ```bash
+  cp scripts/leaseplease-backup.service /etc/systemd/system/
+  cp scripts/leaseplease-backup.timer   /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now leaseplease-backup.timer
+  ```
+- Restore: `./scripts/restore.sh /root/leaseplease-backups/<label>/<timestamp>` (overwrites current DB + storage; prompts for confirmation). Verify a backup by restoring `db.sql.gz` into a throwaway database first.
+- Backups contain secrets (`env.backup`) — keep `BACKUP_ROOT` root-only and off the public internet. Monitor disk usage under `BACKUP_ROOT`.
