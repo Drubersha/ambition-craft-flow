@@ -1,0 +1,10 @@
+[Unit]
+Description=Update LeasePlease from main and rebuild
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Adjust WorkingDirectory to where the repo is checked out on the server.
+WorkingDirectory=/root/leaseplease
+ExecStart=/root/leaseplease/scripts/server-update.sh
