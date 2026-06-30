@@ -1,0 +1,12 @@
+[Unit]
+Description=Run LeasePlease data backup daily at 00:00
+
+[Timer]
+# Runs at 00:00 server time, one minute before the 00:01 deploy, so the
+# "previous day" snapshot is captured before any change.
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+Unit=leaseplease-backup.service
+
+[Install]
+WantedBy=timers.target
