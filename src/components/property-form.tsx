@@ -61,6 +61,11 @@ export function PropertyForm({
   const set = <K extends keyof PropertyFormValues>(k: K, val: PropertyFormValues[K]) =>
     setV((p) => ({ ...p, [k]: val }));
 
+  const isNegative = (s: string) => s !== "" && (isNaN(Number(s)) || Number(s) < 0);
+  const areaTotalInvalid = isNegative(v.area_total);
+  const areaUsableInvalid = isNegative(v.area_usable);
+  const baseRateInvalid = isNegative(v.base_rate);
+
   return (
     <form
       id={formId}
@@ -114,18 +119,28 @@ export function PropertyForm({
           <Input
             type="number"
             step="0.01"
+            min="0"
             required
             value={v.area_total}
+            aria-invalid={areaTotalInvalid || undefined}
             onChange={(e) => set("area_total", e.target.value)}
           />
+          {areaTotalInvalid && (
+            <p className="text-xs text-destructive">Площадь не может быть отрицательной.</p>
+          )}
         </Field>
         <Field label="Полезная площадь, м²">
           <Input
             type="number"
             step="0.01"
+            min="0"
             value={v.area_usable}
+            aria-invalid={areaUsableInvalid || undefined}
             onChange={(e) => set("area_usable", e.target.value)}
           />
+          {areaUsableInvalid && (
+            <p className="text-xs text-destructive">Площадь не может быть отрицательной.</p>
+          )}
         </Field>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
@@ -141,9 +156,14 @@ export function PropertyForm({
           <Input
             type="number"
             step="0.01"
+            min="0"
             value={v.base_rate}
+            aria-invalid={baseRateInvalid || undefined}
             onChange={(e) => set("base_rate", e.target.value)}
           />
+          {baseRateInvalid && (
+            <p className="text-xs text-destructive">Ставка не может быть отрицательной.</p>
+          )}
         </Field>
         <Field label="Валюта">
           <Input
