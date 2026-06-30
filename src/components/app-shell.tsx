@@ -306,18 +306,60 @@ function IdentitySwitcher() {
   );
 }
 
+/** Owner/Tenant switch shown in the top bar when the account holds both roles. */
+function RoleToggle() {
+  const { role, roles, setRole } = useDemoIdentity();
+  const navigate = useNavigate();
+  if (!roles.includes("owner") || !roles.includes("tenant")) return null;
+  const isTenant = role === "tenant";
+  const switchTo = (next: "owner" | "tenant") => {
+    if (next === role) return;
+    setRole(next);
+    if (typeof window !== "undefined") localStorage.setItem("active_account_kind", next);
+    navigate({ to: next === "tenant" ? "/me" : "/dashboard" });
+  };
+  return (
+    <div className="inline-flex rounded-md border bg-background p-0.5 text-xs">
+      {(["owner", "tenant"] as const).map((k) => {
+        const activeBtn = k === "tenant" ? isTenant : !isTenant;
+        return (
+          <button
+            key={k}
+            type="button"
+            onClick={() => switchTo(k)}
+            className={cn(
+              "rounded px-2 py-1 transition-colors",
+              activeBtn
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {ROLE_LABELS[k]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const { role } = useDemoIdentity();
+  const { role, roles } = useDemoIdentity();
+  const canSwitchRole = roles.includes("owner") && roles.includes("tenant");
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
   const [hasSession, setHasSession] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (active) setHasSession(!!data.session);
+      if (!active) return;
+      setHasSession(!!data.session);
+      setEmail(data.session?.user?.email ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (active) setHasSession(!!session);
+      if (!active) return;
+      setHasSession(!!session);
+      setEmail(session?.user?.email ?? null);
     });
     return () => {
       active = false;
@@ -392,10 +434,27 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={role === "tenant" ? "/me" : "/dashboard"}
             />
           </div>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2 min-w-0">
+            {canSwitchRole && <RoleToggle />}
+            <div className="flex flex-col items-end leading-tight min-w-0">
+              {email && <span className="text-xs font-medium truncate max-w-[40vw]">{email}</span>}
+              {!canSwitchRole && (
+                <span className="text-[10px] text-muted-foreground">{ROLE_LABELS[role]}</span>
+              )}
+            </div>
             <NotificationsBell />
             <LogoutButton variant="ghost" />
-            <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
+          </div>
+        </header>
+        <header className="hidden md:flex h-14 items-center border-b bg-background px-6 sticky top-0 z-20">
+          <div className="ml-auto flex items-center gap-3">
+            {canSwitchRole && <RoleToggle />}
+            <div className="flex flex-col items-end leading-tight">
+              {email && <span className="text-sm font-medium">{email}</span>}
+              {!canSwitchRole && (
+                <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
+              )}
+            </div>
           </div>
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
