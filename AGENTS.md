@@ -48,3 +48,13 @@ Code is recoverable from git; the irreplaceable part is **data**, so backups cov
   ```
 - Restore: `./scripts/restore.sh /root/leaseplease-backups/<label>/<timestamp>` (overwrites current DB + storage; prompts for confirmation). Verify a backup by restoring `db.sql.gz` into a throwaway database first.
 - Backups contain secrets (`env.backup`) — keep `BACKUP_ROOT` root-only and off the public internet. Monitor disk usage under `BACKUP_ROOT`.
+
+## Resetting data for a clean launch
+
+`scripts/reset-data.sh` wipes ALL business data (truncates every domain table + `storage.objects` + uploaded files) and deletes every account **except** the technical ones, for a clean field-test start. It takes a backup (`prereset` label) first and requires typing `RESET` to proceed.
+
+```bash
+KEEP_EMAILS="admin@rentflow.local,moderator@rentflow.local" ./scripts/reset-data.sh
+```
+
+`KEEP_EMAILS` (CSV, lowercase) defaults to the `*.rentflow.local` technical accounts — verify/edit it for the real environment. Kept accounts retain their `profiles` and `user_roles`. This is destructive; restore from the `prereset` backup if needed.
