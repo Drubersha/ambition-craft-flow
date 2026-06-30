@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily LeasePlease data backup
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+# Adjust WorkingDirectory to where the repo is checked out on the server.
+WorkingDirectory=/root/leaseplease
+ExecStart=/bin/bash /root/leaseplease/scripts/backup.sh daily

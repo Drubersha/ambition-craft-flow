@@ -42,6 +42,12 @@ jobs:
 
             echo "== Забираем свежий код =="
             git fetch origin main
+            # Сначала обновляем сами скрипты (бэкап/restore), не трогая инфраструктуру.
+            git checkout origin/main -- scripts || true
+
+            echo "== Бэкап данных ПЕРЕД изменениями (Postgres + storage) =="
+            bash scripts/backup.sh predeploy
+
             # Обновляем только код приложения; инфраструктурные файлы не трогаем.
             git checkout origin/main -- src public package.json bun.lock components.json tsconfig.json vite.config.ts
 
