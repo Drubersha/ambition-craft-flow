@@ -107,7 +107,9 @@ export const analyzeMessage = createServerFn({ method: "POST" })
     const gateway = createAiProvider();
     if (!gateway) return { ok: false, reason: "no_key" };
 
-    const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: Uint8Array }> = [
+    const userContent: Array<
+      { type: "text"; text: string } | { type: "image"; image: Uint8Array }
+    > = [
       {
         type: "text",
         text:
