@@ -8,6 +8,8 @@ export type DemoRole = "owner" | "manager" | "tenant" | "developer" | "moderator
 type Identity = {
   role: DemoRole;
   tenantId: string | null;
+  /** Roles this account actually holds (from user_roles), server-verified. */
+  roles: string[];
   setRole: (r: DemoRole) => void;
   setTenantId: (id: string | null) => void;
   viewAsTenant: (id: string) => void;
@@ -102,7 +104,17 @@ export function DemoIdentityProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ role, tenantId, setRole, setTenantId, viewAsTenant, exitTenant }}>
+    <Ctx.Provider
+      value={{
+        role,
+        tenantId,
+        roles: serverRoles ?? [],
+        setRole,
+        setTenantId,
+        viewAsTenant,
+        exitTenant,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );
