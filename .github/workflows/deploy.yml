@@ -1,0 +1,54 @@
+name: Deploy to server
+
+# Автодеплой на self-hosted сервер при коммите в main.
+# Обновляется ТОЛЬКО код приложения (src/public/package.json и т.п.) и пересобирается
+# контейнер app. Серверная инфраструктура (Dockerfile, docker-compose, kong, Caddy, .env)
+# остаётся локальной на сервере и не перезаписывается.
+#
+# Требуются секреты репозитория (Settings → Secrets and variables → Actions):
+#   SSH_HOST  — IP/домен сервера (например 82.146.49.124)
+#   SSH_USER  — пользователь (например root)
+#   SSH_KEY   — приватный SSH-ключ для входа на сервер
+#   SSH_PORT  — (необязательно) порт SSH, по умолчанию 22
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /root/leaseplease
+
+            echo "== Забираем свежий код =="
+            git fetch origin main
+            # Обновляем только код приложения; инфраструктурные файлы не трогаем.
+            git checkout origin/main -- src public package.json bun.lock components.json tsconfig.json vite.config.ts
+
+            echo "== Освобождаем память на время сборки (останавливаем realtime) =="
+            docker compose stop realtime || true
+
+            echo "== Пересобираем приложение =="
+            docker compose up -d --build app
+
+            echo "== Возвращаем realtime =="
+            docker compose start realtime || true
+
+            echo "== Статус =="
+            docker compose ps
