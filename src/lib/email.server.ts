@@ -1,12 +1,14 @@
-// Server-only transactional email helper.
+// Server-only transactional email helper — UniSender Go (российский сервис).
 //
-// Sends via the Resend HTTP API when configured (no extra dependency — just fetch):
-//   RESEND_API_KEY  — Resend API key
-//   EMAIL_FROM      — verified sender, e.g. "LeasePlease <no-reply@leaseplease.ru>"
+// Config (env, server-only):
+//   UNISENDER_GO_API_KEY  — API-ключ проекта UniSender Go
+//   EMAIL_FROM            — отправитель: "LeasePlease <no-reply@leaseplease.ru>"
+//                           (домен/адрес должен быть подтверждён в UniSender Go)
+//   UNISENDER_GO_API_URL  — (опц.) переопределение эндпоинта под свой дата-центр,
+//                           напр. https://go1.unisender.ru/ru/transactional/api/v1/email/send.json
 //
-// When not configured it is a safe no-op (logs + returns { sent:false }), mirroring the
-// AI-provider pattern, so the app keeps working until email is set up. SMTP support can be
-// added later behind the same interface.
+// Когда не настроено — безопасный no-op (лог + { sent:false }), чтобы приложение
+// работало до подключения почты. Docs: https://godocs.unisender.ru/web-api-ref
 
 export type SendEmailInput = {
   to: string | string[];
@@ -18,38 +20,54 @@ export type SendEmailInput = {
 
 export type SendEmailResult = { sent: boolean; reason?: string; id?: string };
 
+const DEFAULT_URL = "https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json";
+
+function parseFrom(s: string): { email: string; name?: string } {
+  const m = s.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1] || undefined, email: m[2].trim() };
+  return { email: s.trim() };
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  const key = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
-  if (!key || !from) {
-    console.warn("[email] not configured (RESEND_API_KEY / EMAIL_FROM missing) — skipping send");
+  const apiKey = process.env.UNISENDER_GO_API_KEY?.trim();
+  const fromRaw = process.env.EMAIL_FROM?.trim();
+  if (!apiKey || !fromRaw) {
+    console.warn(
+      "[email] not configured (UNISENDER_GO_API_KEY / EMAIL_FROM missing) — skipping send",
+    );
     return { sent: false, reason: "not_configured" };
   }
 
-  const to = Array.isArray(input.to) ? input.to : [input.to];
+  const url = process.env.UNISENDER_GO_API_URL?.trim() || DEFAULT_URL;
+  const from = parseFrom(fromRaw);
+  const recipients = (Array.isArray(input.to) ? input.to : [input.to]).map((email) => ({ email }));
+
+  const message: Record<string, unknown> = {
+    recipients,
+    subject: input.subject,
+    from_email: from.email,
+    body: { plaintext: input.text, ...(input.html ? { html: input.html } : {}) },
+    ...(from.name ? { from_name: from.name } : {}),
+    ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+  };
+
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: input.subject,
-        text: input.text,
-        ...(input.html ? { html: input.html } : {}),
-        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
-      }),
+      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error("[email] send failed", res.status, body);
-      return { sent: false, reason: `http_${res.status}` };
+    const data = (await res.json().catch(() => ({}))) as {
+      status?: string;
+      message?: string;
+      job_id?: string;
+      emails?: unknown[];
+    };
+    if (!res.ok || data?.status === "error") {
+      console.error("[email] UniSender send failed", res.status, data);
+      return { sent: false, reason: data?.message ?? `http_${res.status}` };
     }
-    const data = (await res.json().catch(() => ({}))) as { id?: string };
-    return { sent: true, id: data.id };
+    return { sent: true, id: data?.job_id };
   } catch (e) {
     console.error("[email] send error", e);
     return { sent: false, reason: "error" };
