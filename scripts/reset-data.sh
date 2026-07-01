@@ -26,10 +26,17 @@ echo "[reset] backup first…"
 bash scripts/backup.sh prereset
 
 # Turn the CSV into a quoted SQL list: 'a@x','b@y'
+# Any single quote inside an email is doubled ('' ) so it can't break out of the
+# string literal or inject SQL.
 KEEP_SQL=""
 IFS=',' read -ra _emails <<< "$KEEP_EMAILS"
 for e in "${_emails[@]}"; do
-  e="$(echo "$e" | tr '[:upper:]' '[:lower:]' | xargs)"
+  e="$(printf '%s' "$e" | tr '[:upper:]' '[:lower:]')"
+  # trim surrounding whitespace without a subshell/xargs (xargs mishandles quotes)
+  e="${e#"${e%%[![:space:]]*}"}"
+  e="${e%"${e##*[![:space:]]}"}"
+  # double single quotes so the value can't break out of the SQL string literal
+  e="${e//\'/\'\'}"
   [ -n "$e" ] && KEEP_SQL="${KEEP_SQL}'${e}',"
 done
 KEEP_SQL="${KEEP_SQL%,}"
@@ -56,7 +63,9 @@ COMMIT;
 SQL
 
 echo "[reset] clearing uploaded files on disk…"
-docker run --rm -v "${PROJECT}_storage-data:/data" alpine sh -c 'rm -rf /data/* /data/.[!.]* 2>/dev/null; true'
+# 'find -delete' removes all contents (incl. hidden) and returns a real exit code, so a
+# failed wipe aborts (set -e) instead of being masked — no DB/files mismatch on success.
+docker run --rm -v "${PROJECT}_storage-data:/data" alpine sh -c 'find /data -mindepth 1 -delete'
 
 echo "[reset] done. Remaining accounts:"
 docker compose exec -T db psql -U postgres -d postgres -c "SELECT u.email, array_agg(r.role) AS roles FROM auth.users u LEFT JOIN public.user_roles r ON r.user_id=u.id GROUP BY u.email ORDER BY u.email;"
