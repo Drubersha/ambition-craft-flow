@@ -27,8 +27,10 @@ PROJECT="${COMPOSE_PROJECT_NAME:-leaseplease}"
 mkdir -p "$BACKUP_ROOT"
 exec 9>"$BACKUP_ROOT/.backup.lock"
 if ! flock -w 600 9; then
-  echo "[backup] could not acquire lock within timeout; skipping"
-  exit 0
+  # Fail (non-zero) rather than skip silently: callers (deploy.yml / reset-data.sh)
+  # use `set -e` and must NOT proceed thinking a fresh backup exists.
+  echo "[backup] ERROR: could not acquire lock within timeout" >&2
+  exit 1
 fi
 
 TS="$(date '+%Y%m%d-%H%M%S')"

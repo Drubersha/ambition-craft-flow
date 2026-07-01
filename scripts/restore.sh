@@ -20,17 +20,35 @@ echo "This STOPS app services, OVERWRITES the database and storage, then restart
 read -r -p "Type YES to continue: " confirm
 [ "$confirm" = "YES" ] || { echo "Aborted."; exit 1; }
 
-# Stop everything that holds DB/storage connections so the restore is consistent.
-# Keep only 'db' running (psql needs it); realtime/kong may be absent -> ignore errors.
-echo "[restore] stopping app services…"
-docker compose stop app auth rest storage kong realtime 2>/dev/null || true
+# Always try to bring the stack back up, even if the restore fails part-way,
+# so a failed restore never leaves production down.
+bring_up() {
+  echo "[restore] ensuring services are up…"
+  docker compose up -d || true
+}
+trap bring_up EXIT
+
+# Stop everything that holds DB/storage connections (each individually, so a
+# service that isn't defined here — e.g. realtime lives in an override — can't
+# abort the whole stop). Keep only 'db' running for psql.
+for svc in app auth rest storage kong realtime caddy; do
+  docker compose stop "$svc" 2>/dev/null || true
+done
 docker compose up -d db
 
 echo "[restore] waiting for database…"
+db_ready=""
 for _ in $(seq 1 30); do
-  docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1 && break
+  if docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; then
+    db_ready=1
+    break
+  fi
   sleep 2
 done
+if [ -z "$db_ready" ]; then
+  echo "[restore] ERROR: database did not become ready — aborting" >&2
+  exit 1
+fi
 
 # ON_ERROR_STOP=1 makes a partial/failed restore abort loudly instead of silently continuing.
 echo "[restore] database…"
@@ -48,4 +66,5 @@ fi
 
 echo "[restore] starting all services…"
 docker compose up -d
+trap - EXIT
 echo "[restore] done."
