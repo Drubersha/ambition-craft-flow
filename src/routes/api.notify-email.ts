@@ -5,14 +5,12 @@ import type {} from "@tanstack/react-start";
 // It resolves the recipient's account email and sends the notification by email.
 // Auth: shared secret in the `x-webhook-secret` header (must match NOTIFY_WEBHOOK_SECRET).
 
-function siteBase(request: Request): string {
+// Deep links in emails must be public URLs. This handler is always invoked on the
+// internal Docker address (http://app:3000) by the pg_net webhook, so we never fall
+// back to the request origin — only SITE_URL yields a browser-openable link.
+function siteBase(): string {
   const fromEnv = process.env.SITE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, "");
-  try {
-    return new URL(request.url).origin;
-  } catch {
-    return "";
-  }
+  return fromEnv ? fromEnv.replace(/\/+$/, "") : "";
 }
 
 // Skip clearly non-deliverable/internal accounts (demo & test fixtures) so we
@@ -80,8 +78,10 @@ export const Route = createFileRoute("/api/notify-email")({
           });
         }
 
-        const base = siteBase(request);
-        const link = n.route ? `${base}${n.route}` : base;
+        // Only build an absolute link when SITE_URL is configured; otherwise omit it
+        // rather than ship a non-openable internal URL.
+        const base = siteBase();
+        const link = base ? `${base}${n.route ?? ""}` : "";
         const subject = `LeasePlease · ${n.title}`;
         const textLines = [
           n.title,
