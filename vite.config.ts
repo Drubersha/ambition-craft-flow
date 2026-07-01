@@ -20,6 +20,10 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Self-hosted production runs on Node in Docker, so build a standalone Node server
+  // (.output/server/index.mjs, matching the Dockerfile) instead of the default
+  // Cloudflare target. The Lovable sandbox forces its own preset, so it's unaffected.
+  nitro: { preset: "node-server" },
   vite: {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),

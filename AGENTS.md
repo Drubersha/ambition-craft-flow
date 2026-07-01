@@ -17,7 +17,9 @@
 
 ## Production deployment (self-hosted server)
 
-The production server runs the stack with Docker Compose and is meant to track `main`. Keeping the server in sync with `main` requires that the server's working tree is clean and fast-forwardable — so the server's real config (`Dockerfile`, `docker-compose.yml`, `Caddyfile`, `server-runner.mjs`, etc.) must be committed to the repo (i.e. `main` is the single source of truth). `.env` stays untracked (secrets) and is managed only on the server.
+The production server runs the stack with Docker Compose and is meant to track `main`. Keeping the server in sync with `main` requires that the server's working tree is clean and fast-forwardable — so the server's real config (`Dockerfile`, `docker-compose.yml`, etc.) must be committed to the repo (i.e. `main` is the single source of truth). `.env` stays untracked (secrets) and is managed only on the server.
+
+The app image is a Nitro **node-server** build: `bun run build` emits `.output/server/index.mjs` (the `Dockerfile` copies `.output` and runs `node .output/server/index.mjs`). This is set via `nitro: { preset: "node-server" }` in `vite.config.ts` — without it the shared Lovable config defaults to a Cloudflare target that emits `dist/` and the Docker build fails on `COPY --from=build /app/.output`.
 
 - Manual update: `./scripts/server-update.sh` (fast-forwards to `origin/main`, then `docker compose up -d --build`; it does nothing if already up to date and refuses to clobber a dirty tree).
 - Scheduled update (daily 00:01): install the provided systemd units, adjusting `WorkingDirectory`/paths to the repo location on the server:
