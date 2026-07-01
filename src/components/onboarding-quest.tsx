@@ -6,8 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Confetti } from "@/components/confetti";
 import { cn } from "@/lib/utils";
-import { Check, ChevronRight, Sparkles, Trophy } from "lucide-react";
+import { Check, ChevronRight, Rocket, Sparkles, Trophy } from "lucide-react";
 
 /**
  * Gamified onboarding "quest" for new accounts.
@@ -27,6 +36,8 @@ type QuestState = {
   visited?: string[];
   /** Force the quest to show again (from FAQ → "Пройти обучение заново"). */
   replay?: boolean;
+  /** Welcome dialog already shown/acknowledged. */
+  welcomed?: boolean;
 };
 
 type StepDef = {
@@ -153,14 +164,24 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
       if (!active) return;
       const id = data.user?.id ?? null;
       setUid(id);
-      setState(id ? readState(id) : {});
+      const local = id ? readState(id) : {};
+      setState(local);
       if (id) {
+        // Server-backed state (cross-device). Falls back to the localStorage copy
+        // if the profile row has no onboarding state yet or is unavailable.
         const { data: p } = await supabase
           .from("profiles")
-          .select("created_at")
+          .select("created_at, onboarding")
           .eq("id", id)
           .maybeSingle();
-        if (active) setCreatedAt(p?.created_at ?? null);
+        if (active) {
+          setCreatedAt(p?.created_at ?? null);
+          const server = (p?.onboarding ?? null) as QuestState | null;
+          if (server && Object.keys(server).length > 0) {
+            setState(server);
+            writeState(id, server);
+          }
+        }
       }
       if (active) setReady(true);
     })();
@@ -189,7 +210,9 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
     if (!uid) return;
     const next = { ...state, ...patch };
     setState(next);
-    writeState(uid, next);
+    writeState(uid, next); // instant local mirror
+    // Persist to the profile for cross-device sync (fire-and-forget).
+    void supabase.from("profiles").update({ onboarding: next }).eq("id", uid);
   };
 
   const stepDone = (s: StepDef): boolean =>
@@ -218,7 +241,8 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
 
   if (allDone) {
     return (
-      <Card className="border-primary/40 bg-gradient-to-br from-primary/10 to-transparent">
+      <Card className="relative overflow-hidden border-primary/40 bg-gradient-to-br from-primary/10 to-transparent">
+        <Confetti />
         <CardContent className="flex flex-col items-center gap-2 py-6 text-center">
           <Trophy className="h-10 w-10 text-primary animate-bounce" />
           <div className="text-lg font-semibold">Обучение пройдено! 🎉</div>
@@ -238,79 +262,110 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
   }
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Первичное обучение
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Пройдите {total} шага, чтобы освоить основы приложения.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <Badge variant="secondary" className="whitespace-nowrap">
-              {levelName(doneCount, total)}
-            </Badge>
-            <span className="text-[10px] text-muted-foreground">{doneCount * 100} XP</span>
-          </div>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <Progress value={pct} className="h-2" />
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {doneCount}/{total}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {steps.map((s) => {
-          const done = stepDone(s);
-          return (
-            <div
-              key={s.id}
-              className={cn(
-                "flex items-center gap-3 rounded-md border p-3",
-                done ? "border-primary/30 bg-primary/5" : "bg-background",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
-                  done
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-muted-foreground/40 text-transparent",
-                )}
-                aria-hidden
-              >
-                <Check className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className={cn("text-sm font-medium", done && "line-through opacity-70")}>
-                  {s.title}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{s.desc}</div>
-              </div>
-              {!done && (
-                <Button size="sm" variant="outline" className="shrink-0" onClick={() => go(s)}>
-                  {s.cta}
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              )}
+    <>
+      <Dialog
+        open={!state.welcomed}
+        onOpenChange={(open) => {
+          if (!open) update({ welcomed: true });
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-primary" />
+              Добро пожаловать в LeasePlease!
+            </DialogTitle>
+            <DialogDescription>
+              Пройдите короткое первичное обучение — {total} простых шага, чтобы освоить основы. Это
+              займёт пару минут, и вы всегда сможете пропустить.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => update({ dismissed: true })}>
+              Пропустить
+            </Button>
+            <Button onClick={() => update({ welcomed: true })}>
+              <Rocket className="mr-1 h-4 w-4" />
+              Начать обучение
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Первичное обучение
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Пройдите {total} шага, чтобы освоить основы приложения.
+              </p>
             </div>
-          );
-        })}
-        <div className="pt-1 text-center">
-          <button
-            type="button"
-            onClick={() => update({ dismissed: true })}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            Пропустить обучение
-          </button>
-        </div>
-      </CardContent>
-    </Card>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="secondary" className="whitespace-nowrap">
+                {levelName(doneCount, total)}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">{doneCount * 100} XP</span>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <Progress value={pct} className="h-2" />
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {doneCount}/{total}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {steps.map((s) => {
+            const done = stepDone(s);
+            return (
+              <div
+                key={s.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-md border p-3",
+                  done ? "border-primary/30 bg-primary/5" : "bg-background",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                    done
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted-foreground/40 text-transparent",
+                  )}
+                  aria-hidden
+                >
+                  <Check className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className={cn("text-sm font-medium", done && "line-through opacity-70")}>
+                    {s.title}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">{s.desc}</div>
+                </div>
+                {!done && (
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={() => go(s)}>
+                    {s.cta}
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={() => update({ dismissed: true })}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Пропустить обучение
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
