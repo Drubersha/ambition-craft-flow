@@ -21,7 +21,13 @@ import { Check, ChevronRight, Sparkles, Trophy } from "lucide-react";
  */
 
 type Counts = { properties: number; tenants: number; contracts: number };
-type QuestState = { dismissed?: boolean; completedAt?: string; visited?: string[] };
+type QuestState = {
+  dismissed?: boolean;
+  completedAt?: string;
+  visited?: string[];
+  /** Force the quest to show again (from FAQ → "Пройти обучение заново"). */
+  replay?: boolean;
+};
 
 type StepDef = {
   id: string;
@@ -115,6 +121,16 @@ function writeState(uid: string, s: QuestState) {
   if (typeof window !== "undefined") localStorage.setItem(storageKey(uid), JSON.stringify(s));
 }
 
+/**
+ * Reset onboarding for the current user and force the quest to show again
+ * (used by the FAQ "Пройти обучение заново" tile). Clears skip/completion.
+ */
+export async function replayOnboarding(): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const uid = data.user?.id;
+  if (uid) writeState(uid, { replay: true });
+}
+
 function levelName(done: number, total: number): string {
   if (done >= total) return "Мастер";
   if (done === 0) return "Новичок";
@@ -191,7 +207,7 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
   const isNew = createdAt
     ? Date.now() - new Date(createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS
     : true;
-  if (!isNew && !hasProgress) return null;
+  if (!isNew && !hasProgress && !state.replay) return null;
 
   const go = (s: StepDef) => {
     if (s.kind === "visit" && !(state.visited ?? []).includes(s.id)) {
