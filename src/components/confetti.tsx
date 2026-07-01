@@ -1,49 +1,54 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
-const COLORS = ["#22c55e", "#3b82f6", "#eab308", "#ef4444", "#a855f7", "#06b6d4"];
+const COLORS = ["#22c55e", "#3b82f6", "#eab308", "#ef4444", "#a855f7", "#06b6d4", "#f97316"];
 
 /**
- * Lightweight, dependency-free confetti burst (Web Animations API).
- * Renders inside a relatively-positioned parent and cleans itself up.
+ * Lightweight, dependency-free full-screen confetti burst (Web Animations API).
+ * Mounts a fixed overlay on <body>, rains confetti across the viewport, then
+ * cleans itself up. Renders no React DOM.
  */
-export function Confetti({ count = 70 }: { count?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
+export function Confetti({ count = 140 }: { count?: number }) {
   useEffect(() => {
-    const host = ref.current;
-    if (!host || typeof window === "undefined") return;
-    const pieces: HTMLSpanElement[] = [];
+    if (typeof document === "undefined") return;
+    const host = document.createElement("div");
+    host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden";
+    document.body.appendChild(host);
+
     for (let i = 0; i < count; i++) {
-      const s = document.createElement("span");
-      const size = 6 + Math.random() * 6;
-      s.style.cssText = `position:absolute;top:-12px;left:${Math.random() * 100}%;width:${size}px;height:${
-        size * 0.4
-      }px;background:${COLORS[i % COLORS.length]};border-radius:1px;will-change:transform,opacity;`;
-      host.appendChild(s);
-      const dx = (Math.random() - 0.5) * 220;
-      const dy = 180 + Math.random() * 320;
-      const rot = (Math.random() - 0.5) * 720;
-      s.animate(
+      const piece = document.createElement("span");
+      const size = 6 + Math.random() * 8;
+      piece.style.cssText = `position:absolute;top:-24px;left:${Math.random() * 100}vw;width:${size}px;height:${
+        size * 0.5
+      }px;background:${COLORS[i % COLORS.length]};border-radius:1px;`;
+      host.appendChild(piece);
+      const driftVw = (Math.random() - 0.5) * 40;
+      const fallVh = 100 + Math.random() * 20;
+      const rot = (Math.random() - 0.5) * 1080;
+      piece.animate(
         [
           { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
-          { transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 0 },
+          {
+            transform: `translate(${driftVw}vw, ${fallVh}vh) rotate(${rot}deg)`,
+            opacity: 1,
+            offset: 0.9,
+          },
+          { transform: `translate(${driftVw}vw, ${fallVh}vh) rotate(${rot}deg)`, opacity: 0 },
         ],
         {
-          duration: 1500 + Math.random() * 1200,
-          easing: "cubic-bezier(.2,.6,.4,1)",
+          duration: 2600 + Math.random() * 1600,
+          easing: "cubic-bezier(.15,.5,.5,1)",
           fill: "forwards",
-          delay: Math.random() * 250,
+          delay: Math.random() * 350,
         },
       );
-      pieces.push(s);
     }
-    const t = setTimeout(() => pieces.forEach((p) => p.remove()), 3200);
+
+    const t = setTimeout(() => host.remove(), 4800);
     return () => {
       clearTimeout(t);
-      pieces.forEach((p) => p.remove());
+      host.remove();
     };
   }, [count]);
 
-  return (
-    <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
-  );
+  return null;
 }
