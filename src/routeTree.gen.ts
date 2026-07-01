@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiNotifyEmailRouteImport } from './routes/api.notify-email'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedFaqRouteImport } from './routes/_authenticated/faq'
@@ -61,6 +62,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNotifyEmailRoute = ApiNotifyEmailRouteImport.update({
+  id: '/api/notify-email',
+  path: '/api/notify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof AuthenticatedFaqRoute
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/users': typeof AuthenticatedUsersRoute
+  '/api/notify-email': typeof ApiNotifyEmailRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/faq': typeof AuthenticatedFaqRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/api/notify-email': typeof ApiNotifyEmailRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/_authenticated/faq': typeof AuthenticatedFaqRoute
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/api/notify-email': typeof ApiNotifyEmailRoute
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/budgets/$folderId': typeof AuthenticatedBudgetsFolderIdRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/me'
     | '/users'
+    | '/api/notify-email'
     | '/admin/logs'
     | '/admin/users'
     | '/budgets/$folderId'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/users'
+    | '/api/notify-email'
     | '/admin/logs'
     | '/admin/users'
     | '/budgets/$folderId'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/_authenticated/faq'
     | '/_authenticated/me'
     | '/_authenticated/users'
+    | '/api/notify-email'
     | '/_authenticated/admin/logs'
     | '/_authenticated/admin/users'
     | '/_authenticated/budgets/$folderId'
@@ -447,6 +459,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiNotifyEmailRoute: typeof ApiNotifyEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -477,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/notify-email': {
+      id: '/api/notify-email'
+      path: '/api/notify-email'
+      fullPath: '/api/notify-email'
+      preLoaderRoute: typeof ApiNotifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/users': {
@@ -776,6 +796,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiNotifyEmailRoute: ApiNotifyEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
