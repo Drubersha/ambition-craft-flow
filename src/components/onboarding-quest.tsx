@@ -228,10 +228,10 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" />
-              Квест новичка
+              Первичное обучение
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Пройдите {total} шага, чтобы освоить систему.
+              Пройдите {total} шага, чтобы освоить основы приложения.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
