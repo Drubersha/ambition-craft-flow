@@ -43,7 +43,13 @@ jobs:
             echo "== Забираем свежий код =="
             git fetch origin main
             # Сначала обновляем сами скрипты (бэкап/restore), не трогая инфраструктуру.
-            git checkout origin/main -- scripts || true
+            # Не глушим ошибку: без свежего backup.sh деплой должен упасть, а не сделать
+            # вид, что бэкап выполнен.
+            git checkout origin/main -- scripts
+            if [ ! -f scripts/backup.sh ]; then
+              echo "scripts/backup.sh отсутствует после checkout — прерываю деплой"
+              exit 1
+            fi
 
             echo "== Бэкап данных ПЕРЕД изменениями (Postgres + storage) =="
             bash scripts/backup.sh predeploy
