@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ScrollText,
   LogOut,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ReactNode } from "react";
@@ -129,6 +130,7 @@ const OWNER_NAV = [
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
   { to: "/users", label: "Пользователи", icon: ShieldCheck },
+  { to: "/faq", label: "FAQ и помощь", icon: HelpCircle },
 ] as const;
 
 const TENANT_NAV = [
@@ -138,6 +140,7 @@ const TENANT_NAV = [
   { to: "/me/calendar", label: "Календарь оплат", icon: CalendarDays },
   { to: "/me/documents", label: "Документы", icon: Files },
   { to: "/me/chat", label: "Чат", icon: MessageSquare },
+  { to: "/faq", label: "FAQ и помощь", icon: HelpCircle },
 ] as const;
 
 const ADMIN_NAV = [
