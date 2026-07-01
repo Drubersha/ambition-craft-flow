@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTenantContext } from "@/lib/tenant-context";
 import { formatDate, formatMoney, CHARGE_STATUS_LABELS } from "@/lib/format";
 import { FileText, Receipt, CalendarDays, MessageSquare } from "lucide-react";
+import { OnboardingQuest } from "@/components/onboarding-quest";
 
 export const Route = createFileRoute("/_authenticated/me/")({
   component: MeDashboard,
@@ -51,6 +52,7 @@ function MeDashboard() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl sm:text-2xl font-bold">Мой кабинет</h1>
+      <OnboardingQuest variant="tenant" />
       <div className="grid sm:grid-cols-3 gap-3">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Текущий долг</div>

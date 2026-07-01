@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { OnboardingQuest } from "@/components/onboarding-quest";
 import {
   Select,
   SelectContent,
@@ -350,6 +351,8 @@ function Dashboard() {
           </p>
         </div>
       </div>
+
+      <OnboardingQuest variant="owner" />
 
       {/* Global filters */}
       <Card>
