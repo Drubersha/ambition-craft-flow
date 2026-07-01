@@ -51,6 +51,7 @@ import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandLogo } from "@/components/brand-logo";
+import { recordOnboardingVisit } from "@/components/onboarding-quest";
 import { BrandIcon } from "@/components/brand-icon";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
@@ -356,6 +357,11 @@ function RoleToggle() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { role, roles } = useDemoIdentity();
   const canSwitchRole = roles.includes("owner") && roles.includes("tenant");
+  // Mark onboarding "visit" steps done when their routes are opened from anywhere.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    void recordOnboardingVisit(pathname);
+  }, [pathname]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
   const [hasSession, setHasSession] = useState(false);

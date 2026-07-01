@@ -142,6 +142,29 @@ export async function replayOnboarding(): Promise<void> {
   if (uid) writeState(uid, { replay: true });
 }
 
+// Routes that satisfy a "visit" onboarding step, whether opened from the quest
+// CTA or from the sidebar/anywhere.
+const VISIT_ROUTE_TO_STEP: Record<string, string> = {
+  "/tasks": "tasks",
+  "/me/contracts": "me-contracts",
+  "/me/charges": "me-charges",
+  "/me/chat": "me-chat",
+};
+
+/** Mark a "visit" step done when its route is opened from anywhere in the app. */
+export async function recordOnboardingVisit(pathname: string): Promise<void> {
+  const stepId = VISIT_ROUTE_TO_STEP[pathname];
+  if (!stepId || typeof window === "undefined") return;
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user?.id;
+  if (!uid) return;
+  const s = readState(uid);
+  if ((s.visited ?? []).includes(stepId)) return;
+  const next: QuestState = { ...s, visited: [...(s.visited ?? []), stepId] };
+  writeState(uid, next);
+  void supabase.from("profiles").update({ onboarding: next }).eq("id", uid);
+}
+
 function levelName(done: number, total: number): string {
   if (done >= total) return "Мастер";
   if (done === 0) return "Новичок";
@@ -195,7 +218,10 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
   const { data: counts, isLoading: countsLoading } = useQuery({
     queryKey: ["onboarding-counts"],
     enabled: ready && variant === "owner" && !!uid && !isDemo,
-    staleTime: 10_000,
+    // Always refetch on mount/focus so a step checks off promptly after the user
+    // returns from creating a property/tenant/contract.
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<Counts> => {
       const [p, t, c] = await Promise.all([
         supabase.from("properties").select("id", { count: "exact", head: true }),
@@ -226,7 +252,10 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
   // --- visibility gate: only genuinely new, un-dismissed accounts ---
   if (!ready || !uid || isDemo || state.dismissed || state.completedAt) return null;
   if (variant === "owner" && (countsLoading || !counts)) return null;
-  const hasProgress = allDone || (state.visited?.length ?? 0) > 0 || doneCount > 0;
+  // Engagement = the user explicitly started/interacted (welcome or visited a step).
+  // Data-derived completion (doneCount) must NOT count, otherwise existing owners
+  // with properties/tenants/contracts would see the quest without ever starting it.
+  const hasProgress = (state.visited?.length ?? 0) > 0 || !!state.welcomed;
   const isNew = createdAt
     ? Date.now() - new Date(createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS
     : true;
