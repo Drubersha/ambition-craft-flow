@@ -50,6 +50,7 @@ import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandLogo } from "@/components/brand-logo";
+import { AppFooter } from "@/components/app-footer";
 import { BrandIcon } from "@/components/brand-icon";
 
 function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }) {
@@ -468,6 +469,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
           {children}
         </main>
+        <AppFooter />
       </div>
     </div>
   );
