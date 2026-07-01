@@ -19,6 +19,12 @@ services:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SITE_URL: ${SITE_URL}
+      # Transactional email (UniSender Go) + in-app notification webhook
+      UNISENDER_GO_API_KEY: ${UNISENDER_GO_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      UNISENDER_GO_API_URL: ${UNISENDER_GO_API_URL}
+      NOTIFY_WEBHOOK_SECRET: ${NOTIFY_WEBHOOK_SECRET}
     depends_on:
       kong:
         condition: service_started
@@ -68,6 +74,15 @@ services:
       GOTRUE_DISABLE_SIGNUP: "false"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: ${GOTRUE_MAILER_AUTOCONFIRM}
+      # SMTP for registration confirmation + password-reset emails.
+      # When these are blank GoTrue can't send mail; keep GOTRUE_MAILER_AUTOCONFIRM=true
+      # in that case so signups still work. Set them + AUTOCONFIRM=false to enable emails.
+      GOTRUE_SMTP_HOST: ${GOTRUE_SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${GOTRUE_SMTP_PORT}
+      GOTRUE_SMTP_USER: ${GOTRUE_SMTP_USER}
+      GOTRUE_SMTP_PASS: ${GOTRUE_SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${GOTRUE_SMTP_SENDER_NAME}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${GOTRUE_SMTP_ADMIN_EMAIL}
 
   rest:
     image: postgrest/postgrest:v12.2.3
