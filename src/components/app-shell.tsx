@@ -308,14 +308,22 @@ function IdentitySwitcher() {
 
 /** Owner/Tenant switch shown in the top bar when the account holds both roles. */
 function RoleToggle() {
-  const { role, roles, setRole } = useDemoIdentity();
+  const { role, roles, setRole, setTenantId } = useDemoIdentity();
   const navigate = useNavigate();
   if (!roles.includes("owner") || !roles.includes("tenant")) return null;
   const isTenant = role === "tenant";
   const switchTo = (next: "owner" | "tenant") => {
     if (next === role) return;
     setRole(next);
-    if (typeof window !== "undefined") localStorage.setItem("active_account_kind", next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("active_account_kind", next);
+      // Switching into the tenant cabinet of a real dual-role account must not
+      // reuse a stale "view as tenant" selection — resolve by the user's own email.
+      if (next === "tenant") {
+        setTenantId(null);
+        sessionStorage.removeItem("me.selectedTenantId");
+      }
+    }
     navigate({ to: next === "tenant" ? "/me" : "/dashboard" });
   };
   return (
