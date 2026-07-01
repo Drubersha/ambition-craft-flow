@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ScrollText,
   LogOut,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ReactNode } from "react";
@@ -50,6 +51,7 @@ import { resetDemo2Account } from "@/lib/demo-auth.functions";
 import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandLogo } from "@/components/brand-logo";
+import { recordOnboardingVisit } from "@/components/onboarding-quest";
 import { AppFooter } from "@/components/app-footer";
 import { BrandIcon } from "@/components/brand-icon";
 
@@ -130,6 +132,7 @@ const OWNER_NAV = [
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
   { to: "/users", label: "Пользователи", icon: ShieldCheck },
+  { to: "/faq", label: "FAQ и помощь", icon: HelpCircle },
 ] as const;
 
 const TENANT_NAV = [
@@ -139,6 +142,7 @@ const TENANT_NAV = [
   { to: "/me/calendar", label: "Календарь оплат", icon: CalendarDays },
   { to: "/me/documents", label: "Документы", icon: Files },
   { to: "/me/chat", label: "Чат", icon: MessageSquare },
+  { to: "/faq", label: "FAQ и помощь", icon: HelpCircle },
 ] as const;
 
 const ADMIN_NAV = [
@@ -354,6 +358,11 @@ function RoleToggle() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { role, roles } = useDemoIdentity();
   const canSwitchRole = roles.includes("owner") && roles.includes("tenant");
+  // Mark onboarding "visit" steps done when their routes are opened from anywhere.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    void recordOnboardingVisit(pathname);
+  }, [pathname]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const fetchRoles = useServerFn(getCurrentAdminRoles);
   const [hasSession, setHasSession] = useState(false);
