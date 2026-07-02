@@ -77,12 +77,14 @@ services:
       # SMTP for registration confirmation + password-reset emails.
       # When these are blank GoTrue can't send mail; keep GOTRUE_MAILER_AUTOCONFIRM=true
       # in that case so signups still work. Set them + AUTOCONFIRM=false to enable emails.
-      GOTRUE_SMTP_HOST: ${GOTRUE_SMTP_HOST}
-      GOTRUE_SMTP_PORT: ${GOTRUE_SMTP_PORT}
-      GOTRUE_SMTP_USER: ${GOTRUE_SMTP_USER}
-      GOTRUE_SMTP_PASS: ${GOTRUE_SMTP_PASS}
-      GOTRUE_SMTP_SENDER_NAME: ${GOTRUE_SMTP_SENDER_NAME}
-      GOTRUE_SMTP_ADMIN_EMAIL: ${GOTRUE_SMTP_ADMIN_EMAIL}
+      # NOTE: GOTRUE_SMTP_PORT is parsed as an integer — an empty value makes GoTrue
+      # crash-loop on startup, so it MUST always be numeric. Default to 587 when unset.
+      GOTRUE_SMTP_HOST: ${GOTRUE_SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${GOTRUE_SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${GOTRUE_SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${GOTRUE_SMTP_PASS:-}
+      GOTRUE_SMTP_SENDER_NAME: ${GOTRUE_SMTP_SENDER_NAME:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${GOTRUE_SMTP_ADMIN_EMAIL:-}
 
   rest:
     image: postgrest/postgrest:v12.2.3
