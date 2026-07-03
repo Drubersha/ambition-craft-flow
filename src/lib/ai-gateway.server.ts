@@ -27,6 +27,11 @@ export function createAiProvider() {
       name: "selfhost",
       baseURL,
       headers: { Authorization: `Bearer ${apiKey}` },
+      // Send a native JSON-schema `response_format` (grammar-constrained decoding
+      // on OpenAI-compatible servers like ollama/vLLM). This forces the model to
+      // emit valid, schema-conforming JSON instead of the SDK's prompt-based
+      // fallback — far fewer parse failures under load and cleaner fields.
+      supportsStructuredOutputs: true,
     });
   }
   const lovableKey = process.env.LOVABLE_API_KEY;

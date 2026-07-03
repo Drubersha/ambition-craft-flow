@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ensureOwnerAccess } from "@/lib/manager-context.functions";
 
@@ -13,13 +12,6 @@ const UpdateStatusInput = z.object({
   position: z.number().int().optional(),
 });
 const TaskIdInput = z.object({ id: z.string().uuid() });
-
-const TaskSchema = z.object({
-  is_task: z.boolean(),
-  title: z.string().max(120).default(""),
-  description: z.string().max(800).default(""),
-  priority: z.enum(["low", "normal", "high"]).default("normal"),
-});
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -103,37 +95,15 @@ export const analyzeMessage = createServerFn({ method: "POST" })
       .map((m) => `[${m.sender_role}] ${m.body ?? "(вложение)"}`)
       .join("\n");
 
-    const { createAiProvider, getAiModelName } = await import("./ai-gateway.server");
-    const gateway = createAiProvider();
-    if (!gateway) return { ok: false, reason: "no_key" };
-
-    const userContent: Array<
-      { type: "text"; text: string } | { type: "image"; image: Uint8Array }
-    > = [
-      {
-        type: "text",
-        text:
-          "Ты помощник управляющего арендой. Проанализируй последнее сообщение арендатора и фото к нему. " +
-          "Определи, описывает ли арендатор задачу/проблему/запрос, который нужно выполнить (поломка, заявка, просьба). " +
-          "Если да — сформулируй короткий title (до 80 символов) и description, выбери priority: low/normal/high. " +
-          "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
-          `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${msg.body ?? "(только вложение)"}`,
-      },
-      ...imageDatas.map((d) => ({ type: "image" as const, image: d })),
-    ];
-
-    let parsed: z.infer<typeof TaskSchema>;
-    try {
-      const res = await generateText({
-        model: gateway.chatModel(getAiModelName()),
-        experimental_output: Output.object({ schema: TaskSchema }),
-        messages: [{ role: "user", content: userContent as never }],
-      });
-      parsed = (res as { experimental_output: z.infer<typeof TaskSchema> }).experimental_output;
-    } catch (e) {
-      console.error("[analyzeMessage] AI error", e);
-      return { ok: false, reason: "ai_error", error: String(e) };
-    }
+    const { recognizeTask } = await import("./task-recognition.server");
+    const { getAiModelName } = await import("./ai-gateway.server");
+    const result = await recognizeTask({
+      body: msg.body ?? "(только вложение)",
+      ctx,
+      images: imageDatas,
+    });
+    if (!result.ok) return result;
+    const parsed = result.task;
 
     await sb
       .from("chat_messages")
