@@ -52,7 +52,10 @@ services:
       - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
       - ./supabase/volumes/db/init:/docker-entrypoint-initdb.d/init:ro
     ports:
-      - "5432:5432"
+      # Localhost-only: nothing outside this host needs direct Postgres access
+      # (scripts use `docker compose exec db`), and a publicly exposed 5432 is a
+      # brute-force/leak target. Host-local psql still works via 127.0.0.1:5432.
+      - "127.0.0.1:5432:5432"
 
   auth:
     image: supabase/gotrue:v2.158.1
@@ -67,7 +70,11 @@ services:
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       GOTRUE_SITE_URL: ${SITE_URL}
-      GOTRUE_URI_ALLOW_LIST: "*"
+      # Only allow auth redirects back to our own site (exact origin + any path).
+      # A "*" wildcard would let a crafted signup/recovery link redirect the user —
+      # with their tokens in the URL fragment — to an attacker page. Override via
+      # GOTRUE_URI_ALLOW_LIST in .env if extra origins are ever needed.
+      GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST:-${SITE_URL},${SITE_URL}/*}
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_JWT_EXP: 3600
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
@@ -128,9 +135,11 @@ services:
     restart: unless-stopped
     # Kong 2.x does NOT interpolate env vars inside the declarative config, so the
     # ${SUPABASE_*} placeholders in kong.yml would be loaded literally (every real
-    # API key then gets 401). Render the template into ~/kong.yml at startup (env
-    # expanded by the shell), then hand off to the normal entrypoint.
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    # API key then gets 401). Substitute ONLY the two known placeholders with sed —
+    # never `eval` the whole file (eval would execute any $(...)/backticks that end
+    # up in kong.yml as root inside the container). Keys are base64url JWTs, so
+    # they contain no sed-special characters (| & \).
+    entrypoint: bash -c 'sed -e "s|\$${SUPABASE_ANON_KEY}|$$SUPABASE_ANON_KEY|g" -e "s|\$${SUPABASE_SERVICE_KEY}|$$SUPABASE_SERVICE_KEY|g" /home/kong/temp.yml > /home/kong/kong.yml && exec /docker-entrypoint.sh kong docker-start'
     ports:
       - "8000:8000/tcp"
     environment:
