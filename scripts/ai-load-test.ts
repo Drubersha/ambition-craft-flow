@@ -2,9 +2,10 @@
  * AI task-recognition test & load harness.
  *
  * Exercises the SAME server code path used by `analyzeMessage` in
- * `src/lib/tasks.functions.ts`: the provider resolved by `createAiProvider()`
- * (env AI_BASE_URL / AI_API_KEY / AI_MODEL) plus `generateText` with the exact
- * `TaskSchema` structured output and the exact system prompt.
+ * `src/lib/tasks.functions.ts`: it imports `recognizeTask()` from
+ * `src/lib/task-recognition.server.ts` (provider from `createAiProvider()`, env
+ * AI_BASE_URL / AI_API_KEY / AI_MODEL, `generateText` + structured `TaskSchema`
+ * output, the shared prompt, temperature 0 and one retry).
  *
  * It does NOT touch Supabase/DB — those are plain I/O around the AI call and are
  * not the bottleneck. This isolates (1) recognition quality on non-obvious
@@ -14,58 +15,29 @@
  *   AI_BASE_URL=http://127.0.0.1:11434/v1 AI_API_KEY=ollama AI_MODEL=qwen2.5:3b \
  *     bun scripts/ai-load-test.ts --mode both --concurrency 1,5,10,15
  */
-import { generateText, Output } from "ai";
-import { z } from "zod";
-import { createAiProvider, getAiModelName } from "../src/lib/ai-gateway.server";
+import { getAiModelName } from "../src/lib/ai-gateway.server";
+import { recognizeTask, type RecognizedTask } from "../src/lib/task-recognition.server";
 
-// ---- copied verbatim from src/lib/tasks.functions.ts ----
-const TaskSchema = z.object({
-  is_task: z.boolean(),
-  title: z.string().max(120).default(""),
-  description: z.string().max(800).default(""),
-  priority: z.enum(["low", "normal", "high"]).default("normal"),
-});
-type Task = z.infer<typeof TaskSchema>;
-
-function buildPromptText(ctx: string, body: string): string {
-  return (
-    "Ты помощник управляющего арендой. Проанализируй последнее сообщение арендатора и фото к нему. " +
-    "Определи, описывает ли арендатор задачу/проблему/запрос, который нужно выполнить (поломка, заявка, просьба). " +
-    "Если да — сформулируй короткий title (до 80 символов) и description, выбери priority: low/normal/high. " +
-    "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
-    `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${body}`
-  );
-}
-// ---------------------------------------------------------
-
-const gateway = createAiProvider();
-if (!gateway) {
-  console.error("No AI provider configured. Set AI_BASE_URL + AI_API_KEY (or LOVABLE_API_KEY).");
+const MODEL = getAiModelName();
+if (!process.env.AI_BASE_URL || !process.env.AI_API_KEY) {
+  console.error("Set AI_BASE_URL + AI_API_KEY for a self-hosted OpenAI-compatible model.");
   process.exit(1);
 }
-const MODEL = getAiModelName();
 
 interface AnalyzeResult {
   ok: boolean;
   ms: number;
-  parsed?: Task;
+  parsed?: RecognizedTask;
   error?: string;
 }
 
+// Exercises the real app code path: recognizeTask() from task-recognition.server.
 async function analyzeOne(body: string, ctx = ""): Promise<AnalyzeResult> {
-  const userContent = [{ type: "text" as const, text: buildPromptText(ctx, body) }];
   const t0 = performance.now();
-  try {
-    const res = await generateText({
-      model: gateway!.chatModel(MODEL),
-      experimental_output: Output.object({ schema: TaskSchema }),
-      messages: [{ role: "user", content: userContent as never }],
-    });
-    const parsed = (res as { experimental_output: Task }).experimental_output;
-    return { ok: true, ms: performance.now() - t0, parsed };
-  } catch (e) {
-    return { ok: false, ms: performance.now() - t0, error: String(e) };
-  }
+  const r = await recognizeTask({ body, ctx });
+  return r.ok
+    ? { ok: true, ms: performance.now() - t0, parsed: r.task }
+    : { ok: false, ms: performance.now() - t0, error: r.error ?? r.reason };
 }
 
 // ---- non-obvious / tricky tenant messages ----
