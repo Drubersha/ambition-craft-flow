@@ -3,20 +3,42 @@ import { z } from "zod";
 import { createAiProvider, getAiModelName } from "./ai-gateway.server";
 
 /**
- * Structured output for tenant-message task recognition.
- *
- * `reasoning` is an internal scratchpad placed FIRST so the model "thinks" before
- * committing to `is_task` (a cheap accuracy boost for a small self-hosted model).
- * It is never persisted — only `is_task/title/description/priority` are stored.
+ * Server-aware limits (all env-tunable). A self-hosted model usually runs on the
+ * same box as Postgres + the Supabase stack + this app, often CPU-only. Task
+ * analysis is fired automatically for every tenant message, so a burst can spawn
+ * many concurrent generations that thrash the CPU and starve the rest of the
+ * stack. These knobs keep the AI workload bounded.
  */
-// NOTE: no `.default()` here. With native structured outputs, zod defaults become
-// non-required JSON-schema fields, and a small grammar-constrained model then emits
-// empty strings for them. Required fields + `.describe()` (the descriptions are sent
-// inside the schema) reliably steer a small self-hosted model to fill each field.
-export const TaskSchema = z.object({
-  reasoning: z
-    .string()
-    .describe("Одно короткое предложение (до 15 слов): почему это задача или почему нет."),
+function intEnv(name: string, def: number, min: number): number {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v >= min ? Math.floor(v) : def;
+}
+/** Max AI generations running at once in this process. A single-slot local model
+ *  serves ~1 at a time anyway; keep this low on a shared/CPU-only server. */
+const MAX_CONCURRENCY = intEnv("AI_MAX_CONCURRENCY", 2, 1);
+/** Requests allowed to wait for a slot. Beyond this we shed load (fast, instead
+ *  of piling unbounded work + memory + open connections). */
+const MAX_QUEUE = intEnv("AI_MAX_QUEUE", 32, 0);
+/** Per-request wall-clock budget; a stuck/slow generation is aborted so it can't
+ *  hold a slot forever (seen: 100s+ tail latencies under load on CPU). */
+const TIMEOUT_MS = intEnv("AI_TIMEOUT_MS", 60000, 1000);
+/** Cap generated tokens to bound worst-case CPU time per request. */
+const MAX_OUTPUT_TOKENS = intEnv("AI_MAX_OUTPUT_TOKENS", 400, 64);
+/** SDK-level retries for transient (network/5xx) errors — kept low on purpose so
+ *  a failing provider can't multiply load on a constrained server. */
+const MAX_RETRIES = intEnv("AI_MAX_RETRIES", 1, 0);
+/** The reasoning scratchpad boosts accuracy on borderline messages but roughly
+ *  doubles generated tokens (latency). Set AI_REASONING=false on very constrained
+ *  servers to trade a little accuracy for ~2x faster, cheaper generations. */
+const USE_REASONING = (process.env.AI_REASONING ?? "true").toLowerCase() !== "false";
+
+/**
+ * Persisted decision shape. No `.default()`: with native structured outputs, zod
+ * defaults become non-required JSON-schema fields and a small grammar-constrained
+ * model then emits empty strings. Required fields + `.describe()` (descriptions
+ * are sent inside the schema) reliably steer a small self-hosted model.
+ */
+const decisionShape = {
   is_task: z.boolean().describe("true, если сообщение требует действия управляющего."),
   title: z
     .string()
@@ -29,8 +51,40 @@ export const TaskSchema = z.object({
   priority: z
     .enum(["low", "normal", "high"])
     .describe("Приоритет: high — угроза безопасности/проживанию; low — мелочь; normal — иначе."),
-});
+};
+export const TaskSchema = z.object(decisionShape);
 export type RecognizedTask = z.infer<typeof TaskSchema>;
+
+/** Actual schema sent to the model — a leading reasoning field when enabled. */
+const OutputSchema = USE_REASONING
+  ? z.object({
+      reasoning: z
+        .string()
+        .describe("Одно короткое предложение (до 15 слов): почему это задача или почему нет."),
+      ...decisionShape,
+    })
+  : z.object(decisionShape);
+
+/** In-process concurrency gate. Returns false when the queue is full (shed load). */
+let active = 0;
+let pending = 0;
+const waiters: Array<() => void> = [];
+async function acquireSlot(): Promise<boolean> {
+  if (active < MAX_CONCURRENCY) {
+    active++;
+    return true;
+  }
+  if (pending >= MAX_QUEUE) return false;
+  pending++;
+  await new Promise<void>((resolve) => waiters.push(resolve));
+  pending--;
+  active++;
+  return true;
+}
+function releaseSlot(): void {
+  active--;
+  waiters.shift()?.();
+}
 
 /**
  * Build the task-recognition prompt. Explicit decision rules + few-shot examples
@@ -83,12 +137,13 @@ export function buildTaskPromptText(ctx: string, body: string): string {
 
 export type RecognizeResult =
   | { ok: true; task: RecognizedTask }
-  | { ok: false; reason: "no_key" | "ai_error"; error?: string };
+  | { ok: false; reason: "no_key" | "ai_error" | "busy"; error?: string };
 
 /**
  * Run task recognition against the configured self-hosted / OpenAI-compatible
- * provider. Uses temperature 0 for consistency and retries once on transient
- * failures (a schema-mismatch or empty completion can still happen occasionally).
+ * provider under server-aware limits: a concurrency gate + bounded queue (shed
+ * load when overwhelmed), a per-request timeout, a cap on generated tokens, and
+ * a low retry count. Uses temperature 0 for consistent, reproducible decisions.
  */
 export async function recognizeTask(opts: {
   body: string;
@@ -98,34 +153,38 @@ export async function recognizeTask(opts: {
   const gateway = createAiProvider();
   if (!gateway) return { ok: false, reason: "no_key" };
 
-  const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: Uint8Array }> =
-    [
+  if (!(await acquireSlot())) {
+    console.error("[recognizeTask] queue full — shedding request");
+    return { ok: false, reason: "busy" };
+  }
+  try {
+    const userContent: Array<
+      { type: "text"; text: string } | { type: "image"; image: Uint8Array }
+    > = [
       { type: "text", text: buildTaskPromptText(opts.ctx ?? "", opts.body) },
       ...(opts.images ?? []).map((image) => ({ type: "image" as const, image })),
     ];
-  const model = gateway.chatModel(getAiModelName());
-
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await generateText({
-        model,
-        temperature: 0,
-        experimental_output: Output.object({ schema: TaskSchema }),
-        messages: [{ role: "user", content: userContent as never }],
-      });
-      const task = (res as { experimental_output: RecognizedTask }).experimental_output;
-      // A recognized task must have a title; fall back to the description or the
-      // message itself so a valid suggestion is always created downstream.
-      if (task.is_task && !task.title?.trim()) {
-        const fallback = (task.description?.trim() || opts.body).replace(/\s+/g, " ").trim();
-        task.title = fallback.slice(0, 80);
-      }
-      return { ok: true, task };
-    } catch (e) {
-      lastErr = e;
+    const res = await generateText({
+      model: gateway.chatModel(getAiModelName()),
+      temperature: 0,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      maxRetries: MAX_RETRIES,
+      abortSignal: AbortSignal.timeout(TIMEOUT_MS),
+      experimental_output: Output.object({ schema: OutputSchema }),
+      messages: [{ role: "user", content: userContent as never }],
+    });
+    const task = (res as { experimental_output: RecognizedTask }).experimental_output;
+    // A recognized task must have a title; fall back to the description or the
+    // message itself so a valid suggestion is always created downstream.
+    if (task.is_task && !task.title?.trim()) {
+      const fallback = (task.description?.trim() || opts.body).replace(/\s+/g, " ").trim();
+      task.title = fallback.slice(0, 80);
     }
+    return { ok: true, task };
+  } catch (e) {
+    console.error("[recognizeTask] AI error", e);
+    return { ok: false, reason: "ai_error", error: String(e) };
+  } finally {
+    releaseSlot();
   }
-  console.error("[recognizeTask] AI error", lastErr);
-  return { ok: false, reason: "ai_error", error: String(lastErr) };
 }
