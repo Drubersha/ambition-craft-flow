@@ -1,7 +1,8 @@
 # Minimal Kong declarative config for self-hosted Supabase
 # Routes /auth/v1, /rest/v1, /storage/v1 to the corresponding services
-# NOTE: single-quote _format_version — the kong service renders this file via
-# `eval "echo \"$(cat ...)\""`, and a double-quoted value would break that wrapping.
+# NOTE: the kong service renders this file at startup by substituting ONLY the
+# ${SUPABASE_ANON_KEY} / ${SUPABASE_SERVICE_KEY} placeholders (sed, no eval) —
+# see the kong entrypoint in docker-compose.yml.
 _format_version: '2.1'
 _transform: true
 
