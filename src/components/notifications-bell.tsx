@@ -53,6 +53,7 @@ export function NotificationsBell() {
   const list = useServerFn(listMyNotifications);
   const markRead = useServerFn(markNotificationsRead);
   const del = useServerFn(deleteNotifications);
+  const [open, setOpen] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   useEffect(() => {
     let active = true;
@@ -98,7 +99,13 @@ export function NotificationsBell() {
           (payload: any) => {
             qc.invalidateQueries({ queryKey: ["notifications"] });
             const n = payload.new;
-            toast(n?.title ?? "Уведомление", { description: n?.body ?? undefined });
+            toast(n?.title ?? "Уведомление", {
+              description: n?.body ?? undefined,
+              // Deep-link straight from the toast when the notification has a target.
+              action: n?.route
+                ? { label: "Открыть", onClick: () => navigate({ to: n.route }) }
+                : undefined,
+            });
           },
         )
         .on(
@@ -130,15 +137,20 @@ export function NotificationsBell() {
   }, [qc]);
 
   async function openItem(n: any) {
+    // Navigate first so the click always lands on the target page even if
+    // marking as read is slow; close the popover so the page is visible.
+    if (n.route) {
+      setOpen(false);
+      navigate({ to: n.route });
+    }
     if (!n.read_at) {
       await markRead({ data: { ids: [n.id] } });
       qc.invalidateQueries({ queryKey: ["notifications"] });
     }
-    if (n.route) navigate({ to: n.route });
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Уведомления" className="relative">
           <BrandIcon icon={Bell} size="md" />

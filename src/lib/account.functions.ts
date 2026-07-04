@@ -106,6 +106,19 @@ export const changePassword = createServerFn({ method: "POST" })
       throw new Error("Не удалось изменить пароль. Попробуйте позже.");
     }
 
+    // In-app notification (deep-links to account settings). The dedicated
+    // security email below carries the details, so the generic notification
+    // email pipeline skips kind='account' rows. Best effort.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: notifyError } = await supabaseAdmin.from("notifications").insert({
+      user_id: context.userId,
+      kind: "account",
+      title: "Пароль изменён",
+      body: "Пароль вашего аккаунта был изменён. Если это были не вы — срочно смените пароль в настройках.",
+      route: "/settings",
+    });
+    if (notifyError) console.warn("[account] in-app notification failed", notifyError);
+
     // Security notification — best effort, must not fail the change itself.
     const { sendEmail } = await import("@/lib/email.server");
     const when = new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
