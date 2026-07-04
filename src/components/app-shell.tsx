@@ -20,6 +20,7 @@ import {
   ScrollText,
   LogOut,
   HelpCircle,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ReactNode } from "react";
@@ -118,6 +119,17 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/** Gear button in the top bar, next to the account email. */
+function AccountSettingsButton() {
+  return (
+    <Button variant="ghost" size="icon" asChild aria-label="Настройки аккаунта">
+      <Link to="/settings">
+        <BrandIcon icon={Settings} size="sm" />
+      </Link>
+    </Button>
   );
 }
 
@@ -460,6 +472,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="text-[10px] text-muted-foreground">{ROLE_LABELS[role]}</span>
               )}
             </div>
+            <AccountSettingsButton />
             <NotificationsBell />
             <LogoutButton variant="ghost" />
           </div>
@@ -473,6 +486,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
               )}
             </div>
+            <AccountSettingsButton />
           </div>
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
