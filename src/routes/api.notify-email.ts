@@ -1,9 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 // Internal webhook called by the DB (pg_net) after a notification row is inserted.
 // It resolves the recipient's account email and sends the notification by email.
 // Auth: shared secret in the `x-webhook-secret` header (must match NOTIFY_WEBHOOK_SECRET).
+
+// Constant-time comparison (via fixed-length digests) so the public endpoint
+// doesn't leak how many leading characters of the secret matched.
+function secretMatches(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = createHash("sha256").update(provided).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+// Cap outbound sends so a leaked/guessed secret can't turn this endpoint into an
+// email cannon (sender-reputation / provider-cost abuse). In-memory fixed window
+// is enough: the app runs as a single container.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_PER_WINDOW = 120;
+let rateWindowStart = 0;
+let rateCount = 0;
+function rateLimited(): boolean {
+  const now = Date.now();
+  if (now - rateWindowStart >= RATE_WINDOW_MS) {
+    rateWindowStart = now;
+    rateCount = 0;
+  }
+  rateCount += 1;
+  return rateCount > RATE_MAX_PER_WINDOW;
+}
 
 // Deep links in emails must be public URLs. This handler is always invoked on the
 // internal Docker address (http://app:3000) by the pg_net webhook, so we never fall
@@ -34,9 +61,17 @@ export const Route = createFileRoute("/api/notify-email")({
             headers: { "content-type": "application/json" },
           });
         }
-        if (request.headers.get("x-webhook-secret") !== expected) {
+        if (!secretMatches(request.headers.get("x-webhook-secret"), expected)) {
           return new Response(JSON.stringify({ ok: false, reason: "forbidden" }), {
             status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        // After auth so unauthenticated noise can't starve legit deliveries.
+        if (rateLimited()) {
+          console.warn("[notify-email] rate limit exceeded — dropping request");
+          return new Response(JSON.stringify({ ok: false, reason: "rate_limited" }), {
+            status: 429,
             headers: { "content-type": "application/json" },
           });
         }

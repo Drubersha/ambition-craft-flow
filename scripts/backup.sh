@@ -14,6 +14,11 @@
 # db.sql.gz and storage.tar.gz. That is an accepted trade-off to avoid daily downtime.
 set -euo pipefail
 
+# Backups contain secrets (env.backup) and full user data. Create every file and
+# directory owner-only from the start — no window where content is group/world
+# readable, regardless of where BACKUP_ROOT points.
+umask 077
+
 LABEL="${1:-manual}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_DIR"
@@ -25,6 +30,8 @@ PROJECT="${COMPOSE_PROJECT_NAME:-leaseplease}"
 # Single-run lock so overlapping runs (daily timer + pre-deploy hook, ~1 min apart)
 # never rotate/prune each other's in-progress directories. Wait up to 10 min.
 mkdir -p "$BACKUP_ROOT"
+# Tighten a pre-existing root dir too (umask only affects newly created paths).
+chmod go-rwx "$BACKUP_ROOT" 2>/dev/null || true
 exec 9>"$BACKUP_ROOT/.backup.lock"
 if ! flock -w 600 9; then
   # Fail (non-zero) rather than skip silently: callers (deploy.yml / reset-data.sh)
