@@ -25,6 +25,10 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       UNISENDER_GO_API_URL: ${UNISENDER_GO_API_URL}
       NOTIFY_WEBHOOK_SECRET: ${NOTIFY_WEBHOOK_SECRET}
+      # AI task recognition (OpenAI-compatible endpoint, e.g. local ollama)
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
     depends_on:
       kong:
         condition: service_started
