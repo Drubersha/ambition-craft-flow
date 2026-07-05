@@ -53,6 +53,7 @@ import { logActivitySafe } from "@/lib/activity-log.functions";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandLogo } from "@/components/brand-logo";
 import { recordOnboardingVisit } from "@/components/onboarding-quest";
+import { SectionTutorialCard } from "@/components/section-tutorial";
 import { AppFooter } from "@/components/app-footer";
 import { BrandIcon } from "@/components/brand-icon";
 
@@ -492,6 +493,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto pb-[env(safe-area-inset-bottom)]">
+          <SectionTutorialCard pathname={pathname} />
           {children}
         </main>
         <AppFooter />
