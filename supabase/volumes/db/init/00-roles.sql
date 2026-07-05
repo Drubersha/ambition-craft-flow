@@ -25,6 +25,10 @@ END
 $$;
 
 GRANT anon, authenticated, service_role TO authenticator;
+-- Storage API assumes the caller's role (set_config('role', ...)) to evaluate
+-- RLS on storage.objects; without these memberships every upload fails with
+-- "new row violates row-level security policy".
+GRANT anon, authenticated, service_role TO supabase_storage_admin;
 GRANT ALL ON SCHEMA public TO postgres, service_role;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
