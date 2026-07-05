@@ -408,7 +408,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-[100dvh] bg-muted/20">
-      <aside className="hidden md:flex w-60 flex-col border-r bg-background">
+      {/* Sticky + viewport-height: on long pages the sidebar used to stretch with
+          the content, pushing the logout button below the fold. */}
+      <aside className="hidden md:flex w-60 flex-col border-r bg-background md:sticky md:top-0 md:h-[100dvh] md:self-start">
         <div className="flex h-14 items-center gap-2 px-4 border-b">
           <BrandLogo
             variant="lockup"
