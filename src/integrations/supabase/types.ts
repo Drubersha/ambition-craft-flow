@@ -148,6 +148,54 @@ export type Database = {
           },
         ]
       }
+      budget_period_limits: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          limit_amount: number
+          owner_id: string
+          period_start: string
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          owner_id: string
+          period_start: string
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          owner_id?: string
+          period_start?: string
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_period_limits_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "budget_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_period_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "budget_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_plans: {
         Row: {
           created_at: string

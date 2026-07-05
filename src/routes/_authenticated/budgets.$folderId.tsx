@@ -37,14 +37,16 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { ArrowLeft, Plus, Settings, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Settings, Trash2, AlertTriangle, History } from "lucide-react";
 import { toast } from "sonner";
 import {
   getCurrentPeriod,
+  listSelectablePeriods,
   formatPeriod,
   type BudgetPlan,
   type BudgetCategory,
   type BudgetExpense,
+  type BudgetPeriodLimit,
 } from "@/lib/budget";
 import { formatMoney, formatDate } from "@/lib/format";
 
@@ -59,24 +61,30 @@ function BudgetDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["budget-detail", folderId],
     queryFn: async () => {
-      const [folder, plans, cats, exps] = await Promise.all([
+      const [folder, plans, cats, exps, limits] = await Promise.all([
         supabase.from("folders").select("id, name").eq("id", folderId).maybeSingle(),
         supabase.from("budget_plans").select("*").eq("folder_id", folderId).maybeSingle(),
         supabase.from("budget_categories").select("*"),
         supabase.from("budget_expenses").select("*"),
+        supabase.from("budget_period_limits").select("*"),
       ]);
       if (folder.error) throw folder.error;
       if (plans.error) throw plans.error;
       if (cats.error) throw cats.error;
       if (exps.error) throw exps.error;
+      if (limits.error) throw limits.error;
       const plan = plans.data as BudgetPlan | null;
       const categories = ((cats.data ?? []) as BudgetCategory[]).filter(
         (c) => c.plan_id === plan?.id,
       );
       const expenses = ((exps.data ?? []) as BudgetExpense[]).filter((e) => e.plan_id === plan?.id);
-      return { folder: folder.data, plan, categories, expenses };
+      const periodLimits = ((limits.data ?? []) as BudgetPeriodLimit[]).filter(
+        (l) => l.plan_id === plan?.id,
+      );
+      return { folder: folder.data, plan, categories, expenses, periodLimits };
     },
   });
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
 
   // Lazy rollover: archive expenses whose period_start is older than current
   const rollover = useMutation({
@@ -113,11 +121,24 @@ function BudgetDetail() {
   if (!data.plan) return <NoPlan folderId={folderId} folderName={data.folder.name} />;
 
   const plan = data.plan;
-  const period = getCurrentPeriod(plan.reset_day);
-  const periodExps = data.expenses.filter((e) => e.period_start === period.start && !e.archived);
+  const currentPeriod = getCurrentPeriod(plan.reset_day);
+  const periods = listSelectablePeriods(plan.reset_day, data.expenses);
+  const period = (selectedStart && periods.find((p) => p.start === selectedStart)) || currentPeriod;
+  const isCurrentPeriod = period.start === currentPeriod.start;
+  // Прошлые периоды: расходы уже могут быть в архиве — фильтруем только по началу периода.
+  const periodExps = data.expenses.filter((e) => e.period_start === period.start);
   const archivedExps = data.expenses.filter((e) => e.archived);
 
-  const totalLimit = data.categories.reduce((s, c) => s + Number(c.limit_amount), 0);
+  // Эффективный лимит статьи в выбранном периоде: переопределение, иначе стандартный.
+  const overrides = new Map(
+    data.periodLimits.filter((l) => l.period_start === period.start).map((l) => [l.category_id, l]),
+  );
+  const limitFor = (cat: BudgetCategory) => {
+    const o = overrides.get(cat.id);
+    return o ? Number(o.limit_amount) : Number(cat.limit_amount);
+  };
+
+  const totalLimit = data.categories.reduce((s, c) => s + limitFor(c), 0);
   const totalSpent = periodExps.reduce((s, e) => s + Number(e.amount), 0);
 
   return (
@@ -131,8 +152,40 @@ function BudgetDetail() {
         <h1 className="text-xl sm:text-2xl font-bold truncate">{data.folder.name}</h1>
         <SettingsDialog plan={plan} categories={data.categories} folderId={folderId} />
       </div>
-      <div className="text-sm text-muted-foreground">
-        Период: {formatPeriod(period)} · обновляется {plan.reset_day} числа
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>Период:</span>
+        <Select
+          value={period.start}
+          onValueChange={(v) => setSelectedStart(v === currentPeriod.start ? null : v)}
+        >
+          <SelectTrigger className="h-8 w-auto min-w-56 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {periods.map((p) => (
+              <SelectItem key={p.start} value={p.start}>
+                {formatPeriod(p)}
+                {p.start === currentPeriod.start ? " · текущий" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span>· обновляется {plan.reset_day} числа</span>
+        {!isCurrentPeriod && (
+          <>
+            <Badge variant="secondary" className="text-[10px]">
+              <History className="h-3 w-3 mr-1" />
+              Прошлый период
+            </Badge>
+            <PeriodLimitsDialog
+              plan={plan}
+              categories={data.categories}
+              period={period}
+              overrides={data.periodLimits.filter((l) => l.period_start === period.start)}
+              folderId={folderId}
+            />
+          </>
+        )}
       </div>
 
       <Card>
@@ -183,7 +236,8 @@ function BudgetDetail() {
                   const spent = periodExps
                     .filter((e) => e.category_id === cat.id)
                     .reduce((s, e) => s + Number(e.amount), 0);
-                  const limit = Number(cat.limit_amount);
+                  const limit = limitFor(cat);
+                  const hasOverride = overrides.has(cat.id);
                   const remain = limit - spent;
                   const pct = limit > 0 ? (spent / limit) * 100 : 0;
                   const warn = pct >= plan.warning_percent && pct < 100;
@@ -193,6 +247,14 @@ function BudgetDetail() {
                       <TableCell className="font-medium">{cat.name}</TableCell>
                       <TableCell className="text-right">
                         {formatMoney(limit, plan.currency)}
+                        {hasOverride && (
+                          <span
+                            className="ml-1 text-xs text-muted-foreground"
+                            title="Плановое значение задано для этого периода"
+                          >
+                            *
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatMoney(spent, plan.currency)}
@@ -217,7 +279,12 @@ function BudgetDetail() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <AddExpenseDialog plan={plan} category={cat} period={period} />
+                        <AddExpenseDialog
+                          plan={plan}
+                          category={cat}
+                          period={period}
+                          isPast={!isCurrentPeriod}
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -230,7 +297,9 @@ function BudgetDetail() {
       {periodExps.length > 0 && (
         <Card>
           <CardContent className="p-4 space-y-2">
-            <div className="font-medium text-sm">Расходы текущего периода</div>
+            <div className="font-medium text-sm">
+              {isCurrentPeriod ? "Расходы текущего периода" : `Расходы за ${formatPeriod(period)}`}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -514,20 +583,154 @@ function SettingsDialog({
   );
 }
 
+/**
+ * Плановые значения (лимиты) статей для конкретного прошлого периода.
+ * Пусто = используется стандартный лимит статьи; заданное значение хранится
+ * как переопределение и не меняется при правке стандартных лимитов.
+ */
+function PeriodLimitsDialog({
+  plan,
+  categories,
+  period,
+  overrides,
+  folderId,
+}: {
+  plan: BudgetPlan;
+  categories: BudgetCategory[];
+  period: { start: string; end: string };
+  overrides: BudgetPeriodLimit[];
+  folderId: string;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (open) {
+      const next: Record<string, string> = {};
+      for (const c of categories) {
+        const o = overrides.find((l) => l.category_id === c.id);
+        next[c.id] = o ? String(o.limit_amount) : "";
+      }
+      setValues(next);
+    }
+  }, [open, categories, overrides]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Не авторизован");
+      for (const c of categories) {
+        const raw = (values[c.id] ?? "").trim();
+        const existing = overrides.find((l) => l.category_id === c.id);
+        if (raw === "") {
+          if (existing) {
+            const { error } = await supabase
+              .from("budget_period_limits")
+              .delete()
+              .eq("id", existing.id);
+            if (error) throw error;
+          }
+          continue;
+        }
+        const amount = Number(raw);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error(`Некорректное значение для «${c.name}»`);
+        }
+        if (existing) {
+          const { error } = await supabase
+            .from("budget_period_limits")
+            .update({ limit_amount: amount })
+            .eq("id", existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("budget_period_limits").insert({
+            owner_id: u.user.id,
+            plan_id: plan.id,
+            category_id: c.id,
+            period_start: period.start,
+            limit_amount: amount,
+          });
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success("Плановые значения периода сохранены");
+      qc.invalidateQueries({ queryKey: ["budget-detail", folderId] });
+      setOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Settings className="h-4 w-4 mr-1" />
+          Плановые значения
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Плановые значения · {formatPeriod(period)}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Задайте лимиты, действовавшие в этом периоде. Пустое поле — используется стандартный лимит
+          статьи.
+        </p>
+        <div className="space-y-2">
+          {categories.length === 0 && (
+            <div className="text-sm text-muted-foreground">Нет статей</div>
+          )}
+          {categories
+            .slice()
+            .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+            .map((c) => (
+              <div key={c.id} className="flex items-center gap-2">
+                <div className="flex-1 text-sm truncate">{c.name}</div>
+                <Input
+                  type="number"
+                  min={0}
+                  className="w-36"
+                  placeholder={`Стандарт: ${Number(c.limit_amount)}`}
+                  value={values[c.id] ?? ""}
+                  onChange={(e) => setValues({ ...values, [c.id]: e.target.value })}
+                />
+              </div>
+            ))}
+        </div>
+        <DialogFooter>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AddExpenseDialog({
   plan,
   category,
   period,
+  isPast,
 }: {
   plan: BudgetPlan;
   category: BudgetCategory;
   period: { start: string; end: string };
+  isPast: boolean;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  // Для прошлого периода дата по умолчанию — конец периода, а не сегодня.
+  const [date, setDate] = useState(isPast ? period.end : new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (open) setDate(isPast ? period.end : new Date().toISOString().slice(0, 10));
+  }, [open, isPast, period.end]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -544,6 +747,8 @@ function AddExpenseDialog({
         note: note || null,
         period_start: period.start,
         period_end: period.end,
+        // Расход прошлого периода сразу архивный — ленивый rollover его не трогает.
+        archived: isPast,
       });
       if (error) throw error;
     },
@@ -582,7 +787,18 @@ function AddExpenseDialog({
           </div>
           <div>
             <Label>Дата</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              type="date"
+              value={date}
+              min={isPast ? period.start : undefined}
+              max={isPast ? period.end : undefined}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            {isPast && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Расход будет учтён в периоде {formatPeriod(period)}
+              </p>
+            )}
           </div>
           <div>
             <Label>Комментарий</Label>
