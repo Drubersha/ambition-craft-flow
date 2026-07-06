@@ -108,10 +108,23 @@ export function PlanMarkup({
   );
   const isDrawing = edit.mode === "draw";
 
+  // Client coords → overlay-local (unscaled) pixels. The plan can be zoomed
+  // with a CSS transform, so the bounding rect is scale× larger than the
+  // overlay's coordinate system — normalize through the rect dimensions
+  // instead of subtracting the origin alone, otherwise clicks land in the
+  // wrong place at any zoom other than 100%.
+  const clientToLocal = (svg: SVGSVGElement, clientX: number, clientY: number) => {
+    const rect = svg.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / rect.width) * ctx.width,
+      y: ((clientY - rect.top) / rect.height) * ctx.height,
+    };
+  };
+
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isDrawing) return;
-    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-    const n = ctx.toNorm(e.clientX - rect.left, e.clientY - rect.top);
+    const p = clientToLocal(e.currentTarget as SVGSVGElement, e.clientX, e.clientY);
+    const n = ctx.toNorm(p.x, p.y);
     if (edit.tool === "polygon") onAddPoint?.(n);
     else onPlacePoint?.(n);
   };
@@ -155,12 +168,12 @@ export function PlanMarkup({
               e.stopPropagation();
             },
             onMouseEnter: (e: React.MouseEvent<SVGElement>) => {
-              const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
-              setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+              const p = clientToLocal(e.currentTarget.ownerSVGElement!, e.clientX, e.clientY);
+              setHover({ id: m.property_id, x: p.x, y: p.y });
             },
             onMouseMove: (e: React.MouseEvent<SVGElement>) => {
-              const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
-              setHover({ id: m.property_id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+              const p = clientToLocal(e.currentTarget.ownerSVGElement!, e.clientX, e.clientY);
+              setHover({ id: m.property_id, x: p.x, y: p.y });
             },
             onClick: (e: React.MouseEvent) => {
               if (isDrawing) return;
