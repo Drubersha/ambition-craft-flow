@@ -40,6 +40,11 @@ jobs:
             set -e
             cd /root/leaseplease
 
+            echo "== Диск ДО деплоя =="
+            df -h /
+            docker system df
+            du -sh /root/leaseplease-backups 2>/dev/null || true
+
             echo "== Забираем свежий код =="
             git fetch origin main
             # Сначала обновляем сами скрипты (бэкап/restore), не трогая инфраструктуру.
@@ -66,5 +71,12 @@ jobs:
             echo "== Возвращаем realtime =="
             docker compose start realtime || true
 
+            echo "== Чистим висячие образы (старые слои app после пересборок) =="
+            docker image prune -f
+
             echo "== Статус =="
             docker compose ps
+
+            echo "== Диск ПОСЛЕ деплоя =="
+            df -h /
+            docker system df
