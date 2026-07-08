@@ -32,6 +32,19 @@ function EditTenant() {
     },
   });
 
+  const { data: contacts } = useQuery({
+    queryKey: ["tenant-contacts", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tenant_contacts")
+        .select("id, full_name, email, phone, sort_order")
+        .eq("tenant_id", id)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: contracts } = useQuery({
     queryKey: ["tenant-contracts", id],
     queryFn: async () => {
@@ -47,22 +60,56 @@ function EditTenant() {
 
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
+      const primary = v.contacts[0];
       const { error } = await supabase
         .from("tenants")
         .update({
           name: v.name,
           kind: v.kind as any,
           inn: v.inn || null,
-          phone: v.phone || null,
-          email: v.email || null,
-          contact_person: v.contact_person || null,
+          // Legacy fields mirror the primary contact (tenant-cabinet email
+          // match + list search keep working unchanged).
+          phone: primary?.phone.trim() || null,
+          email: primary?.email.trim() || null,
+          contact_person: primary?.full_name.trim() || null,
           notes: v.notes || null,
         })
         .eq("id", id);
       if (error) throw error;
+
+      // Reconcile contact persons: update kept rows, insert new, delete removed.
+      const keepIds = new Set(v.contacts.map((c) => c.id).filter(Boolean) as string[]);
+      for (const existing of contacts ?? []) {
+        if (!keepIds.has(existing.id)) {
+          const { error: dErr } = await supabase
+            .from("tenant_contacts")
+            .delete()
+            .eq("id", existing.id);
+          if (dErr) throw dErr;
+        }
+      }
+      for (let i = 0; i < v.contacts.length; i++) {
+        const c = v.contacts[i];
+        const row = {
+          full_name: c.full_name.trim(),
+          email: c.email.trim() || null,
+          phone: c.phone.trim() || null,
+          sort_order: i,
+        };
+        if (c.id) {
+          const { error: uErr } = await supabase.from("tenant_contacts").update(row).eq("id", c.id);
+          if (uErr) throw uErr;
+        } else {
+          const { error: iErr } = await supabase
+            .from("tenant_contacts")
+            .insert({ ...row, tenant_id: id, owner_id: data!.owner_id });
+          if (iErr) throw iErr;
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tenant", id] });
+      qc.invalidateQueries({ queryKey: ["tenant-contacts", id] });
       qc.invalidateQueries({ queryKey: ["tenants"] });
       toast.success("Сохранено");
     },
@@ -82,7 +129,8 @@ function EditTenant() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (isLoading || !data) return <div>Загрузка...</div>;
+  // Contacts must be loaded before the form mounts: they seed its local state.
+  if (isLoading || !data || contacts === undefined) return <div>Загрузка...</div>;
 
   const filteredContracts = (contracts ?? []).filter((c: any) => {
     if (!contractQuery) return true;
@@ -120,10 +168,24 @@ function EditTenant() {
             name: data.name,
             kind: data.kind,
             inn: data.inn ?? "",
-            phone: data.phone ?? "",
-            email: data.email ?? "",
-            contact_person: data.contact_person ?? "",
             notes: data.notes ?? "",
+            contacts:
+              (contacts ?? []).length > 0
+                ? (contacts ?? []).map((c) => ({
+                    id: c.id,
+                    full_name: c.full_name,
+                    email: c.email ?? "",
+                    phone: c.phone ?? "",
+                  }))
+                : // Legacy tenants without contact rows: prefill from the old
+                  // flat fields so nothing already entered is lost.
+                  [
+                    {
+                      full_name: data.contact_person ?? data.name ?? "",
+                      email: data.email ?? "",
+                      phone: data.phone ?? "",
+                    },
+                  ],
           }}
           onSubmit={(v) => mut.mutate(v)}
           submitting={mut.isPending}
