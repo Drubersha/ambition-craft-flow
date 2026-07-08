@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
 import { ensureChatThreadFn } from "@/lib/chat.functions";
+import { uploadSizeIssue } from "@/lib/upload-limits";
 
 type Props = {
   threadId: string;
@@ -155,6 +156,10 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       if (error) throw error;
 
       if (pendingFile) {
+        // Re-check at send time: the File object may have been picked before
+        // the limit check existed in this tab (stale bundle) or altered on disk.
+        const issue = uploadSizeIssue(pendingFile);
+        if (issue) throw new Error(issue);
         const path = `${ownerId}/${threadId}/${msg.id}/${pendingFile.name}`;
         const { error: upErr } = await supabase.storage
           .from("chat-attachments")
@@ -266,7 +271,19 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
             ref={fileRef}
             type="file"
             className="hidden"
-            onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              if (f) {
+                const issue = uploadSizeIssue(f);
+                if (issue) {
+                  toast.error(issue);
+                  e.target.value = "";
+                  setPendingFile(null);
+                  return;
+                }
+              }
+              setPendingFile(f);
+            }}
           />
           <Button
             type="button"

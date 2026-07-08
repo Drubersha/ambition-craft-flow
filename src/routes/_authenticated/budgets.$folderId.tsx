@@ -457,6 +457,11 @@ function SettingsDialog({
         .eq("id", plan.id);
       if (e1) throw e1;
       // Apply category changes
+      for (const r of rows) {
+        if (!r._delete && r.name.trim() && Number(r.limit_amount) < 0) {
+          throw new Error(`Лимит статьи «${r.name.trim()}» не может быть отрицательным`);
+        }
+      }
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
         if (r._delete && r.id) {
@@ -555,6 +560,8 @@ function SettingsDialog({
                   />
                   <Input
                     type="number"
+                    min={0}
+                    step="0.01"
                     placeholder="Лимит"
                     className="w-32"
                     value={r.limit_amount}
@@ -793,6 +800,8 @@ function AddExpenseDialog({
             <Label>Сумма</Label>
             <Input
               type="number"
+              min="0.01"
+              step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               autoFocus
