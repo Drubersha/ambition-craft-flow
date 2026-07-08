@@ -18,6 +18,7 @@ function NewTenant() {
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
+      const primary = v.contacts[0];
       const { data, error } = await supabase
         .from("tenants")
         .insert({
@@ -25,14 +26,29 @@ function NewTenant() {
           name: v.name,
           kind: v.kind as any,
           inn: v.inn || null,
-          phone: v.phone || null,
-          email: v.email || null,
-          contact_person: v.contact_person || null,
+          // Legacy fields mirror the primary contact: the tenant cabinet
+          // resolves accounts by tenants.email, list search uses phone/email.
+          phone: primary?.phone.trim() || null,
+          email: primary?.email.trim() || null,
+          contact_person: primary?.full_name.trim() || null,
           notes: v.notes || null,
         })
         .select()
         .single();
       if (error) throw error;
+      if (v.contacts.length > 0) {
+        const { error: cErr } = await supabase.from("tenant_contacts").insert(
+          v.contacts.map((c, i) => ({
+            owner_id: ownerId,
+            tenant_id: data.id,
+            full_name: c.full_name.trim(),
+            email: c.email.trim() || null,
+            phone: c.phone.trim() || null,
+            sort_order: i,
+          })),
+        );
+        if (cErr) throw cErr;
+      }
       return data;
     },
     onSuccess: (d) => {
