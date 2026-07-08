@@ -440,13 +440,18 @@ function NewChargeDialog({
         .eq("id", contractId)
         .maybeSingle();
       if (cErr || !c) throw cErr ?? new Error("Договор не найден");
+      const amt = Number(total);
+      if (!Number.isFinite(amt) || amt <= 0) throw new Error("Сумма должна быть больше нуля");
+      if (!periodStart || !periodEnd || periodStart > periodEnd)
+        throw new Error("Начало периода не может быть позже конца");
+      if (!dueDate) throw new Error("Укажите срок оплаты");
       const { error } = await supabase.from("charges").insert({
         owner_id: c.owner_id,
         contract_id: contractId,
         period_start: periodStart,
         period_end: periodEnd,
         due_date: dueDate,
-        total: Number(total) || 0,
+        total: amt,
       });
       if (error) throw error;
     },
@@ -503,6 +508,7 @@ function NewChargeDialog({
             <Input
               type="number"
               step="0.01"
+              min="0.01"
               value={total}
               onChange={(e) => {
                 setAutoCalc(false);

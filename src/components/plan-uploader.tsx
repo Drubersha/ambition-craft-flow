@@ -7,9 +7,9 @@ import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { PlanViewer } from "@/components/plan-viewer";
 import { normalizeToPng } from "@/lib/plan-normalize";
+import { uploadSizeIssue } from "@/lib/upload-limits";
 
 const BUCKET = "documents";
-const MAX_BYTES = 25 * 1024 * 1024;
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 
 export function PlanUploader({
@@ -51,8 +51,9 @@ export function PlanUploader({
       toast.error("Допустимы PNG, JPG, WEBP или PDF");
       return;
     }
-    if (file.size > MAX_BYTES) {
-      toast.error("Файл не должен превышать 25 МБ");
+    const sizeIssue = uploadSizeIssue(file);
+    if (sizeIssue) {
+      toast.error(sizeIssue);
       return;
     }
     setBusy(true);

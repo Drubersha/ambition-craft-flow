@@ -36,6 +36,7 @@ import {
   type Marking,
   type MarkingShape,
 } from "@/lib/markings";
+import { uploadSizeIssue } from "@/lib/upload-limits";
 import { normalizeToPng } from "@/lib/plan-normalize";
 import {
   Select,
@@ -49,7 +50,6 @@ import { cn } from "@/lib/utils";
 export { FoldersPage as FoldersView };
 
 const PLAN_BUCKET = "documents";
-const PLAN_MAX_BYTES = 25 * 1024 * 1024;
 const PLAN_ALLOWED = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 
 function PlanFileControls({
@@ -72,8 +72,9 @@ function PlanFileControls({
       toast.error("Допустимы PNG, JPG, WEBP или PDF");
       return;
     }
-    if (file.size > PLAN_MAX_BYTES) {
-      toast.error("Файл не должен превышать 25 МБ");
+    const sizeIssue = uploadSizeIssue(file);
+    if (sizeIssue) {
+      toast.error(sizeIssue);
       return;
     }
     setBusy(true);

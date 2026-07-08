@@ -270,11 +270,14 @@ function AddPaymentDialog({
   const qc = useQueryClient();
   const mut = useMutation({
     mutationFn: async () => {
+      const amt = Number(amount);
+      if (!Number.isFinite(amt) || amt <= 0) throw new Error("Сумма должна быть больше нуля");
+      if (!paidAt) throw new Error("Укажите дату оплаты");
       const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase.from("payments").insert({
         owner_id: u.user!.id,
         charge_id: chargeId,
-        amount: Number(amount) || 0,
+        amount: amt,
         paid_at: paidAt,
         method: method || null,
         comment: comment || null,
@@ -308,6 +311,7 @@ function AddPaymentDialog({
             <Input
               type="number"
               step="0.01"
+              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
