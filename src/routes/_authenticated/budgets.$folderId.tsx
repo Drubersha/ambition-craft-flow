@@ -58,7 +58,7 @@ function BudgetDetail() {
   const { folderId } = Route.useParams();
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["budget-detail", folderId],
     queryFn: async () => {
       const [folder, plans, cats, exps, limits] = await Promise.all([
@@ -72,7 +72,10 @@ function BudgetDetail() {
       if (plans.error) throw plans.error;
       if (cats.error) throw cats.error;
       if (exps.error) throw exps.error;
-      if (limits.error) throw limits.error;
+      // Per-period limits are an additive feature: if the table is missing
+      // (migration not applied yet), keep the budget page working — standard
+      // category limits apply everywhere.
+      if (limits.error) console.warn("[budget] period limits unavailable:", limits.error.message);
       const plan = plans.data as BudgetPlan | null;
       const categories = ((cats.data ?? []) as BudgetCategory[]).filter(
         (c) => c.plan_id === plan?.id,
@@ -109,6 +112,16 @@ function BudgetDetail() {
   }, [data?.plan?.id]);
 
   if (isLoading) return <div className="text-muted-foreground">Загрузка…</div>;
+  // A load error is not "folder not found" — show the real problem.
+  if (isError)
+    return (
+      <div className="space-y-2">
+        <div>Не удалось загрузить бюджет: {(error as Error)?.message ?? "ошибка"}</div>
+        <Link to="/budgets" className="underline">
+          Назад к списку
+        </Link>
+      </div>
+    );
   if (!data?.folder)
     return (
       <div>
