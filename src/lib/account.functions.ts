@@ -116,6 +116,9 @@ export const changePassword = createServerFn({ method: "POST" })
       title: "Пароль изменён",
       body: "Пароль вашего аккаунта был изменён. Если это были не вы — срочно смените пароль в настройках.",
       route: "/settings",
+      // Account emails are sent immediately below — the digest scheduler must
+      // never pick this row up.
+      emailed_at: new Date().toISOString(),
     });
     if (notifyError) console.warn("[account] in-app notification failed", notifyError);
 
