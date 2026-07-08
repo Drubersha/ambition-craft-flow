@@ -95,26 +95,23 @@ api.example.com {
 
 Два независимых канала:
 
-**1. Уведомления приложения → почта пользователю** (задачи, чаты, договоры, начисления, арендаторы, объекты). Каждая запись в `public.notifications` отправляется на email владельца через UniSender Go. Настройка:
+**1. Уведомления приложения → почта пользователю** (задачи, чаты, договоры, начисления, арендаторы, объекты). Письма отправляются **дайджестами**, чтобы массовый ввод данных не заваливал почту:
+
+- аккаунт/безопасность (смена пароля) — мгновенно;
+- чаты — одно письмо раз в 30 минут (всё накопившееся);
+- остальные уведомления — одно письмо раз в 2 часа.
+
+Настройка:
 
 1. В `.env`:
    ```
    UNISENDER_GO_API_KEY=...            # API-ключ проекта UniSender Go
    EMAIL_FROM=LeasePlease <no-reply@leaseplease.ru>   # подтверждённый в UniSender домен
-   NOTIFY_WEBHOOK_SECRET=$(openssl rand -hex 32)
    ```
+   Окна дайджестов можно переопределить: `NOTIFY_DIGEST_CHAT_MS` / `NOTIFY_DIGEST_OTHER_MS` (мс).
 2. Пересоздать `app`, чтобы переменные попали в контейнер: `docker compose up -d app`.
-3. Один раз зарегистрировать вебхук в БД (адрес — внутренний, по имени сервиса `app`):
-   ```bash
-   docker compose exec -T db psql -U postgres -d postgres <<SQL
-   INSERT INTO public.email_settings (id, webhook_url, webhook_secret, enabled)
-   VALUES (true, 'http://app:3000/api/notify-email', '<NOTIFY_WEBHOOK_SECRET>', true)
-   ON CONFLICT (id) DO UPDATE SET webhook_url = EXCLUDED.webhook_url,
-     webhook_secret = EXCLUDED.webhook_secret, enabled = EXCLUDED.enabled;
-   SQL
-   ```
-   Значение `webhook_secret` должно совпадать с `NOTIFY_WEBHOOK_SECRET` в `.env`.
-   Механизм: триггер на `notifications` через `pg_net` дергает `/api/notify-email`, приложение резолвит email и шлёт письмо. Аккаунты с адресом на `.local` (демо) пропускаются.
+
+Механизм: планировщик внутри приложения периодически выбирает из `public.notifications` записи с `emailed_at IS NULL`, шлёт один дайджест на пользователя через UniSender Go и проставляет `emailed_at`. Аккаунты с адресом на `.local` (демо) пропускаются. Старый per-insert вебхук (`email_settings` + pg_net) больше не используется — миграция `20260708000000_notification_email_digest.sql` удаляет триггер.
 
 **2. Письма аутентификации** (подтверждение регистрации, сброс пароля) — их шлёт сам GoTrue по SMTP, не через API выше. В `.env` заполнить блок `GOTRUE_SMTP_*` (в UniSender Go: Настройки → Конфигурация SMTP) и выставить `GOTRUE_MAILER_AUTOCONFIRM=false`, затем `docker compose up -d auth`. Если SMTP не задан — оставьте `GOTRUE_MAILER_AUTOCONFIRM=true`, иначе регистрация зависнет без письма.
 

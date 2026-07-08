@@ -4,6 +4,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const listMyNotifications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // The notifications bell polls this for every active user — a reliable
+    // place to lazily start the email digest scheduler after (re)starts.
+    const { ensureNotificationDigestScheduler } = await import("@/lib/notification-digest.server");
+    ensureNotificationDigestScheduler();
     const { data, error } = await context.supabase
       .from("notifications")
       .select("id, kind, title, body, entity_table, entity_id, route, read_at, created_at")
