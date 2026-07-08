@@ -266,6 +266,11 @@ function Tooltip({
   const occupied = contracts.reduce((sum, c) => sum + (c.area ?? area), 0);
   const free = Math.max(0, area - occupied);
   const freePct = area > 0 ? Math.round((free / area) * 100) : 0;
+  // Суммарный доход по активным договорам аренды, приведённый к месяцу.
+  const monthlyIncome = contracts.reduce(
+    (sum, c) => sum + monthlyPayment(c.rate, c.payment_period, c.area ?? area),
+    0,
+  );
   const singleFull =
     contracts.length === 1 && (contracts[0].area === null || (contracts[0].area ?? 0) >= area);
   const showOccupancy = contracts.length > 0 && !singleFull;
@@ -307,6 +312,14 @@ function Tooltip({
           <span className="text-muted-foreground">Свободно</span>
           <span className="font-medium">
             {free} м² ({freePct}%)
+          </span>
+        </div>
+      )}
+      {contracts.length > 0 && monthlyIncome > 0 && (
+        <div className="flex justify-between gap-2 text-[10px]">
+          <span className="text-muted-foreground">Доход (актив. договоры)</span>
+          <span className="font-semibold text-primary">
+            {fmt(monthlyIncome, contracts[0].currency)}/мес
           </span>
         </div>
       )}
