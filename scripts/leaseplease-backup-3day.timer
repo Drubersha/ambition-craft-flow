@@ -1,0 +1,15 @@
+[Unit]
+Description=Run LeasePlease 3-day backup at 00:20 every 3rd day
+
+[Timer]
+# Every 3rd day of the month (1st, 4th, 7th, …) at 00:20 — after the daily
+# backup (00:00) and the nightly deploy (00:01), so this tier snapshots the
+# state that survived the deploy. With BACKUP_KEEP=2 per label this keeps
+# restore points up to ~6 days back — more time to notice bad data and react.
+# Month ends make one interval 1-2 days shorter; acceptable for a safety tier.
+OnCalendar=*-*-1/3 00:20:00
+Persistent=true
+Unit=leaseplease-backup-3day.service
+
+[Install]
+WantedBy=timers.target

@@ -38,15 +38,18 @@ The app image is a Nitro **node-server** build: `bun run build` emits `.output/s
 Code is recoverable from git; the irreplaceable part is **data**, so backups cover Postgres (all schemas: `public`, `auth`, `storage`) + the uploaded `storage` files + a copy of `.env`.
 
 - `scripts/backup.sh <label>` writes `BACKUP_ROOT` (default `/root/leaseplease-backups`)`/<label>/<timestamp>/` with `db.sql.gz`, `storage.tar.gz`, `env.backup`, `code-commit.txt`, and keeps the newest `BACKUP_KEEP` (default 2) per label.
-- Two restore points are maintained automatically:
+- Three restore points are maintained automatically:
   - **Pre-change:** `deploy.yml` runs `scripts/backup.sh predeploy` before updating app code on every deploy.
   - **Previous day:** the `leaseplease-backup.timer` systemd unit runs `scripts/backup.sh daily` at 00:00 (one minute before the 00:01 deploy).
-- Install the daily timer once on the server:
+  - **Every 3 days:** the `leaseplease-backup-3day.timer` unit runs `scripts/backup.sh 3day` at 00:20 on the 1st/4th/7th/… of each month — with `BACKUP_KEEP=2` this tier keeps restore points up to ~6 days back, giving more time to notice bad data and react.
+- Install the timers once on the server:
   ```bash
   cp scripts/leaseplease-backup.service /etc/systemd/system/
   cp scripts/leaseplease-backup.timer   /etc/systemd/system/
+  cp scripts/leaseplease-backup-3day.service /etc/systemd/system/
+  cp scripts/leaseplease-backup-3day.timer   /etc/systemd/system/
   systemctl daemon-reload
-  systemctl enable --now leaseplease-backup.timer
+  systemctl enable --now leaseplease-backup.timer leaseplease-backup-3day.timer
   ```
 - Restore: `./scripts/restore.sh /root/leaseplease-backups/<label>/<timestamp>` (overwrites current DB + storage; prompts for confirmation). Verify a backup by restoring `db.sql.gz` into a throwaway database first.
 - Backups contain secrets (`env.backup`) — keep `BACKUP_ROOT` root-only and off the public internet. Monitor disk usage under `BACKUP_ROOT`.

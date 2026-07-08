@@ -7,7 +7,8 @@
 #
 # Retention: keeps the newest BACKUP_KEEP backups PER LABEL (default 2). So with the
 # daily timer + pre-deploy hook you always have: yesterday's copy AND the copy taken
-# right before the latest change.
+# right before the latest change. The "3day" timer adds a longer tier on top:
+# two snapshots taken 3 days apart => restore points up to ~6 days back.
 #
 # NOTE: this is a HOT logical backup (no downtime). The DB dump and the storage archive
 # are taken back-to-back, so a write in the gap could differ by a few seconds between

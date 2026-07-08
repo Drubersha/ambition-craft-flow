@@ -1,0 +1,10 @@
+[Unit]
+Description=LeasePlease data backup every 3 days (longer retention tier)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+# Adjust WorkingDirectory to where the repo is checked out on the server.
+WorkingDirectory=/root/leaseplease
+ExecStart=/bin/bash /root/leaseplease/scripts/backup.sh 3day
