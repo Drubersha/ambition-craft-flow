@@ -38,8 +38,8 @@ describe("auth role helpers", () => {
   it("rejects non-administrators and propagates role query errors", async () => {
     expect(() => requireAdministrator(["owner"])).toThrow("Forbidden");
     expect(() => requireAdministrator(["moderator"])).not.toThrow();
-    await expect(getUserRoles(roleClient([], { message: "database unavailable" }), "user-1")).rejects.toThrow(
-      "database unavailable",
-    );
+    await expect(
+      getUserRoles(roleClient([], { message: "database unavailable" }), "user-1"),
+    ).rejects.toThrow("database unavailable");
   });
 });

@@ -1,10 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  getAdminRoles,
-  requireAdministrator,
-  type AdminRole,
-} from "@/lib/auth-roles.server";
+import { getAdminRoles, requireAdministrator, type AdminRole } from "@/lib/auth-roles.server";
 
 export type { AdminRole } from "@/lib/auth-roles.server";
 
