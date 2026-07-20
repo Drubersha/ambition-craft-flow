@@ -365,7 +365,7 @@ function Dashboard() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Дашборд</h1>
@@ -380,7 +380,7 @@ function Dashboard() {
 
       {/* Global filters */}
       <Card>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
@@ -471,7 +471,7 @@ function Dashboard() {
           </label>
         }
       >
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           <Kpi
             icon={Building2}
             label="Общая площадь"
@@ -559,7 +559,7 @@ function Dashboard() {
       {/* Block 2: Properties table */}
       <Section title="Объекты и помещения">
         <Card>
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-3 space-y-2">
             <Input
               placeholder="Поиск по названию…"
               value={propsQuery}
@@ -586,7 +586,7 @@ function Dashboard() {
 
       {/* Block 3: Contracts */}
       <Section title="Договорная база">
-        <div className="grid lg:grid-cols-2 gap-4">
+        <div className="grid lg:grid-cols-2 gap-3">
           <ExpiringLists contracts={filtered.contracts} />
           <RateHistoryTable contracts={filtered.contracts} />
           <PlaceholderCard
@@ -658,9 +658,9 @@ function Section({
   right?: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
         </h2>
         {right}
@@ -687,12 +687,12 @@ function Kpi({
 }) {
   const card = (
     <Card className={hint ? "cursor-help" : undefined}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Icon className="h-4 w-4" />
+      <CardContent className="p-2.5">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Icon className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{label}</span>
         </div>
-        <div className={`mt-1 text-lg sm:text-xl font-bold break-words ${toneClass(tone)}`}>
+        <div className={`mt-0.5 text-base sm:text-lg font-bold break-words ${toneClass(tone)}`}>
           {value}
         </div>
         {sub}
@@ -940,7 +940,7 @@ function ExpiringLists({ contracts }: { contracts: Contract[] }) {
   }, [contracts]);
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base">Истекающие договоры</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1019,10 +1019,10 @@ function RateHistoryTable({ contracts }: { contracts: Contract[] }) {
   }, [contracts]);
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base">История индексаций ставок</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-0">
         {rows.length === 0 ? (
           <EmptyText text="Недостаточно данных — нужно ≥2 договора по объекту." />
         ) : (
@@ -1064,13 +1064,13 @@ function RateHistoryTable({ contracts }: { contracts: Contract[] }) {
 function PlaceholderCard({ title, text }: { title: string; text: string }) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Info className="h-4 w-4 text-muted-foreground" />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-0">
         <EmptyText text={text} />
       </CardContent>
     </Card>
@@ -1183,12 +1183,12 @@ function ArSection({
   }, [charges, payments, periodStart, periodEnd]);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid lg:grid-cols-2 gap-3">
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Aging задолженности</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <Kpi
               icon={AlertTriangle}
@@ -1203,7 +1203,7 @@ function ArSection({
               tone={collectionRate >= 90 ? "ok" : collectionRate >= 70 ? "warn" : "danger"}
             />
           </div>
-          <div style={{ width: "100%", height: 220 }}>
+          <div style={{ width: "100%", height: 190 }}>
             <ResponsiveContainer>
               <BarChart data={agingData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1232,11 +1232,11 @@ function ArSection({
 
       {billedVsPaid.length >= 2 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 py-3">
             <CardTitle className="text-base">Начислено vs оплачено по месяцам</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div style={{ width: "100%", height: 260 }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div style={{ width: "100%", height: 210 }}>
               <ResponsiveContainer>
                 <BarChart data={billedVsPaid}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1257,10 +1257,10 @@ function ArSection({
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Топ должников</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {debtors.length === 0 ? (
             <EmptyText text="Просрочек нет" />
           ) : (
@@ -1295,10 +1295,10 @@ function ArSection({
       </Card>
 
       <Card className="lg:col-span-2">
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Последние платежи</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {recentPayments.length === 0 ? (
             <EmptyText text="Платежей нет" />
           ) : (
@@ -1431,16 +1431,16 @@ function FinanceSection({
   }, [contracts]);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid lg:grid-cols-2 gap-3">
       <Card className="lg:col-span-2">
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Динамика арендного дохода</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {monthly.length === 0 ? (
             <EmptyText text="Нет платежей за период" />
           ) : (
-            <div style={{ width: "100%", height: 260 }}>
+            <div style={{ width: "100%", height: 210 }}>
               <ResponsiveContainer>
                 <LineChart data={monthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1462,14 +1462,14 @@ function FinanceSection({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Вакантность по типам объектов</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {vacancyByType.length === 0 ? (
             <EmptyText text="Нет данных" />
           ) : (
-            <div style={{ width: "100%", height: 240 }}>
+            <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
                 <BarChart data={vacancyByType} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1485,14 +1485,14 @@ function FinanceSection({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Общая площадь по типам объектов</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {areaByType.length === 0 ? (
             <EmptyText text="Нет данных" />
           ) : (
-            <div style={{ width: "100%", height: 240 }}>
+            <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
                 <BarChart data={areaByType} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1508,14 +1508,14 @@ function FinanceSection({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">Средняя ставка по типам объектов</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 pt-0">
           {avgRateByType.length === 0 ? (
             <EmptyText text="Нет активных договоров" />
           ) : (
-            <div style={{ width: "100%", height: 240 }}>
+            <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
                 <BarChart data={avgRateByType} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1532,11 +1532,11 @@ function FinanceSection({
 
       {occupancy12m.length > 0 && (
         <Card className="lg:col-span-2">
-          <CardHeader>
+          <CardHeader className="px-4 py-3">
             <CardTitle className="text-base">Занятость за 12 месяцев</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div style={{ width: "100%", height: 240 }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
                 <LineChart data={occupancy12m}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -1627,10 +1627,10 @@ function BudgetPlanVsFact({ periodStart, periodEnd }: { periodStart: Date; perio
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base">План vs Факт (за период)</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-0">
         {isLoading ? (
           <EmptyText text="Загрузка…" />
         ) : rows.length === 0 ? (
@@ -1708,16 +1708,16 @@ function BudgetExpenseStructure({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base">Структура операционных расходов (за период)</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-0">
         {isLoading ? (
           <EmptyText text="Загрузка…" />
         ) : slices.length === 0 ? (
           <EmptyText text="Нет расходов за выбранный период." />
         ) : (
-          <div style={{ width: "100%", height: 260 }}>
+          <div style={{ width: "100%", height: 210 }}>
             <ResponsiveContainer>
               <PieChart>
                 <RTooltip
@@ -1864,7 +1864,7 @@ function CurrentMonthOps({
   }, [metersData]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
       <Kpi
         icon={Percent}
         label="Собираемость месяца"
@@ -2005,11 +2005,11 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
     <div className="space-y-4">
       {monthlyRows.length >= 2 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 py-3">
             <CardTitle className="text-base">Доходы, расходы и прибыль по месяцам</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div style={{ width: "100%", height: 280 }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div style={{ width: "100%", height: 240 }}>
               <ResponsiveContainer>
                 <ComposedChart data={monthlyRows}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -2039,7 +2039,7 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
               <TrendingDown className="h-4 w-4" />
               <span>Расходы за период</span>
             </div>
-            <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+            <div className="mt-0.5 text-base sm:text-lg font-bold break-words">
               {formatMoney(expenseMonth)}
             </div>
           </CardContent>
@@ -2050,7 +2050,7 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
               <TrendingDown className="h-4 w-4" />
               <span>Расходы за {periodEnd.getFullYear()} год</span>
             </div>
-            <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+            <div className="mt-0.5 text-base sm:text-lg font-bold break-words">
               {formatMoney(expenseYear)}
             </div>
           </CardContent>
@@ -2062,7 +2062,7 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
               <span>Прибыль за период</span>
             </div>
             <div
-              className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}
+              className={`mt-0.5 text-base sm:text-lg font-bold break-words ${profitColor(profitMonth)}`}
             >
               {formatMoney(profitMonth)}
             </div>
@@ -2078,7 +2078,7 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
               <span>Прибыль за {periodEnd.getFullYear()} год</span>
             </div>
             <div
-              className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}
+              className={`mt-0.5 text-base sm:text-lg font-bold break-words ${profitColor(profitYear)}`}
             >
               {formatMoney(profitYear)}
             </div>
