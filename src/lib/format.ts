@@ -74,6 +74,8 @@ export const PROPERTY_TYPE_LABELS: Record<string, string> = {
   retail: "Торговая площадь",
   production: "Производство",
   coworking: "Коворкинг",
+  land: "Земля",
+  parking: "Машиноместа",
   other: "Другое",
 };
 

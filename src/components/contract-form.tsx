@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -128,10 +130,22 @@ export function ContractForm({
       (
         await supabase
           .from("properties")
-          .select("id,name,cadastral_no,area_total,base_rate")
+          .select("id,name,cadastral_no,area_total,base_rate,folder:folders(name)")
           .order("name")
       ).data ?? [],
   });
+
+  // Группировка объектов по папкам-контурам (Помещения / Земля / Офис / Машиноместа …).
+  const propertyGroups = useMemo(() => {
+    const groups = new Map<string, NonNullable<typeof properties>>();
+    for (const p of properties ?? []) {
+      const key = (p as { folder?: { name: string } | null }).folder?.name ?? "Без папки";
+      const arr = groups.get(key) ?? [];
+      arr.push(p);
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ru"));
+  }, [properties]);
 
   function onPropertyChange(id: string) {
     set("property_id", id);
@@ -192,10 +206,15 @@ export function ContractForm({
               <SelectValue placeholder="Выберите" />
             </SelectTrigger>
             <SelectContent>
-              {properties?.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
+              {propertyGroups.map(([folderName, items]) => (
+                <SelectGroup key={folderName}>
+                  <SelectLabel>{folderName}</SelectLabel>
+                  {items.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>

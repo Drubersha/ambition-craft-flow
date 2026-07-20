@@ -1559,7 +1559,15 @@ export type Database = {
       payment_period: "monthly" | "quarterly" | "yearly" | "one_time";
       property_status:
         "free" | "occupied" | "partial" | "maintenance" | "archived" | "ahch" | "partial_ahch";
-      property_type: "office" | "warehouse" | "retail" | "production" | "coworking" | "other";
+      property_type:
+        | "office"
+        | "warehouse"
+        | "retail"
+        | "production"
+        | "coworking"
+        | "land"
+        | "parking"
+        | "other";
       task_priority: "low" | "normal" | "high";
       task_status: "accepted" | "in_progress" | "review" | "done" | "archived";
       task_suggestion_status: "pending" | "accepted" | "dismissed";
@@ -1707,7 +1715,16 @@ export const Constants = {
         "ahch",
         "partial_ahch",
       ],
-      property_type: ["office", "warehouse", "retail", "production", "coworking", "other"],
+      property_type: [
+        "office",
+        "warehouse",
+        "retail",
+        "production",
+        "coworking",
+        "land",
+        "parking",
+        "other",
+      ],
       task_priority: ["low", "normal", "high"],
       task_status: ["accepted", "in_progress", "review", "done", "archived"],
       task_suggestion_status: ["pending", "accepted", "dismissed"],
