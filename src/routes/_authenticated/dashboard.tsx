@@ -38,6 +38,7 @@ import {
   Info,
   PiggyBank,
   TrendingDown,
+  Gauge,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -53,6 +54,7 @@ import {
   LineChart,
   Line,
   Legend,
+  ComposedChart,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -103,6 +105,28 @@ type Payment = {
   paid_at: string;
   method: string | null;
 };
+
+/** Ключи месяцев "YYYY-MM" между двумя датами включительно. */
+function monthKeysBetween(start: Date, end: Date): string[] {
+  const keys: string[] = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cur <= last) {
+    keys.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return keys;
+}
+
+const monthKeyOf = (iso: string) => iso.slice(0, 7);
+
+function monthShort(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString("ru-RU", {
+    month: "short",
+    year: "2-digit",
+  });
+}
 
 function getPeriodRange(period: Period, customFrom?: string, customTo?: string): [Date, Date] {
   const now = new Date();
@@ -514,6 +538,17 @@ function Dashboard() {
             hint={showKpiHints ? kpiHints.ahchShare : undefined}
           />
         </div>
+      </Section>
+
+      {/* Block 1a2: operational snapshot of the current month */}
+      <Section title="Оперативно: текущий месяц">
+        <CurrentMonthOps
+          charges={filtered.charges}
+          contracts={filtered.contracts}
+          payments={filtered.payments}
+          properties={filtered.properties}
+          ahchContracts={filtered.ahchContracts}
+        />
       </Section>
 
       {/* Block 1b: Income, Expenses, Profit */}
@@ -1122,6 +1157,31 @@ function ArSection({
     .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
     .slice(0, 10);
 
+  // При периоде от двух месяцев — помесячная собираемость.
+  const billedVsPaid = useMemo(() => {
+    const keys = monthKeysBetween(periodStart, periodEnd);
+    if (keys.length < 2) return [];
+    const billedBy = new Map<string, number>();
+    for (const c of charges) {
+      const d = new Date(c.period_end);
+      if (d < periodStart || d > periodEnd) continue;
+      const k = monthKeyOf(c.period_end);
+      billedBy.set(k, (billedBy.get(k) ?? 0) + Number(c.total));
+    }
+    const paidBy = new Map<string, number>();
+    for (const p of payments) {
+      const d = new Date(p.paid_at);
+      if (d < periodStart || d > periodEnd) continue;
+      const k = monthKeyOf(p.paid_at);
+      paidBy.set(k, (paidBy.get(k) ?? 0) + Number(p.amount));
+    }
+    return keys.map((k) => ({
+      month: monthShort(k),
+      Начислено: Math.round(billedBy.get(k) ?? 0),
+      Оплачено: Math.round(paidBy.get(k) ?? 0),
+    }));
+  }, [charges, payments, periodStart, periodEnd]);
+
   return (
     <div className="grid lg:grid-cols-2 gap-4">
       <Card>
@@ -1169,6 +1229,32 @@ function ArSection({
           </div>
         </CardContent>
       </Card>
+
+      {billedVsPaid.length >= 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Начислено vs оплачено по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                <BarChart data={billedVsPaid}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <RTooltip formatter={(v: any) => formatMoney(Number(v))} />
+                  <Legend />
+                  <Bar dataKey="Начислено" fill="var(--info)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Оплачено" fill="var(--success)" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Разрыв между столбцами — недосбор соответствующего месяца.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -1297,6 +1383,30 @@ function FinanceSection({
       .sort((a, b) => b.area - a.area);
   }, [properties]);
 
+  // Картина года: занятость по месяцам, восстановленная из дат договоров.
+  const occupancy12m = useMemo(() => {
+    const totalArea = properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
+    if (totalArea <= 0) return [];
+    const now = new Date();
+    const rows: { month: string; Занятость: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const leased = contracts.reduce((s, c) => {
+        const started = new Date(c.start_date) <= mEnd;
+        const notEnded = !c.end_date || new Date(c.end_date) >= mStart;
+        return started && notEnded ? s + Number(c.area || 0) : s;
+      }, 0);
+      rows.push({
+        month: monthShort(
+          `${mStart.getFullYear()}-${String(mStart.getMonth() + 1).padStart(2, "0")}`,
+        ),
+        Занятость: Math.round(Math.min(100, (leased / totalArea) * 100) * 10) / 10,
+      });
+    }
+    return rows;
+  }, [contracts, properties]);
+
   const avgRateByType = useMemo(() => {
     const m = new Map<string, { num: number; den: number }>();
     contracts
@@ -1419,6 +1529,36 @@ function FinanceSection({
           )}
         </CardContent>
       </Card>
+
+      {occupancy12m.length > 0 && (
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Занятость за 12 месяцев</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <LineChart data={occupancy12m}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} unit="%" />
+                  <RTooltip formatter={(v: any) => `${v}%`} />
+                  <Line
+                    type="monotone"
+                    dataKey="Занятость"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Доля сданной площади (по датам договоров аренды) от общей площади объектов в фильтре.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <BudgetPlanVsFact periodStart={periodStart} periodEnd={periodEnd} />
       <BudgetExpenseStructure periodStart={periodStart} periodEnd={periodEnd} />
@@ -1614,6 +1754,189 @@ function BudgetExpenseStructure({
   );
 }
 
+/**
+ * Оперативная сводка всегда про текущий календарный месяц — независимо от
+ * выбранного сверху периода: «что требует внимания прямо сейчас».
+ */
+function CurrentMonthOps({
+  charges,
+  contracts,
+  payments,
+  properties,
+  ahchContracts,
+}: {
+  charges: Charge[];
+  contracts: Contract[];
+  payments: Payment[];
+  properties: Property[];
+  ahchContracts: Contract[];
+}) {
+  const { data: metersData } = useQuery({
+    queryKey: ["dashboard-meters"],
+    queryFn: async () => {
+      const [me, re] = await Promise.all([
+        supabase.from("meters").select("id").eq("active", true),
+        supabase.from("meter_readings").select("meter_id, read_at"),
+      ]);
+      if (me.error) throw me.error;
+      if (re.error) throw re.error;
+      return { meters: me.data ?? [], readings: re.data ?? [] };
+    },
+  });
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const today = new Date(y, m, now.getDate());
+  const inThisMonth = (iso: string | null | undefined) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  const stats = useMemo(() => {
+    const billed = charges
+      .filter((c) => inThisMonth(c.period_end))
+      .reduce((s, c) => s + Number(c.total), 0);
+    const paid = payments
+      .filter((p) => inThisMonth(p.paid_at))
+      .reduce((s, p) => s + Number(p.amount), 0);
+    const collection = billed > 0 ? Math.min(100, (paid / billed) * 100) : null;
+
+    let dueSoon = 0;
+    let overdueSum = 0;
+    let overdueCount = 0;
+    for (const c of charges) {
+      const remain = Number(c.total) - Number(c.paid_total);
+      if (remain <= 0 || !c.due_date) continue;
+      const due = new Date(c.due_date);
+      if (due < today) {
+        overdueSum += remain;
+        overdueCount++;
+      } else if (inThisMonth(c.due_date)) {
+        dueSoon += remain;
+      }
+    }
+
+    const expiring = contracts.filter(
+      (c) => c.status === "active" && inThisMonth(c.end_date),
+    ).length;
+
+    // Недополученный доход: свободная площадь × базовая ставка объекта.
+    const leasedByProp = new Map<string, number>();
+    for (const c of contracts) {
+      if (c.status !== "active") continue;
+      leasedByProp.set(c.property_id, (leasedByProp.get(c.property_id) ?? 0) + Number(c.area || 0));
+    }
+    for (const c of ahchContracts) {
+      if (c.status !== "active") continue;
+      leasedByProp.set(c.property_id, (leasedByProp.get(c.property_id) ?? 0) + Number(c.area || 0));
+    }
+    let vacantArea = 0;
+    let vacantIncome = 0;
+    for (const p of properties) {
+      const free = Math.max(0, Number(p.area_total || 0) - (leasedByProp.get(p.id) ?? 0));
+      vacantArea += free;
+      vacantIncome += free * Number(p.base_rate || 0);
+    }
+
+    return {
+      billed,
+      paid,
+      collection,
+      dueSoon,
+      overdueSum,
+      overdueCount,
+      expiring,
+      vacantArea,
+      vacantIncome,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charges, contracts, payments, properties, ahchContracts]);
+
+  const metersNoReading = useMemo(() => {
+    if (!metersData) return null;
+    const withReading = new Set(
+      metersData.readings.filter((r) => inThisMonth(r.read_at)).map((r) => r.meter_id),
+    );
+    return metersData.meters.filter((mm) => !withReading.has(mm.id)).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metersData]);
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <Kpi
+        icon={Percent}
+        label="Собираемость месяца"
+        value={stats.collection === null ? "—" : `${stats.collection.toFixed(0)}%`}
+        tone={
+          stats.collection === null
+            ? undefined
+            : stats.collection >= 90
+              ? "ok"
+              : stats.collection >= 70
+                ? "warn"
+                : "danger"
+        }
+        sub={
+          <div className="mt-1 space-y-1">
+            {stats.collection !== null && <Progress value={stats.collection} className="h-1.5" />}
+            <div className="text-[11px] text-muted-foreground">
+              {formatMoney(stats.paid)} из {formatMoney(stats.billed)}
+            </div>
+          </div>
+        }
+      />
+      <Kpi
+        icon={Wallet}
+        label="Ждём до конца месяца"
+        value={formatMoney(stats.dueSoon)}
+        hint="Неоплаченные начисления со сроком оплаты до конца текущего месяца."
+      />
+      <Kpi
+        icon={AlertTriangle}
+        label="Просрочено всего"
+        value={formatMoney(stats.overdueSum)}
+        tone={stats.overdueSum > 0 ? "danger" : "ok"}
+        sub={
+          stats.overdueCount > 0 ? (
+            <div className="text-[11px] text-muted-foreground mt-1">
+              {stats.overdueCount} начислений(я)
+            </div>
+          ) : undefined
+        }
+      />
+      <Kpi
+        icon={Gauge}
+        label="Счётчики без показаний"
+        value={metersNoReading === null ? "…" : metersNoReading}
+        tone={metersNoReading ? "warn" : "ok"}
+        sub={
+          <Link to="/utilities" className="text-[11px] underline text-muted-foreground">
+            Открыть коммуналку
+          </Link>
+        }
+      />
+      <Kpi
+        icon={CalendarClock}
+        label="Договоры истекают в этом месяце"
+        value={stats.expiring}
+        tone={stats.expiring > 0 ? "warn" : "ok"}
+      />
+      <Kpi
+        icon={TrendingDown}
+        label="Потенциал свободных площадей"
+        value={formatMoney(stats.vacantIncome)}
+        sub={
+          <div className="text-[11px] text-muted-foreground mt-1">
+            {formatNum(stats.vacantArea)} м² свободно × базовая ставка, в месяц
+          </div>
+        }
+      />
+    </div>
+  );
+}
+
 function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEnd: Date }) {
   const { data } = useQuery({
     queryKey: ["dashboard-budget"],
@@ -1652,62 +1975,119 @@ function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEn
 
   const profitColor = (v: number) => (v < 0 ? "text-destructive" : "text-foreground");
 
+  // При периоде от двух месяцев — помесячная разбивка доход/расход/прибыль.
+  const monthKeys = monthKeysBetween(periodStart, periodEnd);
+  const monthlyRows = useMemo(() => {
+    if (monthKeys.length < 2 || !data) return [];
+    const income = new Map<string, number>();
+    const expense = new Map<string, number>();
+    for (const p of data.payments as any[]) {
+      const d = new Date(p.paid_at);
+      if (d < periodStart || d > periodEnd) continue;
+      const k = monthKeyOf(p.paid_at);
+      income.set(k, (income.get(k) ?? 0) + Number(p.amount || 0));
+    }
+    for (const e of data.expenses as any[]) {
+      const d = new Date(e.spent_at);
+      if (d < periodStart || d > periodEnd) continue;
+      const k = monthKeyOf(e.spent_at);
+      expense.set(k, (expense.get(k) ?? 0) + Number(e.amount || 0));
+    }
+    return monthKeys.map((k) => {
+      const inc = Math.round(income.get(k) ?? 0);
+      const exp = Math.round(expense.get(k) ?? 0);
+      return { month: monthShort(k), Доход: inc, Расход: exp, Прибыль: inc - exp };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, periodStart, periodEnd, monthKeys.join(",")]);
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingDown className="h-4 w-4" />
-            <span>Расходы за период</span>
-          </div>
-          <div className="mt-1 text-lg sm:text-xl font-bold break-words">
-            {formatMoney(expenseMonth)}
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingDown className="h-4 w-4" />
-            <span>Расходы за {periodEnd.getFullYear()} год</span>
-          </div>
-          <div className="mt-1 text-lg sm:text-xl font-bold break-words">
-            {formatMoney(expenseYear)}
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <PiggyBank className="h-4 w-4" />
-            <span>Прибыль за период</span>
-          </div>
-          <div
-            className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}
-          >
-            {formatMoney(profitMonth)}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Маржа: {marginMonth === null ? "—" : `${marginMonth.toFixed(1)}%`}
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <PiggyBank className="h-4 w-4" />
-            <span>Прибыль за {periodEnd.getFullYear()} год</span>
-          </div>
-          <div
-            className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}
-          >
-            {formatMoney(profitYear)}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Маржа: {marginYear === null ? "—" : `${marginYear.toFixed(1)}%`}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      {monthlyRows.length >= 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Доходы, расходы и прибыль по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: "100%", height: 280 }}>
+              <ResponsiveContainer>
+                <ComposedChart data={monthlyRows}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <RTooltip formatter={(v: any) => formatMoney(Number(v))} />
+                  <Legend />
+                  <Bar dataKey="Доход" fill="var(--success)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Расход" fill="var(--destructive)" radius={[3, 3, 0, 0]} />
+                  <Line
+                    type="monotone"
+                    dataKey="Прибыль"
+                    stroke="var(--info)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <TrendingDown className="h-4 w-4" />
+              <span>Расходы за период</span>
+            </div>
+            <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+              {formatMoney(expenseMonth)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <TrendingDown className="h-4 w-4" />
+              <span>Расходы за {periodEnd.getFullYear()} год</span>
+            </div>
+            <div className="mt-1 text-lg sm:text-xl font-bold break-words">
+              {formatMoney(expenseYear)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <PiggyBank className="h-4 w-4" />
+              <span>Прибыль за период</span>
+            </div>
+            <div
+              className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}
+            >
+              {formatMoney(profitMonth)}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Маржа: {marginMonth === null ? "—" : `${marginMonth.toFixed(1)}%`}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <PiggyBank className="h-4 w-4" />
+              <span>Прибыль за {periodEnd.getFullYear()} год</span>
+            </div>
+            <div
+              className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}
+            >
+              {formatMoney(profitYear)}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Маржа: {marginYear === null ? "—" : `${marginYear.toFixed(1)}%`}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
