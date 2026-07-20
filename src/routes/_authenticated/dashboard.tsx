@@ -518,7 +518,7 @@ function Dashboard() {
 
       {/* Block 1b: Income, Expenses, Profit */}
       <Section title="Доходы, расходы и прибыль">
-        <ProfitSummary />
+        <ProfitSummary periodStart={periodStart} periodEnd={periodEnd} />
       </Section>
 
       {/* Block 2: Properties table */}
@@ -1420,13 +1420,13 @@ function FinanceSection({
         </CardContent>
       </Card>
 
-      <BudgetPlanVsFact />
-      <BudgetExpenseStructure />
+      <BudgetPlanVsFact periodStart={periodStart} periodEnd={periodEnd} />
+      <BudgetExpenseStructure periodStart={periodStart} periodEnd={periodEnd} />
     </div>
   );
 }
 
-function BudgetPlanVsFact() {
+function BudgetPlanVsFact({ periodStart, periodEnd }: { periodStart: Date; periodEnd: Date }) {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-budget-pvf"],
     queryFn: async () => {
@@ -1451,23 +1451,27 @@ function BudgetPlanVsFact() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const inMonth = (s: string) => {
+    const inPeriod = (s: string) => {
       const d = new Date(s);
-      return d.getFullYear() === y && d.getMonth() === m;
+      return d >= periodStart && d <= periodEnd;
     };
+    // Лимиты категорий месячные — для периода длиннее месяца план масштабируем.
+    const months = Math.max(
+      1,
+      (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 +
+        (periodEnd.getMonth() - periodStart.getMonth()) +
+        1,
+    );
     const planLimitByPlan = new Map<string, number>();
     for (const c of data.categories as any[]) {
       planLimitByPlan.set(
         c.plan_id,
-        (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0),
+        (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0) * months,
       );
     }
     const factByPlan = new Map<string, number>();
     for (const e of data.expenses as any[]) {
-      if (!inMonth(e.spent_at)) continue;
+      if (!inPeriod(e.spent_at)) continue;
       factByPlan.set(e.plan_id, (factByPlan.get(e.plan_id) ?? 0) + Number(e.amount || 0));
     }
     const folderName = new Map((data.folders as any[]).map((f) => [f.id, f.name]));
@@ -1479,12 +1483,12 @@ function BudgetPlanVsFact() {
       }))
       .filter((r) => r.plan > 0 || r.fact > 0)
       .sort((a, b) => b.plan + b.fact - (a.plan + a.fact));
-  }, [data]);
+  }, [data, periodStart, periodEnd]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">План vs Факт (текущий месяц)</CardTitle>
+        <CardTitle className="text-base">План vs Факт (за период)</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -1517,7 +1521,13 @@ function BudgetPlanVsFact() {
   );
 }
 
-function BudgetExpenseStructure() {
+function BudgetExpenseStructure({
+  periodStart,
+  periodEnd,
+}: {
+  periodStart: Date;
+  periodEnd: Date;
+}) {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-budget-structure"],
     queryFn: async () => {
@@ -1533,21 +1543,18 @@ function BudgetExpenseStructure() {
 
   const slices = useMemo(() => {
     if (!data) return [] as { name: string; value: number }[];
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
     const nameById = new Map((data.categories as any[]).map((c) => [c.id, c.name]));
     const sums = new Map<string, number>();
     for (const e of data.expenses as any[]) {
       const d = new Date(e.spent_at);
-      if (d.getFullYear() !== y || d.getMonth() !== m) continue;
+      if (d < periodStart || d > periodEnd) continue;
       const key = nameById.get(e.category_id) ?? "Без категории";
       sums.set(key, (sums.get(key) ?? 0) + Number(e.amount || 0));
     }
     return Array.from(sums.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [data]);
+  }, [data, periodStart, periodEnd]);
 
   const total = slices.reduce((s, r) => s + r.value, 0);
   const palette = [
@@ -1562,13 +1569,13 @@ function BudgetExpenseStructure() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Структура операционных расходов (месяц)</CardTitle>
+        <CardTitle className="text-base">Структура операционных расходов (за период)</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <EmptyText text="Загрузка…" />
         ) : slices.length === 0 ? (
-          <EmptyText text="Нет расходов за текущий месяц." />
+          <EmptyText text="Нет расходов за выбранный период." />
         ) : (
           <div style={{ width: "100%", height: 260 }}>
             <ResponsiveContainer>
@@ -1607,7 +1614,7 @@ function BudgetExpenseStructure() {
   );
 }
 
-function ProfitSummary() {
+function ProfitSummary({ periodStart, periodEnd }: { periodStart: Date; periodEnd: Date }) {
   const { data } = useQuery({
     queryKey: ["dashboard-budget"],
     queryFn: async () => {
@@ -1620,12 +1627,11 @@ function ProfitSummary() {
       return { payments: py.data ?? [], expenses: ex.data ?? [] };
     },
   });
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const inMonth = (s: string) => {
+  // «За период» — выбранный сверху период; «за год» — календарный год его конца.
+  const y = periodEnd.getFullYear();
+  const inPeriod = (s: string) => {
     const d = new Date(s);
-    return d.getFullYear() === y && d.getMonth() === m;
+    return d >= periodStart && d <= periodEnd;
   };
   const inYear = (s: string) => new Date(s).getFullYear() === y;
 
@@ -1635,9 +1641,9 @@ function ProfitSummary() {
     pred: (s: string) => boolean,
   ) => arr.reduce((s, r) => (pred((r as any)[field]) ? s + Number(r.amount || 0) : s), 0);
 
-  const incomeMonth = sumBy((data?.payments ?? []) as any, "paid_at", inMonth);
+  const incomeMonth = sumBy((data?.payments ?? []) as any, "paid_at", inPeriod);
   const incomeYear = sumBy((data?.payments ?? []) as any, "paid_at", inYear);
-  const expenseMonth = sumBy((data?.expenses ?? []) as any, "spent_at", inMonth);
+  const expenseMonth = sumBy((data?.expenses ?? []) as any, "spent_at", inPeriod);
   const expenseYear = sumBy((data?.expenses ?? []) as any, "spent_at", inYear);
   const profitMonth = incomeMonth - expenseMonth;
   const profitYear = incomeYear - expenseYear;
@@ -1652,7 +1658,7 @@ function ProfitSummary() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingDown className="h-4 w-4" />
-            <span>Расходы за месяц</span>
+            <span>Расходы за период</span>
           </div>
           <div className="mt-1 text-lg sm:text-xl font-bold break-words">
             {formatMoney(expenseMonth)}
@@ -1663,7 +1669,7 @@ function ProfitSummary() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingDown className="h-4 w-4" />
-            <span>Расходы за год</span>
+            <span>Расходы за {periodEnd.getFullYear()} год</span>
           </div>
           <div className="mt-1 text-lg sm:text-xl font-bold break-words">
             {formatMoney(expenseYear)}
@@ -1674,7 +1680,7 @@ function ProfitSummary() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <PiggyBank className="h-4 w-4" />
-            <span>Прибыль за месяц</span>
+            <span>Прибыль за период</span>
           </div>
           <div
             className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitMonth)}`}
@@ -1690,7 +1696,7 @@ function ProfitSummary() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <PiggyBank className="h-4 w-4" />
-            <span>Прибыль за год</span>
+            <span>Прибыль за {periodEnd.getFullYear()} год</span>
           </div>
           <div
             className={`mt-1 text-lg sm:text-xl font-bold break-words ${profitColor(profitYear)}`}
