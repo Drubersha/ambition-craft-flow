@@ -4,8 +4,12 @@
 #   DEMO_ACCOUNTS='email|пароль|Имя|роль;email2|...'  — роль пустая = обычный owner.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-set -a; . ./.env; set +a
-if [ -z "${DEMO_ACCOUNTS:-}" ]; then
+# .env в формате docker-compose (бывают значения с <, пробелами) — целиком
+# его source'ить нельзя, достаём только нужные переменные.
+env_get() { sed -n "s/^$1=//p" ./.env | tail -1 | sed "s/^'//;s/'\$//"; }
+SERVICE_ROLE_KEY=$(env_get SERVICE_ROLE_KEY)
+DEMO_ACCOUNTS=$(env_get DEMO_ACCOUNTS)
+if [ -z "$DEMO_ACCOUNTS" ]; then
   echo "DEMO_ACCOUNTS не задан в .env (формат: email|пароль|Имя|роль;...)" >&2
   exit 1
 fi
