@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   formatMoney,
@@ -1132,19 +1133,42 @@ function ArSection({
     .reduce((s, p) => s + Number(p.amount), 0);
   const collectionRate = billed > 0 ? (paid / billed) * 100 : 0;
 
-  const debtors = Array.from(debt.byContract.entries())
-    .map(([cid, v]) => {
+  // Топ должников: группировка по арендатору, внутри — разбивка по договорам.
+  const debtors = useMemo(() => {
+    const byTenant = new Map<
+      string,
+      {
+        tenant: string;
+        debt: number;
+        days: number;
+        contracts: { cid: string; number: string; property: string; debt: number; days: number }[];
+      }
+    >();
+    for (const [cid, v] of debt.byContract.entries()) {
       const ct = contracts.find((c) => c.id === cid);
-      return {
-        cid,
+      const tid = ct?.tenant?.id ?? cid;
+      const e = byTenant.get(tid) ?? {
         tenant: ct?.tenant?.name || "—",
+        debt: 0,
+        days: 0,
+        contracts: [],
+      };
+      e.debt += v.debt;
+      e.days = Math.max(e.days, v.maxDays);
+      e.contracts.push({
+        cid,
+        number: ct?.number || "—",
         property: ct?.property?.name || "—",
         debt: v.debt,
         days: v.maxDays,
-      };
-    })
-    .sort((a, b) => b.debt - a.debt)
-    .slice(0, 10);
+      });
+      byTenant.set(tid, e);
+    }
+    return Array.from(byTenant.values())
+      .map((e) => ({ ...e, contracts: e.contracts.sort((a, b) => b.debt - a.debt) }))
+      .sort((a, b) => b.debt - a.debt)
+      .slice(0, 10);
+  }, [debt, contracts]);
 
   const agingData = [
     { bucket: "0–30", value: debt.aging["0-30"] },
@@ -1269,23 +1293,57 @@ function ArSection({
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="p-2">Арендатор</th>
-                    <th className="p-2">Объект</th>
+                    <th className="p-2 text-right">Договоров</th>
                     <th className="p-2 text-right">Долг</th>
                     <th className="p-2 text-right">Просрочка</th>
                   </tr>
                 </thead>
                 <tbody>
                   {debtors.map((d) => (
-                    <tr key={d.cid} className="border-b">
-                      <td className="p-2 truncate max-w-[160px]">{d.tenant}</td>
-                      <td className="p-2 truncate max-w-[160px] text-muted-foreground">
-                        {d.property}
-                      </td>
-                      <td className="p-2 text-right tabular-nums text-destructive font-medium">
-                        {formatMoney(d.debt)}
-                      </td>
-                      <td className="p-2 text-right tabular-nums">{d.days} дн.</td>
-                    </tr>
+                    <HoverCard key={d.tenant} openDelay={150} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <tr className="border-b cursor-help hover:bg-accent/50">
+                          <td className="p-2 truncate max-w-[180px]">{d.tenant}</td>
+                          <td className="p-2 text-right tabular-nums text-muted-foreground">
+                            {d.contracts.length}
+                          </td>
+                          <td className="p-2 text-right tabular-nums text-destructive font-medium">
+                            {formatMoney(d.debt)}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{d.days} дн.</td>
+                        </tr>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 p-3" side="left">
+                        <div className="text-xs font-semibold mb-2 truncate">{d.tenant}</div>
+                        <div className="space-y-1.5">
+                          {d.contracts.map((c) => (
+                            <div
+                              key={c.cid}
+                              className="flex items-start justify-between gap-2 text-xs"
+                            >
+                              <div className="min-w-0">
+                                <Link
+                                  to="/contracts/$id"
+                                  params={{ id: c.cid }}
+                                  className="hover:underline font-medium"
+                                >
+                                  № {c.number}
+                                </Link>
+                                <div className="text-muted-foreground truncate">{c.property}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="tabular-nums text-destructive font-medium">
+                                  {formatMoney(c.debt)}
+                                </div>
+                                <div className="text-muted-foreground tabular-nums">
+                                  {c.days} дн.
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   ))}
                 </tbody>
               </table>
