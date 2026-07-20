@@ -1,16 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getUserRoles, isAdministrator, requireAdministrator } from "@/lib/auth-roles.server";
 
 type LinkRole = "manager" | "tenant";
-
-async function getCallerRoles(supabase: any, userId: string): Promise<string[]> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return (data ?? []).map((r: any) => r.role);
-}
-
-function isAdminRoles(roles: string[]) {
-  return roles.includes("moderator") || roles.includes("developer");
-}
 
 async function findUserIdByEmail(supabaseAdmin: any, email: string): Promise<string | null> {
   const { findAuthUserByEmail } = await import("@/lib/auth-users.server");
@@ -56,8 +48,8 @@ export const linkUserByEmail = createServerFn({ method: "POST" })
   .inputValidator((input: { email: string; role: LinkRole }) => input)
   .handler(async ({ data, context }) => {
     if (data.role !== "manager" && data.role !== "tenant") throw new Error("Неверная роль");
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("owner") && !isAdminRoles(roles)) {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (!roles.includes("owner") && !isAdministrator(roles)) {
       throw new Error("Доступно только арендодателю");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -104,8 +96,8 @@ export const unlinkUser = createServerFn({ method: "POST" })
       .eq("id", data.linkId)
       .maybeSingle();
     if (!link) throw new Error("Связь не найдена");
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (link.owner_user_id !== context.userId && !isAdminRoles(roles)) {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (link.owner_user_id !== context.userId && !isAdministrator(roles)) {
       throw new Error("Нет прав");
     }
     const { error } = await supabaseAdmin.from("user_links").delete().eq("id", data.linkId);
@@ -126,8 +118,8 @@ export const moderatorLinkUser = createServerFn({ method: "POST" })
   .inputValidator((input: { ownerUserId: string; memberUserId: string; role: LinkRole }) => input)
   .handler(async ({ data, context }) => {
     if (data.role !== "manager" && data.role !== "tenant") throw new Error("Неверная роль");
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!isAdminRoles(roles)) throw new Error("Forbidden");
+    const roles = await getUserRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("user_links").upsert(
       {
@@ -159,8 +151,8 @@ export const listLinksForUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!isAdminRoles(roles)) throw new Error("Forbidden");
+    const roles = await getUserRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: asMember } = await supabaseAdmin
       .from("user_links")

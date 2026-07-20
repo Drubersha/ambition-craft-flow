@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getUserRoles, isAdministrator } from "@/lib/auth-roles.server";
 
 export type LinkedOwner = {
   owner_user_id: string;
@@ -79,8 +80,8 @@ export async function ensureOwnerAccess(
   ownerId: string,
 ): Promise<{ ok: true; role: "owner" | "manager" | "admin" }> {
   if (callerUserId === ownerId) return { ok: true, role: "owner" };
-  const [{ data: roles }, { data: link }] = await Promise.all([
-    supabase.from("user_roles").select("role").eq("user_id", callerUserId),
+  const [roles, { data: link }] = await Promise.all([
+    getUserRoles(supabase, callerUserId),
     supabase
       .from("user_links")
       .select("id")
@@ -89,8 +90,7 @@ export async function ensureOwnerAccess(
       .eq("role", "manager")
       .maybeSingle(),
   ]);
-  const rs = (roles ?? []).map((r: any) => r.role as string);
-  if (rs.includes("moderator") || rs.includes("developer")) return { ok: true, role: "admin" };
+  if (isAdministrator(roles)) return { ok: true, role: "admin" };
   if (link) return { ok: true, role: "manager" };
   throw new Error("Нет прав на этого арендодателя");
 }
