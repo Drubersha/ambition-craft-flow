@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateUtilityCosts,
+  analyzeLastInterval,
+  buildIntervals,
+  computeAllocationPreview,
   consumptionForPeriod,
   daysOverlap,
   isAnomalous,
   monthlyConsumption,
+  prevMonthRange,
   seasonalBaselineDaily,
   valueAt,
 } from "./utilities";
@@ -158,6 +162,107 @@ describe("сезонная база и алерты", () => {
     expect(isAnomalous(6.9, 10)).toBe(true);
     expect(isAnomalous(12, 10)).toBe(false);
     expect(isAnomalous(100, null)).toBe(false);
+  });
+});
+
+describe("buildIntervals / analyzeLastInterval", () => {
+  it("строит интервалы от start_value", () => {
+    const intervals = buildIntervals(100, [
+      { reading: 150, read_at: "2026-01-31" },
+      { reading: 130, read_at: "2026-01-01" },
+    ]);
+    expect(intervals).toEqual([{ start: "2026-01-01", end: "2026-01-31", consumption: 20 }]);
+  });
+
+  it("анализ последнего интервала находит аномалию против прошлых", () => {
+    const readings = [
+      { reading: 0, read_at: "2026-03-01" },
+      { reading: 300, read_at: "2026-04-01" },
+      { reading: 600, read_at: "2026-05-01" },
+      { reading: 1600, read_at: "2026-06-01" }, // расход втрое выше обычного
+    ];
+    const a = analyzeLastInterval(0, readings);
+    expect(a.current?.consumption).toBe(1000);
+    expect(a.anomalous).toBe(true);
+  });
+
+  it("без показаний — пустой анализ", () => {
+    expect(analyzeLastInterval(0, []).current).toBeNull();
+  });
+});
+
+describe("computeAllocationPreview", () => {
+  const meters = [
+    { id: "common", type: "electricity", folder_id: "f1", contract_id: null, start_value: 0 },
+    { id: "m-a", type: "electricity", folder_id: null, contract_id: "a", start_value: 0 },
+  ];
+  const readingsByMeter = new Map([
+    [
+      "common",
+      [
+        { reading: 0, read_at: "2026-05-31" },
+        { reading: 1000, read_at: "2026-06-30" },
+      ],
+    ],
+    [
+      "m-a",
+      [
+        { reading: 0, read_at: "2026-05-31" },
+        { reading: 300, read_at: "2026-06-30" },
+      ],
+    ],
+  ]);
+  const contracts = [
+    { id: "a", area: 50, start_date: "2026-01-01", end_date: null },
+    { id: "b", area: 50, start_date: "2026-01-01", end_date: null },
+  ];
+
+  it("собирает расход по счётчикам договора и общий базовый расход", () => {
+    const preview = computeAllocationPreview({
+      totalAmount: 10000,
+      mode: "meters_then_area",
+      service: "electricity",
+      folderId: "f1",
+      periodStart: "2026-05-31",
+      periodEnd: "2026-06-30",
+      meters,
+      contracts,
+      readingsByMeter,
+    });
+    expect(preview?.commonConsumption).toBe(1000);
+    // Тариф 10: договор a — 3000 по счётчику + 3500 остатка, b — 3500 по площади.
+    const byId = new Map(preview!.allocations.map((a) => [a.contractId, a]));
+    expect(byId.get("a")!.amount).toBe(6500);
+    expect(byId.get("b")!.amount).toBe(3500);
+  });
+
+  it("null при пустых входных", () => {
+    expect(
+      computeAllocationPreview({
+        totalAmount: NaN,
+        mode: "by_area",
+        service: "electricity",
+        folderId: "f1",
+        periodStart: "2026-06-01",
+        periodEnd: "2026-06-30",
+        meters,
+        contracts,
+        readingsByMeter,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("prevMonthRange", () => {
+  it("возвращает границы прошлого месяца", () => {
+    expect(prevMonthRange(new Date(2026, 6, 20))).toEqual({
+      start: "2026-06-01",
+      end: "2026-06-30",
+    });
+    expect(prevMonthRange(new Date(2026, 0, 5))).toEqual({
+      start: "2025-12-01",
+      end: "2025-12-31",
+    });
   });
 });
 

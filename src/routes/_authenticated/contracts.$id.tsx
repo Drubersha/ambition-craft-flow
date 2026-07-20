@@ -32,6 +32,7 @@ import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
 import { useDemoIdentity } from "@/lib/demo-identity";
+import { insertContractMeters } from "@/lib/meters";
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   component: EditContract,
@@ -113,18 +114,15 @@ function EditContract() {
       if (error) throw error;
 
       // Новые счётчики, добавленные в форме при редактировании.
-      if (v.meters.length > 0) {
-        const { error: mErr } = await supabase.from("meters").insert(
-          v.meters.map((m) => ({
-            owner_id: data!.owner_id,
-            serial_no: m.serial_no.trim(),
-            type: m.type as any,
-            property_id: v.property_id,
-            contract_id: id,
-            start_value: m.start_value ? Number(m.start_value) : 0,
-          })),
-        );
-        if (mErr) throw new Error(`Счётчики не сохранились: ${mErr.message}`);
+      try {
+        await insertContractMeters({
+          ownerId: data!.owner_id,
+          contractId: id,
+          propertyId: v.property_id,
+          drafts: v.meters,
+        });
+      } catch (e: any) {
+        throw new Error(`Счётчики не сохранились: ${e.message}`);
       }
 
       // Auto-recalculate future unpaid charges so they stay in sync with the contract's price/area.

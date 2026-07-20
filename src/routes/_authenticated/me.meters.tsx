@@ -12,6 +12,7 @@ import { Gauge, ChevronDown, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useTenantContext } from "@/lib/tenant-context";
 import { METER_TYPE_LABELS, METER_UNITS, formatDate } from "@/lib/format";
+import { insertMeterReading, meterLastValue } from "@/lib/meters";
 
 export const Route = createFileRoute("/_authenticated/me/meters")({
   component: MyMeters,
@@ -102,27 +103,13 @@ function MeterCard({
   const [historyOpen, setHistoryOpen] = useState(false);
   const unit = METER_UNITS[meter.type] ?? "";
   const last = readings[0] ?? null;
-  const lastValue = last ? Number(last.reading) : Number(meter.start_value);
+  const lastValue = meterLastValue(meter, last);
 
   const num = Number(value);
   const invalid = value !== "" && (isNaN(num) || num < lastValue);
 
   const submit = useMutation({
-    mutationFn: async () => {
-      if (value === "" || isNaN(num)) throw new Error("Введите показание");
-      if (num < lastValue)
-        throw new Error(`Показание не может быть меньше предыдущего (${lastValue} ${unit})`);
-      const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("meter_readings").insert({
-        owner_id: meter.owner_id,
-        meter_id: meter.id,
-        reading: num,
-        read_at: new Date().toISOString().slice(0, 10),
-        source: (u.user?.id === meter.owner_id ? "owner" : "tenant") as any,
-        created_by: u.user?.id ?? null,
-      });
-      if (error) throw error;
-    },
+    mutationFn: () => insertMeterReading({ meter, lastValue, value }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["me-meter-readings"] });
       toast.success("Показание передано");

@@ -172,6 +172,48 @@ export function allocateUtilityCosts(opts: {
   return results;
 }
 
+/** Интервалы расхода между соседними показаниями (нулевая точка — start_value). */
+export function buildIntervals(
+  startValue: number,
+  readings: ReadingPoint[],
+): ConsumptionInterval[] {
+  const out: ConsumptionInterval[] = [];
+  let prevVal = startValue;
+  let prevDate: string | null = null;
+  for (const p of sortedReadings(readings)) {
+    if (prevDate && p.read_at > prevDate) {
+      out.push({
+        start: prevDate,
+        end: p.read_at,
+        consumption: Math.max(0, Number(p.reading) - prevVal),
+      });
+    }
+    prevVal = Number(p.reading);
+    prevDate = p.read_at;
+  }
+  return out;
+}
+
+export type IntervalAnalysis = {
+  current: ConsumptionInterval | null;
+  currentDaily: number | null;
+  baseline: number | null;
+  anomalous: boolean;
+};
+
+/** Последний интервал показаний счётчика против сезонной базы (для аналитики). */
+export function analyzeLastInterval(
+  startValue: number,
+  readings: ReadingPoint[],
+): IntervalAnalysis {
+  const intervals = buildIntervals(startValue, readings);
+  const current = intervals[intervals.length - 1] ?? null;
+  if (!current) return { current: null, currentDaily: null, baseline: null, anomalous: false };
+  const baseline = seasonalBaselineDaily(intervals.slice(0, -1), current);
+  const currentDaily = dailyRate(current);
+  return { current, currentDaily, baseline, anomalous: isAnomalous(currentDaily, baseline) };
+}
+
 /** Средний суточный расход интервала. */
 export function dailyRate(interval: ConsumptionInterval): number {
   const days = Math.max(1, daysBetween(interval.start, interval.end));
@@ -254,6 +296,99 @@ export function monthlyConsumption(
     out.push({ month: key, consumption: Math.round((byMonth.get(key) ?? 0) * 100) / 100 });
   }
   return out;
+}
+
+export type AllocationMeter = {
+  id: string;
+  type: string;
+  folder_id: string | null;
+  contract_id: string | null;
+  start_value: number;
+};
+
+export type AllocationContract = {
+  id: string;
+  area: number | string | null;
+  start_date: string;
+  end_date: string | null;
+};
+
+export type AllocationPreview = {
+  allocations: AllocationResult[];
+  commonConsumption: number;
+};
+
+/**
+ * Предпросмотр распределения общего счёта за услугу по договорам папки:
+ * расход каждого договора — сумма по его счётчикам данной услуги, базовый
+ * расход — показания общих счётчиков папки. Чистая функция поверх
+ * allocateUtilityCosts. null — данных недостаточно.
+ */
+export function computeAllocationPreview(opts: {
+  totalAmount: number;
+  mode: "meters_then_area" | "by_area";
+  service: string;
+  folderId: string;
+  periodStart: string;
+  periodEnd: string;
+  meters: AllocationMeter[];
+  /** Договоры папки, уже отфильтрованные по пересечению с периодом. */
+  contracts: AllocationContract[];
+  readingsByMeter: Map<string, ReadingPoint[]>;
+}): AllocationPreview | null {
+  const { totalAmount, contracts, service, folderId, periodStart, periodEnd } = opts;
+  if (!folderId || contracts.length === 0) return null;
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) return null;
+
+  const serviceMeters = opts.meters.filter((m) => m.type === service);
+  const meterConsumption = (m: AllocationMeter) =>
+    consumptionForPeriod(
+      Number(m.start_value),
+      opts.readingsByMeter.get(m.id) ?? [],
+      periodStart,
+      periodEnd,
+    );
+
+  const commonConsumption = serviceMeters
+    .filter((m) => m.folder_id === folderId)
+    .reduce((s, m) => s + (meterConsumption(m) ?? 0), 0);
+
+  const entries: AllocationEntry[] = contracts.map((c) => {
+    let consumption: number | null = null;
+    let meterId: string | null = null;
+    for (const m of serviceMeters.filter((x) => x.contract_id === c.id)) {
+      const v = meterConsumption(m);
+      if (v != null) {
+        consumption = (consumption ?? 0) + v;
+        meterId = m.id;
+      }
+    }
+    return {
+      contractId: c.id,
+      meterId,
+      consumption,
+      area: Number(c.area) || 0,
+      days: daysOverlap(c.start_date, c.end_date, periodStart, periodEnd),
+    };
+  });
+
+  const allocations = allocateUtilityCosts({
+    totalAmount,
+    entries,
+    commonConsumption: commonConsumption > 0 ? commonConsumption : null,
+    mode: opts.mode,
+  });
+  return { allocations, commonConsumption };
+}
+
+/** Прошлый календарный месяц [1-е; последнее число] — дефолт расчётного периода. */
+export function prevMonthRange(today: Date = new Date()): { start: string; end: string } {
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return {
+    start: iso(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+    end: iso(new Date(today.getFullYear(), today.getMonth(), 0)),
+  };
 }
 
 /** "2026-07" → "июл 2026" для подписей осей. */

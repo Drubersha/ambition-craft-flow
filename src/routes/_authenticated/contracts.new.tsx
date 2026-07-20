@@ -8,6 +8,7 @@ import { z } from "zod";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
+import { insertContractMeters } from "@/lib/meters";
 
 const search = z.object({ tenant: z.string().optional(), property: z.string().optional() });
 
@@ -55,18 +56,15 @@ function NewContract() {
         .select()
         .single();
       if (error) throw error;
-      if (v.meters.length > 0) {
-        const { error: mErr } = await supabase.from("meters").insert(
-          v.meters.map((m) => ({
-            owner_id: ownerId,
-            serial_no: m.serial_no.trim(),
-            type: m.type as any,
-            property_id: v.property_id,
-            contract_id: data.id,
-            start_value: m.start_value ? Number(m.start_value) : 0,
-          })),
-        );
-        if (mErr) throw new Error(`Договор создан, но счётчики не сохранились: ${mErr.message}`);
+      try {
+        await insertContractMeters({
+          ownerId,
+          contractId: data.id,
+          propertyId: v.property_id,
+          drafts: v.meters,
+        });
+      } catch (e: any) {
+        throw new Error(`Договор создан, но счётчики не сохранились: ${e.message}`);
       }
       return data;
     },
