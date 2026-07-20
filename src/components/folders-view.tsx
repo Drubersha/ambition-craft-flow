@@ -29,7 +29,8 @@ import { FolderPicker } from "@/components/folder-picker";
 import { PlanUploader } from "@/components/plan-uploader";
 import { useFolders, buildTree, descendantIds, type FolderNode, type Folder } from "@/lib/folders";
 import { PlanViewer } from "@/components/plan-viewer";
-import { PlanMarkup, type EditState } from "@/components/plan-markup";
+import { PlanMarkup, type EditState, type PlanColorMode } from "@/components/plan-markup";
+import { Switch } from "@/components/ui/switch";
 import {
   useFolderMarkings,
   useFolderPlanProperties,
@@ -566,6 +567,8 @@ function FolderMapMarkup({
   const qc = useQueryClient();
   const [url, setUrl] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState>({ mode: "view" });
+  const [ahchView, setAhchView] = useState(false);
+  const colorMode: PlanColorMode = ahchView ? "ahch" : "occupancy";
 
   // signed url for plan
   useEffect(() => {
@@ -689,11 +692,43 @@ function FolderMapMarkup({
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="font-semibold">Разметка объектов</h3>
-        <div className="text-xs text-muted-foreground">
-          {markings.length > 0
-            ? `Размечено: ${markings.length}`
-            : "Наведите курсор на фигуру, чтобы увидеть детали"}
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <Switch checked={ahchView} onCheckedChange={setAhchView} aria-label="Режим АХЧ" />
+            АХЧ
+          </label>
+          <div className="text-xs text-muted-foreground">
+            {markings.length > 0
+              ? `Размечено: ${markings.length}`
+              : "Наведите курсор на фигуру, чтобы увидеть детали"}
+          </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        {ahchView ? (
+          <>
+            <span
+              className="inline-block h-3 w-8 rounded-sm border"
+              style={{
+                background:
+                  "linear-gradient(to right, hsl(0 0% 55% / 0.15), hsl(0 85% 50% / 0.4), hsl(0 85% 50% / 0.85))",
+              }}
+            />
+            интенсивность красного — доля площади под АХЧ (серый — АХЧ нет)
+          </>
+        ) : (
+          <>
+            <span
+              className="inline-block h-3 w-8 rounded-sm border"
+              style={{
+                background:
+                  "linear-gradient(to right, hsl(0 75% 45%), hsl(60 75% 45%), hsl(120 75% 45%))",
+              }}
+            />
+            занятость: красный — свободно, жёлтый — 50%, зелёный — занято
+          </>
+        )}
       </div>
 
       <PlanFileControls
@@ -798,6 +833,7 @@ function FolderMapMarkup({
             properties={properties as any}
             contractsByProp={contractsByProp}
             ahchByProp={ahchByProp}
+            colorMode={colorMode}
             edit={edit}
             onAddPoint={addPoint}
             onFinishPolygon={finishPolygon}

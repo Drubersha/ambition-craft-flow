@@ -29,8 +29,58 @@ const PERIOD_LABEL: Record<ActiveContractLite["payment_period"], string> = {
   one_time: " (разово)",
 };
 
-const DEFAULT_COLOR = "hsl(217 91% 60%)";
 const DRAFT_COLOR = "hsl(142 71% 45%)";
+
+export type PlanColorMode = "occupancy" | "ahch";
+
+/** Доля площади объекта под активными договорами данного списка (0..1). */
+function areaShare(
+  property: PropertyLite | undefined,
+  contracts: ActiveContractLite[] | undefined,
+): number {
+  if (!property || !contracts || contracts.length === 0) return 0;
+  const area = property.area_total || 0;
+  // Договор без площади считается занимающим весь объект.
+  if (area <= 0) return 1;
+  const used = contracts.reduce((sum, c) => sum + (c.area ?? area), 0);
+  return Math.min(1, used / area);
+}
+
+/**
+ * Стиль фигуры по режиму раскраски:
+ *  - occupancy: 0% занято — красный, 50% — жёлтый, 100% — зелёный (градиент по hue);
+ *  - ahch: доля АХЧ задаёт непрозрачность красного (100% — плотный красный,
+ *    около нуля — едва заметный), без АХЧ — почти прозрачный серый.
+ */
+export function markingStyle(
+  mode: PlanColorMode,
+  occupancyShare: number,
+  ahchShare: number,
+): { fill: string; fillOpacity: number; stroke: string; strokeOpacity: number } {
+  if (mode === "ahch") {
+    if (ahchShare <= 0) {
+      return {
+        fill: "hsl(0 0% 55%)",
+        fillOpacity: 0.08,
+        stroke: "hsl(0 0% 45%)",
+        strokeOpacity: 0.35,
+      };
+    }
+    return {
+      fill: "hsl(0 85% 50%)",
+      fillOpacity: 0.08 + 0.72 * ahchShare,
+      stroke: "hsl(0 85% 40%)",
+      strokeOpacity: 0.4 + 0.6 * ahchShare,
+    };
+  }
+  const hue = Math.round(120 * occupancyShare);
+  return {
+    fill: `hsl(${hue} 75% 45%)`,
+    fillOpacity: 0.35,
+    stroke: `hsl(${hue} 75% 35%)`,
+    strokeOpacity: 0.9,
+  };
+}
 
 function fmt(n: number, currency: string) {
   try {
@@ -86,6 +136,7 @@ export function PlanMarkup({
   contractsByProp,
   ahchByProp,
   edit,
+  colorMode = "occupancy",
   onAddPoint,
   onFinishPolygon,
   onPlacePoint,
@@ -96,6 +147,7 @@ export function PlanMarkup({
   contractsByProp: Record<string, ActiveContractLite[] | undefined>;
   ahchByProp?: Record<string, ActiveContractLite[] | undefined>;
   edit: EditState;
+  colorMode?: PlanColorMode;
   onAddPoint?: (n: { x: number; y: number }) => void;
   onFinishPolygon?: () => void;
   onPlacePoint?: (n: { x: number; y: number }) => void;
@@ -157,11 +209,17 @@ export function PlanMarkup({
       >
         {markings.map((m) => {
           const s = shapeToPath(m, ctx);
-          const color = m.color || DEFAULT_COLOR;
+          const prop = propsById[m.property_id];
+          const style = markingStyle(
+            colorMode,
+            areaShare(prop, contractsByProp[m.property_id]),
+            areaShare(prop, ahchByProp?.[m.property_id]),
+          );
           const common = {
-            fill: color,
-            fillOpacity: 0.18,
-            stroke: color,
+            fill: style.fill,
+            fillOpacity: style.fillOpacity,
+            stroke: style.stroke,
+            strokeOpacity: style.strokeOpacity,
             strokeWidth: 2,
             style: { cursor: isDrawing ? "crosshair" : "pointer", pointerEvents: "all" as const },
             onPointerDown: (e: React.PointerEvent) => {
@@ -190,8 +248,8 @@ export function PlanMarkup({
                   cx={s.point.cx}
                   cy={s.point.cy}
                   r={10}
-                  fill={color}
-                  fillOpacity={0.9}
+                  fill={style.fill}
+                  fillOpacity={Math.max(0.5, style.fillOpacity)}
                   stroke="white"
                   strokeWidth={2}
                 />
