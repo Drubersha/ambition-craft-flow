@@ -21,6 +21,7 @@ import {
   LogOut,
   HelpCircle,
   Settings,
+  Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ReactNode } from "react";
@@ -141,6 +142,7 @@ const OWNER_NAV = [
   { to: "/tenants", label: "Арендаторы", icon: Users },
   { to: "/contracts", label: "Договоры", icon: FileText },
   { to: "/payments", label: "Оплаты", icon: Wallet },
+  { to: "/utilities", label: "Коммуналка", icon: Gauge },
   { to: "/budgets", label: "Бюджет", icon: PiggyBank },
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
@@ -152,6 +154,7 @@ const TENANT_NAV = [
   { to: "/me", label: "Мой кабинет", icon: UserIcon },
   { to: "/me/contracts", label: "Мои договоры", icon: FileText },
   { to: "/me/charges", label: "Начисления", icon: Receipt },
+  { to: "/me/meters", label: "Счётчики", icon: Gauge },
   { to: "/me/calendar", label: "Календарь оплат", icon: CalendarDays },
   { to: "/me/documents", label: "Документы", icon: Files },
   { to: "/me/chat", label: "Чат", icon: MessageSquare },

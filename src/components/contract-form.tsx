@@ -13,12 +13,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Gauge, Plus, Trash2 } from "lucide-react";
+import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_KIND_LABELS,
   PAYMENT_PERIOD_LABELS,
+  METER_TYPE_LABELS,
+  METER_UNITS,
   formatMoney,
   monthlyPayment,
 } from "@/lib/format";
+
+export type MeterDraft = {
+  type: string;
+  serial_no: string;
+  /** Начальное показание — счётчик может быть б/у, поэтому не обязательно 0. */
+  start_value: string;
+};
 
 export type ContractFormValues = {
   tenant_id: string;
@@ -36,6 +56,8 @@ export type ContractFormValues = {
   notes: string;
   termination_terms: string;
   deposit_percent: string;
+  /** Новые счётчики, добавленные в форме (создаются при сохранении). */
+  meters: MeterDraft[];
 };
 
 export function ContractForm({
@@ -45,6 +67,7 @@ export function ContractForm({
   formId,
   hideSubmit,
   onValuesChange,
+  existingMetersCount = 0,
 }: {
   initial?: Partial<ContractFormValues>;
   onSubmit: (v: ContractFormValues) => void;
@@ -52,6 +75,8 @@ export function ContractForm({
   formId?: string;
   hideSubmit?: boolean;
   onValuesChange?: (v: ContractFormValues) => void;
+  /** Сколько счётчиков уже привязано к договору (для страницы редактирования). */
+  existingMetersCount?: number;
 }) {
   const [v, setV] = useState<ContractFormValues>({
     tenant_id: initial?.tenant_id ?? "",
@@ -69,7 +94,9 @@ export function ContractForm({
     notes: initial?.notes ?? "",
     termination_terms: initial?.termination_terms ?? "",
     deposit_percent: initial?.deposit_percent ?? "",
+    meters: initial?.meters ?? [],
   });
+  const [meterConfirmOpen, setMeterConfirmOpen] = useState(false);
   const set = <K extends keyof ContractFormValues>(k: K, val: ContractFormValues[K]) =>
     setV((p) => {
       const next = { ...p, [k]: val };
@@ -119,12 +146,37 @@ export function ContractForm({
   const monthly = monthlyPayment(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0);
   const depositAmount = (monthly * (Number(v.deposit_percent) || 0)) / 100;
 
+  const filledMeters = v.meters.filter((m) => m.serial_no.trim() !== "");
+  const meterInvalid = v.meters.some(
+    (m) => m.start_value !== "" && (isNaN(Number(m.start_value)) || Number(m.start_value) < 0),
+  );
+
+  function updateMeter(i: number, patch: Partial<MeterDraft>) {
+    set(
+      "meters",
+      v.meters.map((m, idx) => (idx === i ? { ...m, ...patch } : m)),
+    );
+  }
+
+  function submitValues() {
+    onSubmit({ ...v, meters: filledMeters });
+  }
+
+  function handleSubmit() {
+    if (meterInvalid) return;
+    if (filledMeters.length + existingMetersCount === 0) {
+      setMeterConfirmOpen(true);
+      return;
+    }
+    submitValues();
+  }
+
   return (
     <form
       id={formId}
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(v);
+        handleSubmit();
       }}
       className="space-y-4 max-w-2xl"
     >
@@ -288,6 +340,99 @@ export function ContractForm({
           </Select>
         </F>
       </div>
+      <div className="space-y-2 rounded-lg border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="flex items-center gap-1.5">
+            <Gauge className="h-4 w-4 text-primary" /> Счётчики
+            {existingMetersCount > 0 && (
+              <span className="text-xs text-muted-foreground font-normal">
+                (уже привязано: {existingMetersCount})
+              </span>
+            )}
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              set("meters", [...v.meters, { type: "electricity", serial_no: "", start_value: "" }])
+            }
+          >
+            <Plus className="h-4 w-4 mr-1" /> Добавить счётчик
+          </Button>
+        </div>
+        {v.meters.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Укажите номер, тип и начальное показание каждого счётчика в помещении — по ним арендатор
+            будет подавать показания, а вы — выставлять компенсацию коммуналки.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {v.meters.map((m, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[160px_1fr_140px_auto] gap-2 items-end"
+              >
+                <div className="space-y-1">
+                  {i === 0 && <Label className="text-xs">Тип</Label>}
+                  <Select value={m.type} onValueChange={(x) => updateMeter(i, { type: x })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(METER_TYPE_LABELS).map(([k, l]) => (
+                        <SelectItem key={k} value={k}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  {i === 0 && <Label className="text-xs">Номер счётчика</Label>}
+                  <Input
+                    value={m.serial_no}
+                    placeholder="Заводской номер"
+                    onChange={(e) => updateMeter(i, { serial_no: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  {i === 0 && (
+                    <Label className="text-xs">Нач. показание, {METER_UNITS[m.type] ?? ""}</Label>
+                  )}
+                  <Input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    placeholder="0 (или б/у)"
+                    value={m.start_value}
+                    onChange={(e) => updateMeter(i, { start_value: e.target.value })}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Убрать счётчик"
+                  onClick={() =>
+                    set(
+                      "meters",
+                      v.meters.filter((_, idx) => idx !== i),
+                    )
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            {meterInvalid && (
+              <p className="text-xs text-destructive">
+                Начальное показание не может быть отрицательным.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
       <F label="Условия расторжения договора">
         <Textarea
           rows={3}
@@ -304,6 +449,39 @@ export function ContractForm({
           {submitting ? "Сохранение..." : "Сохранить"}
         </Button>
       )}
+      <AlertDialog open={meterConfirmOpen} onOpenChange={setMeterConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Вы не забыли добавить счётчик?</AlertDialogTitle>
+            <AlertDialogDescription>
+              К договору не привязан ни один счётчик. Без счётчиков не получится собирать показания
+              с арендатора и выставлять компенсацию за коммунальные услуги по потреблению — только
+              пропорционально площади.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setMeterConfirmOpen(false);
+                set("meters", [
+                  ...v.meters,
+                  { type: "electricity", serial_no: "", start_value: "" },
+                ]);
+              }}
+            >
+              Добавить счётчик
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setMeterConfirmOpen(false);
+                submitValues();
+              }}
+            >
+              Сохранить без счётчиков
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

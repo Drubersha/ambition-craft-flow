@@ -63,6 +63,27 @@ export const PAYMENT_PERIOD_LABELS: Record<string, string> = {
   one_time: "Разово",
 };
 
+export const METER_TYPE_LABELS: Record<string, string> = {
+  electricity: "Электричество",
+  water_cold: "Холодная вода",
+  water_hot: "Горячая вода",
+  gas: "Газ",
+  heat: "Отопление",
+};
+
+export const METER_UNITS: Record<string, string> = {
+  electricity: "кВт·ч",
+  water_cold: "м³",
+  water_hot: "м³",
+  gas: "м³",
+  heat: "Гкал",
+};
+
+export const UTILITY_PERIOD_STATUS_LABELS: Record<string, string> = {
+  draft: "Черновик",
+  allocated: "Распределён",
+};
+
 export const CHARGE_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачен",
   partial: "Частично",

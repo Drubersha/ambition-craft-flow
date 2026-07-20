@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTenantContext } from "@/lib/tenant-context";
 import { formatDate, formatMoney, CHARGE_STATUS_LABELS } from "@/lib/format";
-import { FileText, Receipt, CalendarDays, MessageSquare } from "lucide-react";
+import { FileText, Receipt, CalendarDays, MessageSquare, Gauge } from "lucide-react";
 import { OnboardingQuest } from "@/components/onboarding-quest";
 
 export const Route = createFileRoute("/_authenticated/me/")({
@@ -95,6 +95,7 @@ function MeDashboard() {
       <div className="grid sm:grid-cols-2 gap-3">
         <QuickLink to="/me/contracts" icon={FileText} label="Мои договоры" />
         <QuickLink to="/me/charges" icon={Receipt} label="Начисления" />
+        <QuickLink to="/me/meters" icon={Gauge} label="Передать показания" />
         <QuickLink to="/me/calendar" icon={CalendarDays} label="Календарь оплат" />
         <QuickLink to="/me/chat" icon={MessageSquare} label="Чат с управляющим" />
       </div>

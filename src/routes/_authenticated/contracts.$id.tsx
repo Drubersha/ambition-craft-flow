@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Plus, Search, Eye } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Search, Eye, Gauge } from "lucide-react";
 import {
   CHARGE_STATUS_LABELS,
+  METER_TYPE_LABELS,
+  METER_UNITS,
   formatDate,
   formatMoney,
   computeDepositWithArea,
@@ -67,6 +69,19 @@ function EditContract() {
       return data;
     },
   });
+  const { data: meters } = useQuery({
+    queryKey: ["contract-meters", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("meters")
+        .select("*")
+        .eq("contract_id", id)
+        .eq("active", true)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const mut = useMutation({
     mutationFn: async (v: ContractFormValues) => {
@@ -96,6 +111,21 @@ function EditContract() {
         })
         .eq("id", id);
       if (error) throw error;
+
+      // Новые счётчики, добавленные в форме при редактировании.
+      if (v.meters.length > 0) {
+        const { error: mErr } = await supabase.from("meters").insert(
+          v.meters.map((m) => ({
+            owner_id: data!.owner_id,
+            serial_no: m.serial_no.trim(),
+            type: m.type as any,
+            property_id: v.property_id,
+            contract_id: id,
+            start_value: m.start_value ? Number(m.start_value) : 0,
+          })),
+        );
+        if (mErr) throw new Error(`Счётчики не сохранились: ${mErr.message}`);
+      }
 
       // Auto-recalculate future unpaid charges so they stay in sync with the contract's price/area.
       const today = new Date().toISOString().slice(0, 10);
@@ -128,11 +158,26 @@ function EditContract() {
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["contract-charges", id] });
       qc.invalidateQueries({ queryKey: ["charges"] });
+      qc.invalidateQueries({ queryKey: ["contract-meters", id] });
+      qc.invalidateQueries({ queryKey: ["meters"] });
       toast.success(
         res?.recalculated
           ? `Сохранено. Пересчитано будущих начислений: ${res.recalculated}`
           : "Сохранено",
       );
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const delMeter = useMutation({
+    mutationFn: async (meterId: string) => {
+      const { error } = await supabase.from("meters").delete().eq("id", meterId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contract-meters", id] });
+      qc.invalidateQueries({ queryKey: ["meters"] });
+      toast.success("Счётчик удалён");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -254,7 +299,49 @@ function EditContract() {
           }
           onSubmit={(v) => mut.mutate(v)}
           submitting={mut.isPending}
+          existingMetersCount={meters?.length ?? 0}
         />
+      </MobileCollapsible>
+
+      <MobileCollapsible title="Счётчики">
+        {!meters || meters.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Счётчиков нет. Добавьте их в форме договора выше — по ним арендатор подаёт показания, а
+            вы выставляете компенсацию коммуналки.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {meters.map((m: any) => (
+              <Card key={m.id} className="p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium flex items-center gap-1.5">
+                    <Gauge className="h-4 w-4 text-primary shrink-0" />
+                    {METER_TYPE_LABELS[m.type] ?? m.type} · № {m.serial_no}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Начальное показание: {Number(m.start_value)} {METER_UNITS[m.type] ?? ""}
+                  </div>
+                </div>
+                <ConfirmButton
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Удалить счётчик"
+                  className="shrink-0 min-h-11 min-w-11"
+                  destructive
+                  title="Удалить счётчик?"
+                  description={`Счётчик № ${m.serial_no} и все его показания будут удалены.`}
+                  confirmText="Удалить"
+                  onConfirm={() => delMeter.mutate(m.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </ConfirmButton>
+              </Card>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Показания и аналитика — в разделе «Коммуналка».
+            </p>
+          </div>
+        )}
       </MobileCollapsible>
 
       <MobileCollapsible title="Обеспечительный платёж">
