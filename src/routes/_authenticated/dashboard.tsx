@@ -557,7 +557,18 @@ function Dashboard() {
         <ProfitSummary periodStart={periodStart} periodEnd={periodEnd} />
       </Section>
 
-      {/* Block 2: Properties table */}
+      {/* Block 2: AR (выше объектов — оперативно важнее) */}
+      <Section title="Дебиторская задолженность">
+        <ArSection
+          charges={filtered.charges}
+          contracts={filtered.contracts}
+          payments={filtered.payments}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+        />
+      </Section>
+
+      {/* Block 3: Properties table */}
       <Section title="Объекты и помещения">
         <Card>
           <CardContent className="p-3 space-y-2">
@@ -595,17 +606,6 @@ function Dashboard() {
             text="Источник данных по лидам/просмотрам/переговорам не подключён."
           />
         </div>
-      </Section>
-
-      {/* Block 4: AR */}
-      <Section title="Дебиторская задолженность">
-        <ArSection
-          charges={filtered.charges}
-          contracts={filtered.contracts}
-          payments={filtered.payments}
-          periodStart={periodStart}
-          periodEnd={periodEnd}
-        />
       </Section>
 
       {/* Block 5: Finance */}
@@ -1099,25 +1099,33 @@ function ArSection({
   today.setHours(0, 0, 0, 0);
 
   const debt = useMemo(() => {
-    let total = 0;
+    // Общий долг — сальдо по договорам, как в 1С: сумма положительных
+    // сальдо (начислено − оплачено), переплаты внутри договора вычитаются.
+    // Aging — отдельно, только по просроченным начислениям.
     const aging = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
     const byContract = new Map<string, { debt: number; maxDays: number }>();
     charges.forEach((c) => {
       const remain = Number(c.total) - Number(c.paid_total);
-      if (remain <= 0 || !c.due_date) return;
-      const days = Math.floor((today.getTime() - new Date(c.due_date).getTime()) / 86400000);
-      if (days < 0) return;
-      total += remain;
-      if (days <= 30) aging["0-30"] += remain;
-      else if (days <= 60) aging["31-60"] += remain;
-      else if (days <= 90) aging["61-90"] += remain;
-      else aging["90+"] += remain;
       const e = byContract.get(c.contract_id) || { debt: 0, maxDays: 0 };
       e.debt += remain;
-      e.maxDays = Math.max(e.maxDays, days);
+      if (remain > 0 && c.due_date) {
+        const days = Math.floor((today.getTime() - new Date(c.due_date).getTime()) / 86400000);
+        if (days >= 0) {
+          e.maxDays = Math.max(e.maxDays, days);
+          if (days <= 30) aging["0-30"] += remain;
+          else if (days <= 60) aging["31-60"] += remain;
+          else if (days <= 90) aging["61-90"] += remain;
+          else aging["90+"] += remain;
+        }
+      }
       byContract.set(c.contract_id, e);
     });
-    return { total, aging, byContract };
+    let total = 0;
+    for (const [cid, e] of Array.from(byContract.entries())) {
+      if (e.debt > 0.005) total += e.debt;
+      else byContract.delete(cid);
+    }
+    return { total: Math.round(total * 100) / 100, aging, byContract };
   }, [charges, today]);
 
   const periodCharges = charges.filter((c) => {
@@ -1219,6 +1227,7 @@ function ArSection({
               label="Общий долг"
               value={formatMoney(debt.total)}
               tone={debt.total > 0 ? "danger" : "ok"}
+              hint="Сальдо по договорам, как в 1С: начислено − оплачено, только должники (переплаты внутри договора вычитаются, авансы других договоров не учитываются)."
             />
             <Kpi
               icon={Percent}
