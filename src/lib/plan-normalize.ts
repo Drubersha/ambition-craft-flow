@@ -40,13 +40,57 @@ async function imageToPng(file: File): Promise<Blob> {
   return await canvasToBlob(canvas);
 }
 
+/**
+ * Полифилл Promise.withResolvers (ES2024): pdf.js v4 требует его и в основном
+ * потоке, и внутри своего воркера, а в браузерах старее Chrome 119 /
+ * Safari 17.4 его нет — загрузка PDF-плана падала с
+ * «withResolvers is not a function».
+ */
+const WITH_RESOLVERS_POLYFILL = `Promise.withResolvers ||
+  (Promise.withResolvers = function () {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  });`;
+
+const PromiseAny = Promise as any;
+if (typeof PromiseAny.withResolvers !== "function") {
+  PromiseAny.withResolvers = function () {
+    let resolve: (v: unknown) => void;
+    let reject: (e: unknown) => void;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+  };
+}
+
+let pdfWorkerPort: Worker | null = null;
+
+/** Воркер pdf.js, стартующий с полифилла (bootstrap-модуль в Blob). */
+function createPdfWorker(workerUrl: string): Worker | null {
+  try {
+    const abs = new URL(workerUrl, window.location.href).href;
+    const bootstrap = new Blob(
+      [`${WITH_RESOLVERS_POLYFILL}\nawait import(${JSON.stringify(abs)});`],
+      { type: "text/javascript" },
+    );
+    return new Worker(URL.createObjectURL(bootstrap), { type: "module" });
+  } catch {
+    return null;
+  }
+}
+
 async function pdfFirstPageToPng(file: File): Promise<Blob> {
   const pdfjs: any = await import("pdfjs-dist");
   const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  if (!pdfWorkerPort) pdfWorkerPort = createPdfWorker(workerUrl);
+  if (pdfWorkerPort) pdfjs.GlobalWorkerOptions.workerPort = pdfWorkerPort;
+  else pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
   const data = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data }).promise;
+  const pdf = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
   const page = await pdf.getPage(1);
   // Render at scale 2 for crisp zoom; clamp to MAX_SIDE.
   let viewport = page.getViewport({ scale: 2 });
