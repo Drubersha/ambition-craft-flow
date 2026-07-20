@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ChargeStatusBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -19,13 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calculator, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  CHARGE_STATUS_LABELS,
-  chargeTotalForPeriod,
-  formatDate,
-  formatMoney,
-  splitContractPeriods,
-} from "@/lib/format";
+import { chargeTotalForPeriod, formatDate, formatMoney, splitContractPeriods } from "@/lib/format";
 
 export function ChargesListView() {
   const [filter, setFilter] = useState<"active" | "archive">("active");
@@ -93,18 +87,7 @@ export function ChargesListView() {
                     {formatMoney(c.total, c.contract?.currency)}
                   </div>
                 </div>
-                <Badge
-                  className="shrink-0 whitespace-nowrap"
-                  variant={
-                    c.status === "paid"
-                      ? "default"
-                      : c.status === "overdue"
-                        ? "destructive"
-                        : "secondary"
-                  }
-                >
-                  {CHARGE_STATUS_LABELS[c.status]}
-                </Badge>
+                <ChargeStatusBadge className="shrink-0 whitespace-nowrap" status={c.status} />
               </Card>
             </Link>
           ))}

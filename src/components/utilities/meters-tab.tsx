@@ -32,7 +32,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { MeterTypeSelect } from "@/components/utilities/meter-type-select";
 import { Gauge, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { METER_TYPE_LABELS, METER_UNITS, formatDate } from "@/lib/format";
+import { METER_TYPE_LABELS, METER_UNITS, formatDate, todayISO } from "@/lib/format";
 import {
   contractDisplayLabel,
   insertMeterReading,
@@ -320,7 +320,7 @@ function AddMeterDialog({
 function AddReadingDialog({ meter, last }: { meter: Meter; last: MeterReading | null }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayISO());
   const qc = useQueryClient();
   const unit = METER_UNITS[meter.type] ?? "";
   const lastValue = meterLastValue(meter, last);

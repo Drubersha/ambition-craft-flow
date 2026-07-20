@@ -34,6 +34,7 @@ import {
   PAYMENT_PERIOD_LABELS,
   formatMoney,
   monthlyPayment,
+  todayISO,
 } from "@/lib/format";
 import type { MeterDraft } from "@/lib/meters";
 
@@ -86,7 +87,7 @@ export function ContractForm({
     rate: initial?.rate ?? "",
     currency: initial?.currency ?? "RUB",
     payment_period: initial?.payment_period ?? "monthly",
-    start_date: initial?.start_date ?? new Date().toISOString().slice(0, 10),
+    start_date: initial?.start_date ?? todayISO(),
     end_date: initial?.end_date ?? "",
     status: initial?.status ?? "active",
     kind: initial?.kind ?? "rent",

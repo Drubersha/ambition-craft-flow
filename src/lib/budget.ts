@@ -1,3 +1,5 @@
+import { toISO } from "./format";
+
 export type BudgetPlan = {
   id: string;
   owner_id: string;
@@ -35,10 +37,6 @@ export type BudgetPeriodLimit = {
   period_start: string;
   limit_amount: number;
 };
-
-function toISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * Текущий период плана. Если today до reset_day этого месяца, период

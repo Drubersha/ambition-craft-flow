@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ContractStatusBadge } from "@/components/status-badges";
 import { useTenantContext } from "@/lib/tenant-context";
-import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/me/contracts")({
   component: MyContracts,
@@ -49,9 +49,7 @@ function MyContracts() {
                     <div className="text-xs text-muted-foreground">{c.property.address}</div>
                   )}
                 </div>
-                <Badge variant={c.status === "active" ? "default" : "secondary"}>
-                  {CONTRACT_STATUS_LABELS[c.status]}
-                </Badge>
+                <ContractStatusBadge status={c.status} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-2">
                 <div>

@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ChargeStatusBadge } from "@/components/status-badges";
 import { useTenantContext } from "@/lib/tenant-context";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/me/calendar")({
@@ -56,7 +56,7 @@ function MyCalendar() {
   }, [data]);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   // Build a 6x7 grid starting on Monday
   const firstDow = (monthStart.getDay() + 6) % 7;
@@ -150,17 +150,7 @@ function MyCalendar() {
                   {formatMoney(c.total, c.contract?.currency)}
                 </div>
               </div>
-              <Badge
-                variant={
-                  c.status === "paid"
-                    ? "default"
-                    : c.status === "overdue"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {CHARGE_STATUS_LABELS[c.status]}
-              </Badge>
+              <ChargeStatusBadge status={c.status} />
             </div>
           ))}
         </Card>

@@ -3,7 +3,7 @@
  * с БД, используемые и в кабинете арендатора, и в разделе «Коммуналка».
  */
 import { supabase } from "@/integrations/supabase/client";
-import { METER_UNITS } from "@/lib/format";
+import { METER_UNITS, todayISO } from "@/lib/format";
 import type { ReadingPoint } from "@/lib/utilities";
 
 export type Meter = {
@@ -88,7 +88,7 @@ export async function insertMeterReading(opts: {
   if (opts.value === "" || isNaN(num)) throw new Error("Введите показание");
   if (num < opts.lastValue)
     throw new Error(`Показание не может быть меньше предыдущего (${opts.lastValue} ${unit})`);
-  const readAt = opts.readAt ?? new Date().toISOString().slice(0, 10);
+  const readAt = opts.readAt ?? todayISO();
   if (!readAt) throw new Error("Укажите дату");
   const { data: u } = await supabase.auth.getUser();
   const source = opts.source ?? (u.user?.id === opts.meter.owner_id ? "owner" : "tenant");

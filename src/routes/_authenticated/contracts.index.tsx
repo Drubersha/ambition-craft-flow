@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ContractStatusBadge } from "@/components/status-badges";
 import { Plus, FileText, Search } from "lucide-react";
 import { useState } from "react";
-import { CONTRACT_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { FolderPicker } from "@/components/folder-picker";
 import { useFolders, descendantIds } from "@/lib/folders";
@@ -126,9 +126,7 @@ function ContractsList() {
                       <span className="font-medium break-all">
                         {c.number ? `№ ${c.number}` : "Без номера"}
                       </span>
-                      <Badge variant={c.status === "active" ? "default" : "secondary"}>
-                        {CONTRACT_STATUS_LABELS[c.status]}
-                      </Badge>
+                      <ContractStatusBadge status={c.status} />
                     </div>
                     <div className="text-xs text-muted-foreground mt-1 break-words">
                       {c.tenant?.name} · {c.property?.name}

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ChargeStatusBadge } from "@/components/status-badges";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import { useState } from "react";
-import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, todayISO } from "@/lib/format";
 import { toast } from "sonner";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
@@ -146,17 +146,7 @@ function ChargeDetail() {
           <Row label="Остаток" value={formatMoney(remaining, currency)} highlight={remaining > 0} />
           <div className="flex justify-between pt-2 gap-3">
             <span className="text-muted-foreground">Статус</span>
-            <Badge
-              variant={
-                charge.status === "paid"
-                  ? "default"
-                  : charge.status === "overdue"
-                    ? "destructive"
-                    : "secondary"
-              }
-            >
-              {CHARGE_STATUS_LABELS[charge.status]}
-            </Badge>
+            <ChargeStatusBadge status={charge.status} />
           </div>
         </div>
       </MobileCollapsible>
@@ -264,7 +254,7 @@ function AddPaymentDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(suggested));
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState(todayISO());
   const [method, setMethod] = useState("Наличные");
   const [comment, setComment] = useState("");
   const qc = useQueryClient();

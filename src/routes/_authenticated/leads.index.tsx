@@ -37,7 +37,7 @@ import {
   Construction,
   MessageSquarePlus,
 } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, todayISO } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/leads/")({
   component: LeadsUnderConstruction,
@@ -248,7 +248,7 @@ function LeadCard({ lead }: { lead: Lead }) {
           .single();
         if (tErr) throw tErr;
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayISO();
         const { data: prop } = await supabase
           .from("properties")
           .select("base_rate, area_total, currency")

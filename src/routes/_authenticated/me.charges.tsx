@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ChargeStatusBadge } from "@/components/status-badges";
 import { useTenantContext } from "@/lib/tenant-context";
-import { CHARGE_STATUS_LABELS, formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/me/charges")({
   component: MyCharges,
@@ -50,17 +50,7 @@ function MyCharges() {
                   {formatMoney(c.total, c.contract?.currency)}
                 </div>
               </div>
-              <Badge
-                variant={
-                  c.status === "paid"
-                    ? "default"
-                    : c.status === "overdue"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {CHARGE_STATUS_LABELS[c.status]}
-              </Badge>
+              <ChargeStatusBadge status={c.status} />
             </Card>
           ))}
         </div>

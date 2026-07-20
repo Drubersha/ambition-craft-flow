@@ -5,6 +5,8 @@
  * менять пороги и окна синхронно.
  */
 
+import { monthKey, toISO } from "./format";
+
 export type ReadingPoint = { reading: number; read_at: string };
 
 export type ConsumptionInterval = { start: string; end: string; consumption: number };
@@ -284,7 +286,7 @@ export function monthlyConsumption(
       const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
       const sliceEnd = Math.min(monthEnd, endMs);
       const sliceDays = Math.round((sliceEnd - cursor) / 86_400_000);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = monthKey(d);
       byMonth.set(key, (byMonth.get(key) ?? 0) + (consumption * sliceDays) / totalDays);
       cursor = sliceEnd;
     }
@@ -292,7 +294,7 @@ export function monthlyConsumption(
   const out: { month: string; consumption: number }[] = [];
   for (let i = monthsBack - 1; i >= 0; i--) {
     const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const key = monthKey(d);
     out.push({ month: key, consumption: Math.round((byMonth.get(key) ?? 0) * 100) / 100 });
   }
   return out;
@@ -383,19 +385,8 @@ export function computeAllocationPreview(opts: {
 
 /** Прошлый календарный месяц [1-е; последнее число] — дефолт расчётного периода. */
 export function prevMonthRange(today: Date = new Date()): { start: string; end: string } {
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   return {
-    start: iso(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
-    end: iso(new Date(today.getFullYear(), today.getMonth(), 0)),
+    start: toISO(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+    end: toISO(new Date(today.getFullYear(), today.getMonth(), 0)),
   };
-}
-
-/** "2026-07" → "июл 2026" для подписей осей. */
-export function formatMonthKey(key: string): string {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString("ru-RU", {
-    month: "short",
-    year: "numeric",
-  });
 }

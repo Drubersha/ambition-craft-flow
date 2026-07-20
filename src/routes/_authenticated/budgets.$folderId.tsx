@@ -48,7 +48,7 @@ import {
   type BudgetExpense,
   type BudgetPeriodLimit,
 } from "@/lib/budget";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatMoney, formatDate, todayISO } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/budgets/$folderId")({
   component: BudgetDetail,
@@ -745,11 +745,11 @@ function AddExpenseDialog({
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   // Для прошлого периода дата по умолчанию — конец периода, а не сегодня.
-  const [date, setDate] = useState(isPast ? period.end : new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(isPast ? period.end : todayISO());
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (open) setDate(isPast ? period.end : new Date().toISOString().slice(0, 10));
+    if (open) setDate(isPast ? period.end : todayISO());
   }, [open, isPast, period.end]);
 
   const save = useMutation({

@@ -25,6 +25,49 @@ export function daysUntil(date: string | null | undefined): number | null {
   return Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/** Дата в формате YYYY-MM-DD по локальному времени. */
+export function toISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Сегодня в формате YYYY-MM-DD (по UTC — как new Date().toISOString()). */
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Ключ месяца "YYYY-MM" для даты. */
+export function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Ключ месяца "YYYY-MM" из ISO-строки даты. */
+export function monthKeyOf(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+/** Ключи месяцев "YYYY-MM" между двумя датами включительно. */
+export function monthKeysBetween(start: Date, end: Date): string[] {
+  const keys: string[] = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cur <= last) {
+    keys.push(monthKey(cur));
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return keys;
+}
+
+/** "2026-07" → "июл 2026" (year: "2-digit" — "июл 26") для подписей осей. */
+export function formatMonthKey(key: string, year: "numeric" | "2-digit" = "numeric"): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString("ru-RU", { month: "short", year });
+}
+
+/** Целое число с разделителями тысяч (ru-RU). */
+export function formatNum(n: number): string {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(n));
+}
+
 export const PROPERTY_TYPE_LABELS: Record<string, string> = {
   office: "Офис",
   warehouse: "Склад",
@@ -146,10 +189,6 @@ export function chargeTotalForPeriod(
   if (period === "one_time") return Math.round(rate * (area || 1) * 100) / 100;
   const monthly = monthlyFromRate(rate, period) * (area || 0);
   return Math.round(monthly * monthsInRange(start, end) * 100) / 100;
-}
-
-function toISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTenantContext } from "@/lib/tenant-context";
-import { formatDate, formatMoney, CHARGE_STATUS_LABELS } from "@/lib/format";
+import { formatDate, formatMoney, CHARGE_STATUS_LABELS, todayISO } from "@/lib/format";
 import { FileText, Receipt, CalendarDays, MessageSquare, Gauge } from "lucide-react";
 import { OnboardingQuest } from "@/components/onboarding-quest";
 
@@ -20,7 +20,7 @@ function MeDashboard() {
     queryKey: ["me-dashboard", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const { data: contracts } = await supabase
         .from("contracts")
         .select("id, number, status, start_date, end_date, currency, property:properties(name)")

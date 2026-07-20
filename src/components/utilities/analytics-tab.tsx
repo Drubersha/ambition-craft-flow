@@ -3,13 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MeterTypeSelect } from "@/components/utilities/meter-type-select";
 import { AlertTriangle, TrendingUp } from "lucide-react";
-import { METER_UNITS } from "@/lib/format";
-import {
-  analyzeLastInterval,
-  formatMonthKey,
-  monthlyConsumption,
-  UTILITY_ALERT_THRESHOLD,
-} from "@/lib/utilities";
+import { METER_UNITS, formatMonthKey } from "@/lib/format";
+import { analyzeLastInterval, monthlyConsumption, UTILITY_ALERT_THRESHOLD } from "@/lib/utilities";
 import { groupReadingsByMeter, type Meter, type MeterReading } from "@/lib/meters";
 import {
   Bar,

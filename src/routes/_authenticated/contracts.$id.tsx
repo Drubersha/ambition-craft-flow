@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ChargeStatusBadge } from "@/components/status-badges";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Search, Eye, Gauge } from "lucide-react";
 import {
@@ -16,6 +16,7 @@ import {
   computeDepositWithArea,
   chargeTotalForPeriod,
   monthsInRange,
+  todayISO,
 } from "@/lib/format";
 import { useState, useEffect } from "react";
 import {
@@ -126,7 +127,7 @@ function EditContract() {
       }
 
       // Auto-recalculate future unpaid charges so they stay in sync with the contract's price/area.
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const { data: future, error: fErr } = await supabase
         .from("charges")
         .select("id, period_start, period_end, paid_total, status")
@@ -424,18 +425,7 @@ function EditContract() {
                         {formatMoney(c.total, data.currency)}
                       </div>
                     </div>
-                    <Badge
-                      className="shrink-0 whitespace-nowrap"
-                      variant={
-                        c.status === "paid"
-                          ? "default"
-                          : c.status === "overdue"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                    >
-                      {CHARGE_STATUS_LABELS[c.status]}
-                    </Badge>
+                    <ChargeStatusBadge className="shrink-0 whitespace-nowrap" status={c.status} />
                   </Card>
                 </Link>
               ))
