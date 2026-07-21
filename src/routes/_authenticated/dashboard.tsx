@@ -34,7 +34,13 @@ import {
   type Period,
   type Property,
 } from "@/lib/dashboard";
-import { Kpi, MultiSelectPopover, PlaceholderCard, Section } from "@/components/dashboard/ui";
+import {
+  ContourBreakdown,
+  Kpi,
+  MultiSelectPopover,
+  PlaceholderCard,
+  Section,
+} from "@/components/dashboard/ui";
 import { PropertiesTable } from "@/components/dashboard/properties-table";
 import { ExpiringLists, RateHistoryTable } from "@/components/dashboard/contracts-cards";
 import { ArSection } from "@/components/dashboard/ar-section";
@@ -55,6 +61,11 @@ import {
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
+
+/** Контуры, кроме помещений: они выносятся в подстрочник, помещения — в основную цифру. */
+function otherContours<T extends { label: string }>(items: T[]): T[] {
+  return items.filter((i) => i.label !== "Помещения");
+}
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
@@ -133,13 +144,15 @@ function Dashboard() {
     totalArea: `Площади ${filtered.properties.length} объектов(а) в фильтре, раздельно по контурам: ${kpi.areas
       .map((a) => `${a.label} — ${formatNum(a.total)} ${a.unit}`)
       .join(", ")}. Метры офиса, склада и земли неравноценны, поэтому общий итог не выводится.`,
-    propsCount: `Количество объектов, попавших под текущие фильтры.`,
+    propsCount: `Объекты под текущими фильтрами, по контурам: ${kpi.areas
+      .map((a) => `${a.label} — ${a.properties}`)
+      .join(", ")}.`,
     occupancy: `Занятость каждого контура — сданная площадь к площади контура без АХЧ: ${kpi.areas
       .filter((a) => a.occupancy !== null)
       .map((a) => `${a.label} — ${formatNum(a.leased)} из ${formatNum(a.total - a.ahch)} ${a.unit}`)
       .join("; ")}. Всего ${activeContractsForHint.length} активных договоров.`,
-    rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
-    monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
+    rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}; в подстрочнике — разбивка по контурам (платёж относится к контуру через начисление и договор).`,
+    monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ), в подстрочнике — по контурам.`,
     avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
     overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
@@ -304,17 +317,12 @@ function Dashboard() {
             label="Площадь: помещения"
             value={kpi.areas.length === 0 ? "—" : `${formatNum(kpi.premisesArea)} м²`}
             sub={
-              kpi.areas.filter((a) => a.label !== "Помещения").length > 0 ? (
-                <div className="mt-1 space-y-0.5">
-                  {kpi.areas
-                    .filter((a) => a.label !== "Помещения")
-                    .map((a) => (
-                      <div key={a.label} className="text-[11px] text-muted-foreground">
-                        {a.label}: {formatNum(a.total)} {a.unit}
-                      </div>
-                    ))}
-                </div>
-              ) : undefined
+              <ContourBreakdown
+                items={otherContours(kpi.areas).map((a) => ({
+                  label: a.label,
+                  text: `${formatNum(a.total)} ${a.unit}`,
+                }))}
+              />
             }
             hint={showKpiHints ? kpiHints.totalArea : undefined}
           />
@@ -322,6 +330,11 @@ function Dashboard() {
             icon={Building2}
             label="Объектов"
             value={kpi.propsCount}
+            sub={
+              <ContourBreakdown
+                items={kpi.areas.map((a) => ({ label: a.label, text: String(a.properties) }))}
+              />
+            }
             hint={showKpiHints ? kpiHints.propsCount : undefined}
           />
           <Kpi
@@ -330,16 +343,14 @@ function Dashboard() {
             value={kpi.premisesOccupancy === null ? "—" : `${kpi.premisesOccupancy.toFixed(1)}%`}
             tone={kpi.premisesOccupancy === null ? undefined : occupancyTone(kpi.premisesOccupancy)}
             sub={
-              <div className="mt-1 space-y-0.5">
-                <Progress value={kpi.premisesOccupancy ?? 0} className="mt-1 h-1.5" />
-                {kpi.areas
-                  .filter((a) => a.label !== "Помещения" && a.occupancy !== null)
-                  .map((a) => (
-                    <div key={a.label} className="text-[11px] text-muted-foreground">
-                      {a.label}: {a.occupancy!.toFixed(1)}%
-                    </div>
-                  ))}
-              </div>
+              <>
+                <Progress value={kpi.premisesOccupancy ?? 0} className="mt-2 h-1.5" />
+                <ContourBreakdown
+                  items={otherContours(kpi.areas)
+                    .filter((a) => a.occupancy !== null)
+                    .map((a) => ({ label: a.label, text: `${a.occupancy!.toFixed(1)}%` }))}
+                />
+              </>
             }
             hint={showKpiHints ? kpiHints.occupancy : undefined}
           />
@@ -347,12 +358,26 @@ function Dashboard() {
             icon={Wallet}
             label="Арендный доход"
             value={formatMoney(kpi.rentIncome)}
+            sub={
+              <ContourBreakdown
+                items={kpi.incomes
+                  .filter((i) => i.rentIncome > 0)
+                  .map((i) => ({ label: i.label, text: formatMoney(i.rentIncome) }))}
+              />
+            }
             hint={showKpiHints ? kpiHints.rentIncome : undefined}
           />
           <Kpi
             icon={Wallet}
             label="Месячные платежи"
             value={formatMoney(kpi.monthlyIncome)}
+            sub={
+              <ContourBreakdown
+                items={kpi.incomes
+                  .filter((i) => i.monthlyIncome > 0)
+                  .map((i) => ({ label: i.label, text: formatMoney(i.monthlyIncome) }))}
+              />
+            }
             hint={showKpiHints ? kpiHints.monthlyIncome : undefined}
           />
           <Kpi
@@ -360,17 +385,12 @@ function Dashboard() {
             label="Ставка: помещения"
             value={kpi.avgRates.length === 0 ? "—" : `${formatNum(kpi.avgRate)} ₽/м²/мес`}
             sub={
-              kpi.avgRates.filter((r) => r.label !== "Помещения").length > 0 ? (
-                <div className="mt-1 space-y-0.5">
-                  {kpi.avgRates
-                    .filter((r) => r.label !== "Помещения")
-                    .map((r) => (
-                      <div key={r.label} className="text-[11px] text-muted-foreground">
-                        {r.label}: {formatNum(r.rate)} {r.unit}
-                      </div>
-                    ))}
-                </div>
-              ) : undefined
+              <ContourBreakdown
+                items={otherContours(kpi.avgRates).map((r) => ({
+                  label: r.label,
+                  text: `${formatNum(r.rate)} ${r.unit}`,
+                }))}
+              />
             }
             hint={showKpiHints ? kpiHints.avgRate : undefined}
           />

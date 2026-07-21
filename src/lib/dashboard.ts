@@ -254,6 +254,63 @@ export function computeContourRates(contracts: Contract[]): ContourRate[] {
   });
 }
 
+export type ContourIncome = {
+  label: string;
+  /** Поступило платежей за период. */
+  rentIncome: number;
+  /** Начисляется в месяц по активным договорам (ставка × площадь). */
+  monthlyIncome: number;
+};
+
+/**
+ * Доходы по контурам: платёж относится к контуру через начисление и договор,
+ * поэтому маппинг строится по всем договорам, а не только по активным —
+ * оплаты приходят и по завершённым.
+ */
+export function computeContourIncomes(
+  filtered: FilteredDashboardData,
+  periodStart: Date,
+  periodEnd: Date,
+): ContourIncome[] {
+  const contourByContract = new Map<string, string>();
+  for (const c of filtered.contracts) {
+    contourByContract.set(c.id, contourOfType(c.property?.type));
+  }
+  const contourByCharge = new Map<string, string>();
+  for (const ch of filtered.charges) {
+    const label = contourByContract.get(ch.contract_id);
+    if (label) contourByCharge.set(ch.id, label);
+  }
+
+  const groups = new Map<string, { rentIncome: number; monthlyIncome: number }>();
+  const bucket = (label: string) => {
+    const g = groups.get(label) || { rentIncome: 0, monthlyIncome: 0 };
+    groups.set(label, g);
+    return g;
+  };
+
+  for (const c of filtered.contracts) {
+    if (c.status !== "active") continue;
+    bucket(contourOfType(c.property?.type)).monthlyIncome += monthlyPayment(
+      Number(c.rate),
+      c.payment_period,
+      Number(c.area || 0),
+    );
+  }
+  for (const p of filtered.payments) {
+    const d = new Date(p.paid_at);
+    if (d < periodStart || d > periodEnd) continue;
+    const label = contourByCharge.get(p.charge_id);
+    if (!label) continue;
+    bucket(label).rentIncome += Number(p.amount);
+  }
+
+  return CONTOUR_ORDER.filter((label) => groups.has(label)).map((label) => ({
+    label,
+    ...groups.get(label)!,
+  }));
+}
+
 /** KPI портфеля за период. Занятость считается от площади без АХЧ. */
 export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, periodEnd: Date) {
   const totalArea = filtered.properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
@@ -282,6 +339,8 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   const ahchBase = areas.reduce((s, a) => (a.ahch > 0 ? s + a.total : s), 0);
   const ahchShare = ahchBase > 0 ? (ahchArea / ahchBase) * 100 : 0;
 
+  const incomes = computeContourIncomes(filtered, periodStart, periodEnd);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const overdueAmt = filtered.charges.reduce((s, c) => {
@@ -306,6 +365,7 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
     premisesArea: premises?.total ?? 0,
     premisesOccupancy: premises?.occupancy ?? null,
     areas,
+    incomes,
     propsCount: filtered.properties.length,
     occupancy,
     rentIncome,

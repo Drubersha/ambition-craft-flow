@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   computeContourAreas,
+  computeContourIncomes,
   computeContourRates,
   contourOfType,
+  type Charge,
   type Contract,
+  type Payment,
   type Property,
 } from "./dashboard";
 
@@ -161,5 +164,87 @@ describe("computeContourAreas", () => {
     expect(areas.map((a) => a.label)).toEqual(["Земля"]);
     expect(areas[0].leased).toBe(0);
     expect(areas[0].occupancy).toBe(0);
+  });
+});
+
+describe("computeContourIncomes", () => {
+  const charge = (id: string, contractId: string): Charge => ({
+    id,
+    contract_id: contractId,
+    total: 0,
+    paid_total: 0,
+    status: "paid",
+    due_date: null,
+    period_start: "2026-06-01",
+    period_end: "2026-06-30",
+  });
+  const payment = (chargeId: string, amount: number, paidAt: string): Payment => ({
+    id: `pay-${chargeId}-${amount}`,
+    charge_id: chargeId,
+    amount,
+    paid_at: paidAt,
+    method: null,
+  });
+
+  it("разносит платежи и месячные начисления по контурам", () => {
+    const premises = contract({ area: 100, rate: 200 });
+    const land = contract({ area: 1000, rate: 50, property: prop("land") });
+    const parking = contract({ area: 5, rate: 6000, property: prop("parking") });
+    const incomes = computeContourIncomes(
+      {
+        properties: [],
+        contracts: [premises, land, parking],
+        charges: [charge("ch1", premises.id), charge("ch2", land.id), charge("ch3", parking.id)],
+        payments: [
+          payment("ch1", 20000, "2026-06-10"),
+          payment("ch2", 50000, "2026-06-15"),
+          payment("ch3", 30000, "2026-06-20"),
+        ],
+        ahchContracts: [],
+      },
+      new Date("2026-06-01"),
+      new Date("2026-06-30"),
+    );
+    const by = Object.fromEntries(incomes.map((i) => [i.label, i]));
+    expect(incomes.map((i) => i.label)).toEqual(["Помещения", "Земля", "Машиноместа"]);
+    expect(by["Помещения"].rentIncome).toBe(20000);
+    expect(by["Помещения"].monthlyIncome).toBeCloseTo(20000, 5);
+    expect(by["Земля"].rentIncome).toBe(50000);
+    expect(by["Земля"].monthlyIncome).toBeCloseTo(50000, 5);
+    expect(by["Машиноместа"].rentIncome).toBe(30000);
+    expect(by["Машиноместа"].monthlyIncome).toBeCloseTo(30000, 5);
+  });
+
+  it("считает платежи по завершённым договорам, но не их месячные начисления", () => {
+    const finished = contract({ area: 100, rate: 300, status: "finished" });
+    const incomes = computeContourIncomes(
+      {
+        properties: [],
+        contracts: [finished],
+        charges: [charge("ch1", finished.id)],
+        payments: [payment("ch1", 15000, "2026-06-10")],
+        ahchContracts: [],
+      },
+      new Date("2026-06-01"),
+      new Date("2026-06-30"),
+    );
+    expect(incomes[0].rentIncome).toBe(15000);
+    expect(incomes[0].monthlyIncome).toBe(0);
+  });
+
+  it("отсекает платежи вне периода", () => {
+    const c = contract({ area: 100, rate: 200 });
+    const incomes = computeContourIncomes(
+      {
+        properties: [],
+        contracts: [c],
+        charges: [charge("ch1", c.id)],
+        payments: [payment("ch1", 9999, "2026-05-31"), payment("ch1", 7000, "2026-06-05")],
+        ahchContracts: [],
+      },
+      new Date("2026-06-01"),
+      new Date("2026-06-30"),
+    );
+    expect(incomes[0].rentIncome).toBe(7000);
   });
 });

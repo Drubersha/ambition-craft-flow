@@ -73,6 +73,29 @@ export function Kpi({
   );
 }
 
+/**
+ * Разбивка KPI по контурам под основной цифрой: у контуров разные единицы
+ * (м², места, ₽/место), поэтому каждый показывается своей строкой.
+ */
+export function ContourBreakdown({
+  items,
+  className,
+}: {
+  items: { label: string; text: string }[];
+  className?: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className={`mt-1 space-y-0.5 ${className ?? ""}`}>
+      {items.map((i) => (
+        <div key={i.label} className="text-[11px] text-muted-foreground">
+          {i.label}: {i.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function MultiSelectPopover({
   label,
   options,
