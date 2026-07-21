@@ -237,7 +237,9 @@ export type Database = {
           id: string;
           owner_id: string;
           reset_day: number;
+          revenue_plan_monthly: number;
           updated_at: string;
+          vat_rate: number;
           warning_percent: number;
         };
         Insert: {
@@ -247,7 +249,9 @@ export type Database = {
           id?: string;
           owner_id: string;
           reset_day?: number;
+          revenue_plan_monthly?: number;
           updated_at?: string;
+          vat_rate?: number;
           warning_percent?: number;
         };
         Update: {
@@ -257,7 +261,9 @@ export type Database = {
           id?: string;
           owner_id?: string;
           reset_day?: number;
+          revenue_plan_monthly?: number;
           updated_at?: string;
+          vat_rate?: number;
           warning_percent?: number;
         };
         Relationships: [

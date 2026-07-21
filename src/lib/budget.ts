@@ -72,6 +72,61 @@ export function plannedForMonths(
   return total;
 }
 
+export type ProfitVsPlan = {
+  /** Поступления как есть, с НДС. */
+  revenueGross: number;
+  /** Выручка без НДС — сопоставима с планом. */
+  revenueNet: number;
+  /** Фактические расходы за период. */
+  expenses: number;
+  /** Выручка без НДС минус расходы. */
+  profit: number;
+  /** Плановая выручка за период (без НДС); null — план не задан. */
+  revenuePlan: number | null;
+  /** Плановые расходы за период. */
+  expensePlan: number;
+  /** Плановая прибыль; null, если план выручки не задан. */
+  profitPlan: number | null;
+  /** Прибыль сверх плана; null, если план выручки не задан. */
+  overPlan: number | null;
+};
+
+/**
+ * Прибыль по методике «Отчёта о выполнении бюджета» (1С):
+ * выручка без НДС − расходы, и сверх плана — то же за вычетом плановой прибыли.
+ *
+ * Поступления приходят с НДС, план задан без НДС, поэтому факт приводится к
+ * виду плана по ставке. Признака «работает с НДС» у арендаторов в системе нет,
+ * поэтому ставка применяется ко всем поступлениям и цифра приблизительная:
+ * в отчёте 1С фактическое соотношение гуляет от 1.10 до 1.20 при плановых 1.22.
+ */
+export function computeProfitVsPlan(args: {
+  revenueGross: number;
+  expenses: number;
+  months: number;
+  revenuePlanMonthly: number;
+  expensePlan: number;
+  vatRate: number;
+}): ProfitVsPlan {
+  const { revenueGross, expenses, months, revenuePlanMonthly, expensePlan, vatRate } = args;
+  const divisor = 1 + (Number(vatRate) || 0) / 100;
+  const revenueNet = divisor > 0 ? revenueGross / divisor : revenueGross;
+  const profit = revenueNet - expenses;
+  const hasRevenuePlan = revenuePlanMonthly > 0 && months > 0;
+  const revenuePlan = hasRevenuePlan ? revenuePlanMonthly * months : null;
+  const profitPlan = revenuePlan === null ? null : revenuePlan - expensePlan;
+  return {
+    revenueGross,
+    revenueNet,
+    expenses,
+    profit,
+    revenuePlan,
+    expensePlan,
+    profitPlan,
+    overPlan: profitPlan === null ? null : profit - profitPlan,
+  };
+}
+
 /**
  * Текущий период плана. Если today до reset_day этого месяца, период
  * начался в предыдущем месяце. period_end = день перед reset_day следующего цикла.

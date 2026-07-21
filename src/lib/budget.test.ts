@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getCurrentPeriod, listSelectablePeriods, plannedForMonths } from "./budget";
+import {
+  computeProfitVsPlan,
+  getCurrentPeriod,
+  listSelectablePeriods,
+  plannedForMonths,
+} from "./budget";
 
 describe("getCurrentPeriod", () => {
   it("starts this month when today is on/after reset day", () => {
@@ -126,5 +131,79 @@ describe("plannedForMonths", () => {
       limit_amount: amount as number,
     }));
     expect(plannedForMonths(["2026-01"], realCats, jan)).toBe(829250);
+  });
+});
+
+describe("computeProfitVsPlan", () => {
+  it("считает прибыль как в отчёте: выручка без НДС минус расходы", () => {
+    const r = computeProfitVsPlan({
+      revenueGross: 122000,
+      expenses: 20000,
+      months: 1,
+      revenuePlanMonthly: 90000,
+      expensePlan: 25000,
+      vatRate: 22,
+    });
+    expect(r.revenueNet).toBeCloseTo(100000, 5);
+    expect(r.profit).toBeCloseTo(80000, 5);
+    expect(r.profitPlan).toBeCloseTo(65000, 5);
+    // 80 000 факт против 65 000 плана
+    expect(r.overPlan).toBeCloseTo(15000, 5);
+  });
+
+  it("воспроизводит январь 2026 из отчёта 1С", () => {
+    // План: выручка 2 295 081,97 − расходы 829 250 = прибыль 1 465 831,97.
+    const r = computeProfitVsPlan({
+      revenueGross: 3472406.06,
+      expenses: 701526.28,
+      months: 1,
+      revenuePlanMonthly: 2295081.97,
+      expensePlan: 829250,
+      vatRate: 22,
+    });
+    expect(r.profitPlan).toBeCloseTo(1465831.97, 2);
+    // Факт по 1С — 2 216 189,75; расчёт по ставке 22% даёт близкую величину,
+    // расхождение из-за арендаторов без НДС (в отчёте коэффициент 1.19).
+    expect(r.profit).toBeGreaterThan(2000000);
+    expect(r.overPlan).toBeGreaterThan(0);
+  });
+
+  it("масштабирует план выручки на число месяцев периода", () => {
+    const r = computeProfitVsPlan({
+      revenueGross: 0,
+      expenses: 0,
+      months: 7,
+      revenuePlanMonthly: 2295081.97,
+      expensePlan: 4409750,
+      vatRate: 22,
+    });
+    expect(r.revenuePlan).toBeCloseTo(16065573.79, 2);
+    expect(r.profitPlan).toBeCloseTo(16065573.79 - 4409750, 2);
+  });
+
+  it("без плана выручки не выдумывает прибыль сверх плана", () => {
+    const r = computeProfitVsPlan({
+      revenueGross: 100000,
+      expenses: 30000,
+      months: 1,
+      revenuePlanMonthly: 0,
+      expensePlan: 25000,
+      vatRate: 22,
+    });
+    expect(r.revenuePlan).toBeNull();
+    expect(r.profitPlan).toBeNull();
+    expect(r.overPlan).toBeNull();
+  });
+
+  it("нулевая ставка НДС оставляет выручку как есть", () => {
+    const r = computeProfitVsPlan({
+      revenueGross: 100000,
+      expenses: 0,
+      months: 1,
+      revenuePlanMonthly: 0,
+      expensePlan: 0,
+      vatRate: 0,
+    });
+    expect(r.revenueNet).toBe(100000);
   });
 });
