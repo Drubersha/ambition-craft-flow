@@ -22,8 +22,10 @@ import {
   HelpCircle,
   Settings,
   Gauge,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -137,6 +139,7 @@ function AccountSettingsButton() {
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { to: "/ai", label: "Помощник", icon: Sparkles },
   { to: "/leads", label: "Воронка", icon: Kanban },
   { to: "/properties", label: "Объекты", icon: Building2 },
   { to: "/tenants", label: "Арендаторы", icon: Users },
@@ -165,6 +168,33 @@ const ADMIN_NAV = [
   { to: "/admin/logs", label: "Журнал действий", icon: ScrollText },
   { to: "/admin/users", label: "Пользователи", icon: ShieldCheck },
 ] as const;
+
+/** Строка в шапке: вопрос уходит на страницу помощника и там сразу отправляется. */
+function AiSearchBox() {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  return (
+    <form
+      className="relative w-full max-w-md"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const question = q.trim();
+        if (!question) return;
+        setQ("");
+        navigate({ to: "/ai", search: { q: question } });
+      }}
+    >
+      <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Спросите помощника: кто больше всех должен?"
+        className="pl-8 h-9"
+        aria-label="Вопрос помощнику"
+      />
+    </form>
+  );
+}
 
 function NavList({
   onNavigate,
@@ -471,6 +501,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </div>
           <div className="ml-auto flex items-center gap-2 min-w-0">
+            {role !== "tenant" && (
+              <Button variant="ghost" size="icon" asChild aria-label="Спросить помощника">
+                <Link to="/ai">
+                  <Sparkles className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
             {canSwitchRole && <RoleToggle />}
             <div className="flex flex-col items-end leading-tight min-w-0">
               {email && <span className="text-xs font-medium truncate max-w-[40vw]">{email}</span>}
@@ -484,6 +521,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <header className="hidden md:flex h-14 items-center border-b bg-background px-6 sticky top-0 z-20">
+          {role !== "tenant" && <AiSearchBox />}
           <div className="ml-auto flex items-center gap-3">
             {canSwitchRole && <RoleToggle />}
             <div className="flex flex-col items-end leading-tight">
