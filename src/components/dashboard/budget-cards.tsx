@@ -15,7 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, monthKeysBetween } from "@/lib/format";
+import { plannedForMonths } from "@/lib/budget";
 import { EmptyText } from "./ui";
 
 export function BudgetPlanVsFact({
@@ -28,21 +29,26 @@ export function BudgetPlanVsFact({
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-budget-pvf"],
     queryFn: async () => {
-      const [folders, plans, cats, exps] = await Promise.all([
+      const [folders, plans, cats, exps, limits] = await Promise.all([
         supabase.from("folders").select("id, name"),
         supabase.from("budget_plans").select("id, folder_id"),
-        supabase.from("budget_categories").select("plan_id, limit_amount"),
+        supabase.from("budget_categories").select("id, plan_id, limit_amount"),
         supabase.from("budget_expenses").select("plan_id, amount, spent_at"),
+        supabase
+          .from("budget_period_limits")
+          .select("plan_id, category_id, period_start, limit_amount"),
       ]);
       if (folders.error) throw folders.error;
       if (plans.error) throw plans.error;
       if (cats.error) throw cats.error;
       if (exps.error) throw exps.error;
+      if (limits.error) throw limits.error;
       return {
         folders: folders.data ?? [],
         plans: plans.data ?? [],
         categories: cats.data ?? [],
         expenses: exps.data ?? [],
+        periodLimits: limits.data ?? [],
       };
     },
   });
@@ -53,19 +59,25 @@ export function BudgetPlanVsFact({
       const d = new Date(s);
       return d >= periodStart && d <= periodEnd;
     };
-    // Лимиты категорий месячные — для периода длиннее месяца план масштабируем.
-    const months = Math.max(
-      1,
-      (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 +
-        (periodEnd.getMonth() - periodStart.getMonth()) +
-        1,
-    );
-    const planLimitByPlan = new Map<string, number>();
+    // План берём помесячно: лимит категории меняется от месяца к месяцу
+    // (в отчёте 1С коммуналка идёт 550 000 в январе и 130 000 в июле),
+    // поэтому умножать один лимит на число месяцев нельзя.
+    const months = monthKeysBetween(periodStart, periodEnd);
+    const catsByPlan = new Map<string, { id: string; limit_amount: number }[]>();
     for (const c of data.categories as any[]) {
-      planLimitByPlan.set(
-        c.plan_id,
-        (planLimitByPlan.get(c.plan_id) ?? 0) + Number(c.limit_amount || 0) * months,
-      );
+      const arr = catsByPlan.get(c.plan_id) ?? [];
+      arr.push({ id: c.id, limit_amount: Number(c.limit_amount || 0) });
+      catsByPlan.set(c.plan_id, arr);
+    }
+    const limitsByPlan = new Map<string, any[]>();
+    for (const l of (data.periodLimits ?? []) as any[]) {
+      const arr = limitsByPlan.get(l.plan_id) ?? [];
+      arr.push(l);
+      limitsByPlan.set(l.plan_id, arr);
+    }
+    const planLimitByPlan = new Map<string, number>();
+    for (const [planId, cats] of catsByPlan) {
+      planLimitByPlan.set(planId, plannedForMonths(months, cats, limitsByPlan.get(planId) ?? []));
     }
     const factByPlan = new Map<string, number>();
     for (const e of data.expenses as any[]) {

@@ -39,6 +39,40 @@ export type BudgetPeriodLimit = {
 };
 
 /**
+ * Плановая сумма расходов за диапазон месяцев.
+ *
+ * Лимит категории — месячный, но по месяцам он меняется (в отчёте 1С
+ * коммуналка идёт 550 000 в январе и 130 000 в июле). Поэтому для каждого
+ * месяца берётся персональный лимит из budget_period_limits, а базовый
+ * limit_amount используется только там, где персонального нет. Умножать один
+ * лимит на число месяцев нельзя — план разойдётся с официальным отчётом.
+ *
+ * `months` — ключи месяцев «YYYY-MM» внутри выбранного периода.
+ */
+export function plannedForMonths(
+  months: string[],
+  categories: { id: string; limit_amount: number }[],
+  periodLimits: { category_id: string; period_start: string; limit_amount: number }[],
+): number {
+  const byMonth = new Map<string, Map<string, number>>();
+  for (const l of periodLimits) {
+    const key = String(l.period_start).slice(0, 7);
+    const m = byMonth.get(key) ?? new Map<string, number>();
+    m.set(l.category_id, Number(l.limit_amount) || 0);
+    byMonth.set(key, m);
+  }
+  let total = 0;
+  for (const month of months) {
+    const overrides = byMonth.get(month);
+    for (const c of categories) {
+      const override = overrides?.get(c.id);
+      total += override !== undefined ? override : Number(c.limit_amount) || 0;
+    }
+  }
+  return total;
+}
+
+/**
  * Текущий период плана. Если today до reset_day этого месяца, период
  * начался в предыдущем месяце. period_end = день перед reset_day следующего цикла.
  */
