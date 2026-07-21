@@ -301,8 +301,8 @@ async function unpaidCharges(ctx: Ctx, args: { tenant?: string; limit?: number }
   };
 }
 
-/** Договоры, истекающие в ближайшие N дней. */
-async function expiringContracts(ctx: Ctx, args: { days?: number }) {
+/** Договоры, истекающие в ближайшие N дней; при указании арендатора — только его. */
+async function expiringContracts(ctx: Ctx, args: { days?: number; tenant?: string }) {
   const days = Math.min(Math.max(args.days ?? 90, 1), 365);
   const today = new Date();
   const limitDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
@@ -319,13 +319,18 @@ async function expiringContracts(ctx: Ctx, args: { days?: number }) {
     .gte("end_date", todayISO())
     .lte("end_date", iso(limitDate))
     .order("end_date", { ascending: true });
-  const rows = (data ?? []) as any[];
+  let rows = (data ?? []) as any[];
+  const who = args.tenant ? ` у «${args.tenant}»` : "";
+  if (args.tenant) {
+    const needle = args.tenant.toLowerCase();
+    rows = rows.filter((c) => (c.tenant?.name ?? "").toLowerCase().includes(needle));
+  }
   if (rows.length === 0) {
-    return { summary: `Договоров, истекающих в ближайшие ${days} дней, нет.`, links: [] };
+    return { summary: `Договоров, истекающих в ближайшие ${days} дней${who}, нет.`, links: [] };
   }
   return {
     summary:
-      `Истекают в ближайшие ${days} дней: ${rows.length} договор(ов). ` +
+      `Истекают в ближайшие ${days} дней${who}: ${rows.length} договор(ов). ` +
       rows
         .map(
           (c) =>
@@ -387,6 +392,99 @@ async function portfolioOverview(ctx: Ctx) {
   return {
     summary: `Портфель по контурам — ${parts.join("; ")}. Всего аренды ${formatMoney(monthlyTotal)} в месяц.`,
     links: [{ label: "Дашборд", to: "/dashboard", note: formatMoney(monthlyTotal) }],
+  };
+}
+
+/**
+ * Что арендует конкретный арендатор: площади по контурам, объекты, аренда в
+ * месяц и текущий долг. Отвечает на «сколько метров занимает», «что арендует»,
+ * «сколько платит» — там, где сводка по портфелю дала бы итог по всем.
+ */
+async function tenantOverview(ctx: Ctx, args: { tenant?: string }) {
+  if (!args.tenant) return { summary: "Не указан арендатор.", links: [] };
+  const matches = await tenantsByName(ctx, args.tenant);
+  if (matches.length === 0) return { summary: `Арендатор «${args.tenant}» не найден.`, links: [] };
+
+  const ids = matches.map((t) => t.id);
+  const { data: contracts } = await ctx.sb
+    .from("contracts")
+    .select(
+      "id, number, area, rate, payment_period, status, kind, tenant_id, property:properties(id,name,type)",
+    )
+    .in("owner_id", ctx.ownerIds)
+    .in("tenant_id", ids);
+
+  const active = (contracts ?? []).filter((c: any) => c.status === "active");
+  if (active.length === 0) {
+    return {
+      summary: `У «${matches[0].name}» нет действующих договоров.`,
+      links: matches.map((t) => ({
+        label: `Арендатор: ${t.name}`,
+        to: "/tenants/$id",
+        params: { id: t.id },
+      })),
+    };
+  }
+
+  const contour = (t?: string | null) =>
+    t === "land"
+      ? "земли"
+      : t === "office"
+        ? "офиса"
+        : t === "parking"
+          ? "машиномест"
+          : "помещений";
+  const unit = (t?: string | null) => (t === "parking" ? "мест" : "м²");
+
+  const byContour = new Map<string, { area: number; unit: string }>();
+  let monthly = 0;
+  for (const c of active) {
+    const key = contour(c.property?.type);
+    const g = byContour.get(key) ?? { area: 0, unit: unit(c.property?.type) };
+    g.area += Number(c.area || 0);
+    byContour.set(key, g);
+    monthly += monthlyPayment(Number(c.rate), c.payment_period, Number(c.area || 0));
+  }
+  const areaText = Array.from(byContour.entries())
+    .map(([k, v]) => `${Math.round(v.area * 100) / 100} ${v.unit} ${k}`)
+    .join(", ");
+
+  // Долг того же арендатора — частый следующий вопрос, считаем сразу.
+  const { data: charges } = await ctx.sb
+    .from("charges")
+    .select("total, paid_total")
+    .in("owner_id", ctx.ownerIds)
+    .in(
+      "contract_id",
+      (contracts ?? []).map((c: any) => c.id),
+    );
+  const debt = (charges ?? []).reduce(
+    (s: number, ch: any) => s + (Number(ch.total) - Number(ch.paid_total)),
+    0,
+  );
+
+  const objects = Array.from(
+    new Set(active.map((c: any) => c.property?.name).filter(Boolean)),
+  ).join(", ");
+
+  return {
+    summary:
+      `«${matches[0].name}» занимает ${areaText} по ${active.length} действующим договорам ` +
+      `(${objects}). Аренда ${formatMoney(monthly)} в месяц.` +
+      (debt > 0.005 ? ` Текущий долг ${formatMoney(debt)}.` : " Задолженности нет."),
+    links: [
+      ...matches.map((t) => ({
+        label: `Арендатор: ${t.name}`,
+        to: "/tenants/$id",
+        params: { id: t.id },
+      })),
+      ...active.map((c: any) => ({
+        label: `Договор №${c.number} — ${c.property?.name ?? "—"}`,
+        to: "/contracts/$id",
+        params: { id: c.id },
+        note: `${Number(c.area || 0)} ${unit(c.property?.type)}`,
+      })),
+    ],
   };
 }
 
@@ -487,8 +585,21 @@ export const AI_TOOLS = {
         .int()
         .optional()
         .describe("За сколько дней вперёд смотреть, по умолчанию 90"),
+      tenant: z
+        .string()
+        .optional()
+        .describe("Название арендатора, если спрашивают про его договоры"),
     }),
     run: expiringContracts,
+  },
+  tenant_overview: {
+    description:
+      "Что арендует конкретный арендатор: площади по контурам, объекты, аренда в месяц, долг. " +
+      "Используй для вопросов «сколько метров занимает X», «что арендует X», «сколько платит X».",
+    schema: z.object({
+      tenant: z.string().optional().describe("Название арендатора"),
+    }),
+    run: tenantOverview,
   },
   portfolio_overview: {
     description:

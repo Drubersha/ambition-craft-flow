@@ -7,6 +7,7 @@ import { z } from "zod";
 
 export const AI_TOOL_NAMES = [
   "tenant_debts",
+  "tenant_overview",
   "income_for_period",
   "unpaid_charges",
   "expiring_contracts",
@@ -15,6 +16,13 @@ export const AI_TOOL_NAMES = [
 ] as const;
 
 export type AiToolName = (typeof AI_TOOL_NAMES)[number];
+
+/**
+ * Инструменты, считающие по всему портфелю: фильтра по арендатору у них нет.
+ * Если в вопросе назван арендатор, отвечать ими нельзя — получится итог по
+ * всем («сколько метров занимает Профритейл» → площадь всех помещений).
+ */
+const PORTFOLIO_WIDE_TOOLS = new Set<string>(["portfolio_overview", "find_entity"]);
 
 /** Плоская схема: вложенные объекты небольшая модель заполняет заметно хуже. */
 export const PlanSchema = z.object({
@@ -55,6 +63,17 @@ export function fallbackPlan(question: string): AiPlan {
     return { tool: "portfolio_overview" };
   }
   return { tool: "find_entity", query: question };
+}
+
+/**
+ * Подставляет найденного арендатора в план и, если выбранный инструмент
+ * считает по всему портфелю, переключает на сводку по этому арендатору.
+ */
+export function refinePlanForTenant(plan: AiPlan, detectedTenant?: string): AiPlan {
+  if (!detectedTenant) return plan;
+  const next: AiPlan = { ...plan, tenant: detectedTenant };
+  if (PORTFOLIO_WIDE_TOOLS.has(plan.tool)) next.tool = "tenant_overview";
+  return next;
 }
 
 /** Слова организационных форм — по ним арендатора не опознать. */

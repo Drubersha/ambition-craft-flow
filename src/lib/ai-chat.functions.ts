@@ -10,7 +10,13 @@ import { z } from "zod";
 import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
-import { fallbackPlan, matchTenantName, PlanSchema, type AiPlan } from "@/lib/ai-intent";
+import {
+  fallbackPlan,
+  matchTenantName,
+  PlanSchema,
+  refinePlanForTenant,
+  type AiPlan,
+} from "@/lib/ai-intent";
 
 const AskInput = z.object({
   question: z.string().min(1).max(500),
@@ -79,7 +85,9 @@ export const askAi = createServerFn({ method: "POST" })
       .in("owner_id", ownerIds);
     const knownNames = (tenantRows ?? []).map((t: any) => t.name as string);
     const detected = matchTenantName(data.question, knownNames);
-    if (detected) plan.tenant = detected;
+    // Если арендатор назван, а инструмент считает по всему портфелю, ответ был
+    // бы итогом по всем — переключаемся на сводку по этому арендатору.
+    plan = refinePlanForTenant(plan, detected);
 
     // Шаг 2. Считает код — модель к цифрам не притрагивается.
     const args: Record<string, unknown> = {};

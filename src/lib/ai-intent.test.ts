@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AI_TOOL_NAMES, fallbackPlan, matchTenantName, PlanSchema } from "./ai-intent";
+import {
+  AI_TOOL_NAMES,
+  fallbackPlan,
+  matchTenantName,
+  PlanSchema,
+  refinePlanForTenant,
+} from "./ai-intent";
 
 describe("fallbackPlan", () => {
   const cases: [string, string][] = [
@@ -91,5 +97,49 @@ describe("matchTenantName", () => {
 
   it("не зависит от регистра и знаков препинания", () => {
     expect(matchTenantName("ДОХОД ОТ «АРТСТРОЙ», июнь!", NAMES)).toBe("АРТстрой ООО");
+  });
+
+  it("узнаёт ПРОФРИТЕЙЛ — на нём помощник отвечал площадью всех помещений", () => {
+    const names = [...NAMES, "ПРОФРИТЕЙЛ ООО"];
+    expect(matchTenantName("сколько метров помещения занимает профритейл", names)).toBe(
+      "ПРОФРИТЕЙЛ ООО",
+    );
+  });
+});
+
+describe("refinePlanForTenant", () => {
+  it("переключает общий портфель на сводку по арендатору", () => {
+    // Именно этот случай давал «13 135 м²» вместо площади арендатора.
+    const plan = refinePlanForTenant({ tool: "portfolio_overview" }, "ПРОФРИТЕЙЛ ООО");
+    expect(plan.tool).toBe("tenant_overview");
+    expect(plan.tenant).toBe("ПРОФРИТЕЙЛ ООО");
+  });
+
+  it("поиск с распознанным арендатором тоже становится сводкой", () => {
+    expect(refinePlanForTenant({ tool: "find_entity", query: "х" }, "ТХП ООО").tool).toBe(
+      "tenant_overview",
+    );
+  });
+
+  it("инструменты с фильтром по арендатору остаются на месте", () => {
+    for (const tool of ["tenant_debts", "income_for_period", "unpaid_charges"] as const) {
+      const plan = refinePlanForTenant({ tool }, "АРТстрой ООО");
+      expect(plan.tool).toBe(tool);
+      expect(plan.tenant).toBe("АРТстрой ООО");
+    }
+  });
+
+  it("без распознанного арендатора план не меняется", () => {
+    const original = { tool: "portfolio_overview" } as const;
+    expect(refinePlanForTenant(original, undefined)).toEqual(original);
+  });
+
+  it("все инструменты плана существуют", () => {
+    expect(AI_TOOL_NAMES).toContain(
+      refinePlanForTenant({ tool: "portfolio_overview" }, "ТХП ООО").tool,
+    );
+    expect(
+      PlanSchema.safeParse(refinePlanForTenant({ tool: "find_entity" }, "ТХП ООО")).success,
+    ).toBe(true);
   });
 });
