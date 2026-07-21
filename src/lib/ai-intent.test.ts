@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   AI_TOOL_NAMES,
   fallbackPlan,
+  isFollowUp,
   matchTenantName,
+  mergeWithPreviousPlan,
   PlanSchema,
   refinePlanForTenant,
 } from "./ai-intent";
@@ -141,5 +143,68 @@ describe("refinePlanForTenant", () => {
     expect(
       PlanSchema.safeParse(refinePlanForTenant({ tool: "find_entity" }, "ТХП ООО")).success,
     ).toBe(true);
+  });
+});
+
+describe("isFollowUp", () => {
+  it("узнаёт уточнения", () => {
+    expect(isFollowUp("а средняя")).toBe(true);
+    expect(isFollowUp("А за май?")).toBe(true);
+    expect(isFollowUp("и долг")).toBe(true);
+    expect(isFollowUp("за июнь")).toBe(true);
+  });
+
+  it("самостоятельные вопросы уточнениями не считает", () => {
+    expect(isFollowUp("какой доход за июнь?")).toBe(false);
+    expect(isFollowUp("кто больше всех должен?")).toBe(false);
+    expect(isFollowUp("")).toBe(false);
+  });
+});
+
+describe("mergeWithPreviousPlan", () => {
+  const prev = { tool: "tenant_overview", tenant: "Шелф Групп ООО" } as const;
+
+  it("«а средняя» продолжает разговор о том же арендаторе", () => {
+    // Ровно тот случай: после «какая ставка у шелф групп» помощник терял контекст.
+    const plan = mergeWithPreviousPlan(fallbackPlan("а средняя"), "а средняя", prev);
+    expect(plan.tenant).toBe("Шелф Групп ООО");
+    expect(plan.tool).toBe("portfolio_overview");
+  });
+
+  it("нераспознанное уточнение берёт прошлый инструмент", () => {
+    const plan = mergeWithPreviousPlan(
+      { tool: "find_entity", query: "а по офису" },
+      "а по офису",
+      prev,
+    );
+    expect(plan.tool).toBe("tenant_overview");
+    expect(plan.tenant).toBe("Шелф Групп ООО");
+  });
+
+  it("наследует период уточнения", () => {
+    const previous = { tool: "income_for_period", tenant: "ТХП ООО", period: "май 2026" } as const;
+    const plan = mergeWithPreviousPlan({ tool: "tenant_debts" }, "а долг", previous);
+    expect(plan.tenant).toBe("ТХП ООО");
+    expect(plan.period).toBe("май 2026");
+  });
+
+  it("самостоятельный вопрос контекст не подхватывает", () => {
+    const plan = mergeWithPreviousPlan(
+      fallbackPlan("кто больше всех должен?"),
+      "кто больше всех должен?",
+      prev,
+    );
+    expect(plan.tenant).toBeUndefined();
+    expect(plan.tool).toBe("tenant_debts");
+  });
+
+  it("явно названный арендатор важнее унаследованного", () => {
+    const plan = mergeWithPreviousPlan({ tool: "tenant_debts", tenant: "ТХП ООО" }, "а ТХП", prev);
+    expect(plan.tenant).toBe("ТХП ООО");
+  });
+
+  it("без истории план не меняется", () => {
+    const original = fallbackPlan("а средняя");
+    expect(mergeWithPreviousPlan(original, "а средняя", null)).toEqual(original);
   });
 });

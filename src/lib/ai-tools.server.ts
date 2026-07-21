@@ -436,17 +436,29 @@ async function tenantOverview(ctx: Ctx, args: { tenant?: string }) {
           : "помещений";
   const unit = (t?: string | null) => (t === "parking" ? "мест" : "м²");
 
-  const byContour = new Map<string, { area: number; unit: string }>();
+  // Ставку считаем по контурам: ₽/м² помещений и ₽/место парковки — разные величины.
+  const byContour = new Map<string, { area: number; unit: string; money: number }>();
   let monthly = 0;
   for (const c of active) {
     const key = contour(c.property?.type);
-    const g = byContour.get(key) ?? { area: 0, unit: unit(c.property?.type) };
-    g.area += Number(c.area || 0);
+    const g = byContour.get(key) ?? { area: 0, unit: unit(c.property?.type), money: 0 };
+    const area = Number(c.area || 0);
+    const money = monthlyPayment(Number(c.rate), c.payment_period, area);
+    g.area += area;
+    g.money += money;
     byContour.set(key, g);
-    monthly += monthlyPayment(Number(c.rate), c.payment_period, Number(c.area || 0));
+    monthly += money;
   }
   const areaText = Array.from(byContour.entries())
     .map(([k, v]) => `${Math.round(v.area * 100) / 100} ${v.unit} ${k}`)
+    .join(", ");
+  const rateText = Array.from(byContour.entries())
+    .filter(([, v]) => v.area > 0)
+    .map(([k, v]) => {
+      const rate = v.money / v.area;
+      const per = v.unit === "мест" ? "₽/место в месяц" : "₽/м² в месяц";
+      return `${Math.round(rate * 100) / 100} ${per} (${k})`;
+    })
     .join(", ");
 
   // Долг того же арендатора — частый следующий вопрос, считаем сразу.
@@ -470,7 +482,7 @@ async function tenantOverview(ctx: Ctx, args: { tenant?: string }) {
   return {
     summary:
       `«${matches[0].name}» занимает ${areaText} по ${active.length} действующим договорам ` +
-      `(${objects}). Аренда ${formatMoney(monthly)} в месяц.` +
+      `(${objects}). Средняя ставка — ${rateText}. Аренда ${formatMoney(monthly)} в месяц.` +
       (debt > 0.005 ? ` Текущий долг ${formatMoney(debt)}.` : " Задолженности нет."),
     links: [
       ...matches.map((t) => ({

@@ -13,6 +13,7 @@ import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
 import {
   fallbackPlan,
   matchTenantName,
+  mergeWithPreviousPlan,
   PlanSchema,
   refinePlanForTenant,
   type AiPlan,
@@ -92,6 +93,20 @@ export const askAi = createServerFn({ method: "POST" })
     // бы итогом по всем — переключаемся на сводку по этому арендатору.
     plan = refinePlanForTenant(plan, detected);
 
+    // Уточнение вроде «а средняя» опирается на предыдущий вопрос: достраиваем
+    // план контекстом последнего ответа помощника.
+    const { data: prevRows } = await supabaseAdmin
+      .from("ai_messages")
+      .select("plan")
+      .eq("user_id", context.userId)
+      .eq("role", "assistant")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const prevPlan = (prevRows?.[0]?.plan ?? null) as AiPlan | null;
+    plan = mergeWithPreviousPlan(plan, data.question, prevPlan);
+    // Наследованный арендатор мог вернуть инструмент, считающий по портфелю.
+    plan = refinePlanForTenant(plan, plan.tenant);
+
     // Шаг 2. Считает код — модель к цифрам не притрагивается.
     const args: Record<string, unknown> = {};
     if (plan.tenant) args.tenant = plan.tenant;
@@ -159,6 +174,7 @@ export const askAi = createServerFn({ method: "POST" })
           links: result.links,
           facts: result.summary,
           tool: plan.tool,
+          plan,
         },
       ]);
     } catch (e) {

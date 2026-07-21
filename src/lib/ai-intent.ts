@@ -59,10 +59,42 @@ export function fallbackPlan(question: string): AiPlan {
   if (has("доход", "выручк", "поступил", "заплат", "платеж", "оплат", "денег", "собрал")) {
     return { tool: "income_for_period", period: question };
   }
-  if (has("площад", "занят", "вакант", "сдано", "свободн", "портфел", "ставк", "контур")) {
+  if (has("площад", "занят", "вакант", "сдано", "свободн", "портфел", "ставк", "контур", "средн")) {
     return { tool: "portfolio_overview" };
   }
   return { tool: "find_entity", query: question };
+}
+
+/**
+ * Уточняющая реплика вроде «а средняя» или «а за май»: смысла сама по себе не
+ * несёт и опирается на предыдущий вопрос.
+ */
+export function isFollowUp(question: string): boolean {
+  const q = question.trim().toLowerCase().replace(/ё/g, "е");
+  if (!q) return false;
+  // Граница \b считает кириллицу не-словом, поэтому проверяем пробел явно.
+  if (/^(а|и|ну|ок|хорошо)(\s|$)/.test(q)) return true;
+  // Короткая реплика без глагола-вопроса тоже читается как уточнение.
+  return q.split(/\s+/).length <= 3 && !/\?$/.test(q);
+}
+
+/**
+ * Достраивает план уточняющего вопроса контекстом предыдущего: арендатор и
+ * период переносятся, а если намерение не распозналось — берётся прошлый
+ * инструмент. Без этого «а средняя» отвечало бы поиском по слову «средняя».
+ */
+export function mergeWithPreviousPlan(
+  plan: AiPlan,
+  question: string,
+  previous?: AiPlan | null,
+): AiPlan {
+  if (!previous || !isFollowUp(question)) return plan;
+  const next: AiPlan = { ...plan };
+  if (!next.tenant && previous.tenant) next.tenant = previous.tenant;
+  if (!next.period && previous.period) next.period = previous.period;
+  // find_entity здесь означает «намерение не распознано» — продолжаем прошлую тему.
+  if (next.tool === "find_entity") next.tool = previous.tool;
+  return next;
 }
 
 /**

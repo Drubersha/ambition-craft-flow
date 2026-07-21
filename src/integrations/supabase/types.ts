@@ -16,6 +16,7 @@ export type Database = {
           id: string;
           links: Json;
           owner_id: string;
+          plan: Json | null;
           role: string;
           tool: string | null;
           user_id: string;
@@ -27,6 +28,7 @@ export type Database = {
           id?: string;
           links?: Json;
           owner_id: string;
+          plan?: Json | null;
           role: string;
           tool?: string | null;
           user_id: string;
@@ -38,6 +40,7 @@ export type Database = {
           id?: string;
           links?: Json;
           owner_id?: string;
+          plan?: Json | null;
           role?: string;
           tool?: string | null;
           user_id?: string;
