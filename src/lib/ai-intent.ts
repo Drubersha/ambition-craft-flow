@@ -56,3 +56,58 @@ export function fallbackPlan(question: string): AiPlan {
   }
   return { tool: "find_entity", query: question };
 }
+
+/** Слова организационных форм — по ним арендатора не опознать. */
+const NAME_STOPWORDS = new Set(["ооо", "ип", "оао", "зао", "пао", "ао", "и", "п", "физ", "лицо"]);
+
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^a-zа-я0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Основа слова для сравнения с падежными формами: «артстрой» и «артстроя»
+ * дают общее начало «артстр». Короткие слова не обрезаем — у них и так нет
+ * запаса, а ложные совпадения дороже пропуска.
+ */
+function stem(word: string): string {
+  if (word.length >= 6) return word.slice(0, word.length - 2);
+  if (word.length === 5) return word.slice(0, 4);
+  return word;
+}
+
+/**
+ * Ищет в вопросе название арендатора из справочника. Нужен потому, что
+ * модель часто не выделяет имя (и тогда «доход от АРТстроя» превращается в
+ * доход по всем), а падежи не дают сравнивать строки напрямую.
+ *
+ * Возвращает исходное название или undefined, если совпадений нет.
+ */
+export function matchTenantName(question: string, names: string[]): string | undefined {
+  const q = normalize(question);
+  if (!q) return undefined;
+  const qWords = new Set(q.split(" "));
+  let best: { name: string; score: number } | undefined;
+
+  for (const name of names) {
+    const words = normalize(name)
+      .split(" ")
+      .filter((w) => w.length > 1 && !NAME_STOPWORDS.has(w));
+    let score = 0;
+    for (const w of words) {
+      if (w.length <= 3) {
+        // Короткое слово («ИТК») засчитываем только как отдельное слово вопроса.
+        if (qWords.has(w)) score += w.length;
+        continue;
+      }
+      const root = stem(w);
+      if (root.length >= 4 && q.includes(root)) score += root.length;
+    }
+    if (score > 0 && (!best || score > best.score)) best = { name, score };
+  }
+  return best?.name;
+}

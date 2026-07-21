@@ -10,7 +10,7 @@ import { z } from "zod";
 import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
-import { fallbackPlan, PlanSchema, type AiPlan } from "@/lib/ai-intent";
+import { fallbackPlan, matchTenantName, PlanSchema, type AiPlan } from "@/lib/ai-intent";
 
 const AskInput = z.object({
   question: z.string().min(1).max(500),
@@ -70,6 +70,16 @@ export const askAi = createServerFn({ method: "POST" })
         console.error("[askAi] plan error", e);
       }
     }
+
+    // Имя арендатора ищем по справочнику, а не доверяем модели: она часто
+    // опускает его, и вопрос «доход от АРТстроя» превращался в доход по всем.
+    const { data: tenantRows } = await supabaseAdmin
+      .from("tenants")
+      .select("name")
+      .in("owner_id", ownerIds);
+    const knownNames = (tenantRows ?? []).map((t: any) => t.name as string);
+    const detected = matchTenantName(data.question, knownNames);
+    if (detected) plan.tenant = detected;
 
     // Шаг 2. Считает код — модель к цифрам не притрагивается.
     const args: Record<string, unknown> = {};

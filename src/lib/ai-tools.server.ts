@@ -160,27 +160,84 @@ async function tenantDebts(ctx: Ctx, args: { tenant?: string; limit?: number }) 
   };
 }
 
-/** Поступления (платежи) за период. */
-async function incomeForPeriod(ctx: Ctx, args: { period?: string; from?: string; to?: string }) {
+/**
+ * Поступления (платежи) за период, при необходимости — по одному арендатору.
+ * Платёж связан с арендатором через начисление и договор, поэтому фильтр
+ * идёт по цепочке: арендатор → договоры → начисления → платежи.
+ */
+async function incomeForPeriod(
+  ctx: Ctx,
+  args: { period?: string; from?: string; to?: string; tenant?: string },
+) {
   const { from, to } = resolvePeriod(args.period, args.from, args.to);
-  const { data: payments } = await ctx.sb
+  const periodLabel = `${formatDate(from)} — ${formatDate(to)}`;
+
+  let chargeIds: string[] | null = null;
+  let tenantMatches: { id: string; name: string }[] = [];
+  if (args.tenant) {
+    tenantMatches = await tenantsByName(ctx, args.tenant);
+    if (tenantMatches.length === 0) {
+      return { summary: `Арендатор «${args.tenant}» не найден.`, links: [] };
+    }
+    const { data: contracts } = await ctx.sb
+      .from("contracts")
+      .select("id")
+      .in("owner_id", ctx.ownerIds)
+      .in(
+        "tenant_id",
+        tenantMatches.map((t) => t.id),
+      );
+    const contractIds = (contracts ?? []).map((c: any) => c.id);
+    if (contractIds.length === 0) {
+      return {
+        summary: `У «${tenantMatches[0].name}» нет договоров, поступлений за ${periodLabel} нет.`,
+        links: tenantMatches.map((t) => ({
+          label: t.name,
+          to: "/tenants/$id",
+          params: { id: t.id },
+        })),
+      };
+    }
+    const { data: charges } = await ctx.sb
+      .from("charges")
+      .select("id")
+      .in("owner_id", ctx.ownerIds)
+      .in("contract_id", contractIds);
+    const ids = (charges ?? []).map((c: any) => c.id as string);
+    // Пустой список в .in() вернул бы все платежи — подставляем заведомо
+    // несуществующий id, чтобы «нет начислений» означало «нет поступлений».
+    chargeIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
+  }
+
+  let q = ctx.sb
     .from("payments")
     .select("id, amount, paid_at, charge_id")
     .in("owner_id", ctx.ownerIds)
     .gte("paid_at", from)
     .lte("paid_at", to);
+  if (chargeIds) q = q.in("charge_id", chargeIds);
+  const { data: payments } = await q;
   const total = (payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
-  return {
-    summary:
-      `За период ${formatDate(from)} — ${formatDate(to)} поступило ${formatMoney(total)} ` +
-      `по ${(payments ?? []).length} платежам.`,
-    links: [
-      {
-        label: "Все платежи",
-        to: "/payments",
+  const count = (payments ?? []).length;
+
+  if (args.tenant) {
+    const who = tenantMatches.map((t) => t.name).join(", ");
+    return {
+      summary:
+        `Доход от «${who}» за ${periodLabel} — ${formatMoney(total)}` +
+        (count ? ` по ${count} платежам.` : ". Платежей за этот период не было."),
+      links: tenantMatches.map((t) => ({
+        label: `Арендатор: ${t.name}`,
+        to: "/tenants/$id",
+        params: { id: t.id },
         note: formatMoney(total),
-      },
-    ],
+      })),
+    };
+  }
+
+  return {
+    summary: `Всего поступило за ${periodLabel} — ${formatMoney(total)} по ${count} платежам (по всем арендаторам).`,
+    links: [{ label: "Все платежи", to: "/payments", note: formatMoney(total) }],
   };
 }
 
@@ -395,7 +452,9 @@ export const AI_TOOLS = {
   },
   income_for_period: {
     description:
-      "Сумма поступивших платежей за период. Используй для вопросов про доход, выручку, сколько получили денег.",
+      "Сумма поступивших платежей за период — по всем арендаторам или по одному. " +
+      "Используй для вопросов про доход, выручку, сколько получили денег. " +
+      "Если в вопросе назван арендатор, ОБЯЗАТЕЛЬНО заполни tenant его названием.",
     schema: z.object({
       period: z
         .string()
@@ -403,6 +462,10 @@ export const AI_TOOLS = {
         .describe("Период словами: «июнь 2026», «текущий месяц», «год», «квартал»"),
       from: z.string().optional().describe("Начало периода YYYY-MM-DD"),
       to: z.string().optional().describe("Конец периода YYYY-MM-DD"),
+      tenant: z
+        .string()
+        .optional()
+        .describe("Название арендатора, если доход спрашивают по конкретному"),
     }),
     run: incomeForPeriod,
   },
