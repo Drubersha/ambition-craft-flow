@@ -169,6 +169,10 @@ export type ContourArea = {
   leased: number;
   /** Занято под АХЧ — собственные нужды. */
   ahch: number;
+  /** Свободно: ни аренды, ни АХЧ. Не бывает отрицательным. */
+  free: number;
+  /** Что вообще можно сдавать: площадь без АХЧ. */
+  rentable: number;
   /** Занятость в % от площади без АХЧ; null, если контур не имеет площади. */
   occupancy: number | null;
   properties: number;
@@ -217,6 +221,10 @@ export function computeContourAreas(
       total: g.total,
       leased: g.leased,
       ahch: g.ahch,
+      // Отрицательное «свободно» означало бы, что сдано больше, чем есть, —
+      // такие данные встречаются (пересдача), но показывать минус нельзя.
+      free: Math.max(0, g.total - g.leased - g.ahch),
+      rentable: Math.max(0, usable),
       occupancy: usable > 0 ? (g.leased / usable) * 100 : null,
       properties: g.properties,
     };

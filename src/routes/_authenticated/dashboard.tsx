@@ -52,6 +52,7 @@ import {
   Building2,
   CalendarClock,
   Filter,
+  Gauge,
   Percent,
   TrendingUp,
   Wallet,
@@ -65,6 +66,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 /** Контуры, кроме помещений: они выносятся в подстрочник, помещения — в основную цифру. */
 function otherContours<T extends { label: string }>(items: T[]): T[] {
   return items.filter((i) => i.label !== "Помещения");
+}
+
+/** Доля от общей площади контура — «—», когда делить не на что. */
+function share(part: number, total: number): string {
+  return total > 0 ? `${((part / total) * 100).toFixed(1)}%` : "—";
 }
 
 function Dashboard() {
@@ -135,7 +141,7 @@ function Dashboard() {
   const allStatuses = Array.from(new Set(data.properties.map((p) => p.status)));
 
   const activeContractsForHint = filtered.contracts.filter((c) => c.status === "active");
-  const activeAhchForHint = filtered.ahchContracts.filter((c) => c.status === "active");
+  const premises = kpi.areas.find((a) => a.label === "Помещения");
   const periodPaymentsHint = filtered.payments.filter((p) => {
     const d = new Date(p.paid_at);
     return d >= periodStart && d <= periodEnd;
@@ -160,11 +166,10 @@ function Dashboard() {
         "; ",
       )}. Корзины складываются в общий долг ${formatMoney(kpi.aging.total)}, из них просрочено ${formatMoney(kpi.aging.overdue)}.`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
-    ahchArea: `Сумма площадей по ${activeAhchForHint.length} активным договорам АХЧ.`,
-    ahchShare: `${formatNum(kpi.ahchArea)} м² АХЧ от площади контуров, где есть АХЧ (${kpi.areas
-      .filter((a) => a.ahch > 0)
-      .map((a) => `${a.label} — ${formatNum(a.total)} ${a.unit}`)
-      .join(", ")}). Земля и машиноместа в базу не входят.`,
+    rentable: premises
+      ? `Площадь помещений, доступная к сдаче: ${formatNum(premises.total)} м² всего минус ${formatNum(premises.ahch)} м² под собственные нужды (АХЧ). ` +
+        `Сдано ${formatNum(premises.leased)} м², свободно ${formatNum(premises.free)} м². Проценты — доли от общей площади помещений.`
+      : `Нет помещений под текущими фильтрами.`,
   };
 
   const resetFilters = () => {
@@ -331,6 +336,32 @@ function Dashboard() {
             hint={showKpiHints ? kpiHints.totalArea : undefined}
           />
           <Kpi
+            icon={Gauge}
+            label="Потенциал сдачи"
+            value={premises ? `${formatNum(premises.rentable)} м²` : "—"}
+            sub={
+              premises ? (
+                <ContourBreakdown
+                  items={[
+                    {
+                      label: "Сдано",
+                      text: `${formatNum(premises.leased)} м² · ${share(premises.leased, premises.total)}`,
+                    },
+                    {
+                      label: "Свободно",
+                      text: `${formatNum(premises.free)} м² · ${share(premises.free, premises.total)}`,
+                    },
+                    {
+                      label: "АХЧ",
+                      text: `${formatNum(premises.ahch)} м² · ${share(premises.ahch, premises.total)}`,
+                    },
+                  ]}
+                />
+              ) : undefined
+            }
+            hint={showKpiHints ? kpiHints.rentable : undefined}
+          />
+          <Kpi
             icon={Building2}
             label="Объектов"
             value={kpi.propsCount}
@@ -419,19 +450,6 @@ function Dashboard() {
             value={kpi.expSoon}
             tone={kpi.expSoon > 0 ? "warn" : "ok"}
             hint={showKpiHints ? kpiHints.expSoon : undefined}
-          />
-          <Kpi
-            icon={Building2}
-            label="Площадь АХЧ"
-            value={`${formatNum(kpi.ahchArea)} м²`}
-            hint={showKpiHints ? kpiHints.ahchArea : undefined}
-          />
-          <Kpi
-            icon={Percent}
-            label="Доля АХЧ"
-            value={`${kpi.ahchShare.toFixed(1)}%`}
-            sub={<Progress value={kpi.ahchShare} className="mt-2 h-1.5" />}
-            hint={showKpiHints ? kpiHints.ahchShare : undefined}
           />
         </div>
       </Section>

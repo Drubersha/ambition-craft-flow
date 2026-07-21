@@ -136,6 +136,33 @@ describe("computeContourAreas", () => {
     expect(by["Земля"].unit).toBe("м²");
   });
 
+  it("считает свободную площадь и потенциал сдачи", () => {
+    const areas = computeContourAreas(
+      [property("warehouse", 1000)],
+      [contract({ area: 400, rate: 100 })],
+      [contract({ area: 200, rate: 0, kind: "ahch" })],
+    );
+    expect(areas[0].leased).toBe(400);
+    expect(areas[0].ahch).toBe(200);
+    // 1000 - 400 - 200
+    expect(areas[0].free).toBe(400);
+    // всё, кроме АХЧ
+    expect(areas[0].rentable).toBe(800);
+    // сдано + свободно + АХЧ = вся площадь
+    expect(areas[0].leased + areas[0].free + areas[0].ahch).toBe(areas[0].total);
+  });
+
+  it("при пересдаче свободная площадь не уходит в минус", () => {
+    // Склад 24 в боевых данных: объект 820 м², договоров на 897.5 м².
+    const areas = computeContourAreas(
+      [property("warehouse", 820)],
+      [contract({ area: 897.5, rate: 100 })],
+      [],
+    );
+    expect(areas[0].free).toBe(0);
+    expect(areas[0].rentable).toBe(820);
+  });
+
   it("исключает АХЧ из базы занятости", () => {
     const areas = computeContourAreas(
       [property("warehouse", 1000)],
