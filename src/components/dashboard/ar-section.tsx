@@ -129,29 +129,30 @@ export function ArSection({
     .slice(0, 10);
 
   // При периоде от двух месяцев — помесячная собираемость.
+  // Оба столбца строятся по ОДНИМ И ТЕМ ЖЕ начислениям месяца: иначе в
+  // столбец «Оплачено» попадали платежи по долгам прошлых периодов, и разрыв
+  // между столбцами переставал означать недосбор — а подпись обещает именно его.
   const billedVsPaid = useMemo(() => {
     const keys = monthKeysBetween(periodStart, periodEnd);
     if (keys.length < 2) return [];
-    const billedBy = new Map<string, number>();
+    const byMonth = new Map<string, Charge[]>();
     for (const c of charges) {
       const d = new Date(c.period_end);
       if (d < periodStart || d > periodEnd) continue;
       const k = monthKeyOf(c.period_end);
-      billedBy.set(k, (billedBy.get(k) ?? 0) + Number(c.total));
+      const arr = byMonth.get(k) ?? [];
+      arr.push(c);
+      byMonth.set(k, arr);
     }
-    const paidBy = new Map<string, number>();
-    for (const p of payments) {
-      const d = new Date(p.paid_at);
-      if (d < periodStart || d > periodEnd) continue;
-      const k = monthKeyOf(p.paid_at);
-      paidBy.set(k, (paidBy.get(k) ?? 0) + Number(p.amount));
-    }
-    return keys.map((k) => ({
-      month: formatMonthKey(k, "2-digit"),
-      Начислено: Math.round(billedBy.get(k) ?? 0),
-      Оплачено: Math.round(paidBy.get(k) ?? 0),
-    }));
-  }, [charges, payments, periodStart, periodEnd]);
+    return keys.map((k) => {
+      const { billed: b, collected } = computeCollectionRate(byMonth.get(k) ?? []);
+      return {
+        month: formatMonthKey(k, "2-digit"),
+        Начислено: Math.round(b),
+        Оплачено: Math.round(collected),
+      };
+    });
+  }, [charges, periodStart, periodEnd]);
 
   return (
     <div className="grid lg:grid-cols-2 gap-3">
