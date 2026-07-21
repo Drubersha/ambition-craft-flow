@@ -155,6 +155,74 @@ export function contourRateUnit(contour: string): string {
   return contour === "Машиноместа" ? "₽/место/мес" : "₽/м²/мес";
 }
 
+/** Машиноместа измеряются местами, остальные контуры — квадратными метрами. */
+export function contourAreaUnit(contour: string): string {
+  return contour === "Машиноместа" ? "мест" : "м²";
+}
+
+export type ContourArea = {
+  label: string;
+  unit: string;
+  /** Площадь (или количество мест) объектов контура. */
+  total: number;
+  /** Сдано по активным договорам аренды. */
+  leased: number;
+  /** Занято под АХЧ — собственные нужды. */
+  ahch: number;
+  /** Занятость в % от площади без АХЧ; null, если контур не имеет площади. */
+  occupancy: number | null;
+  properties: number;
+};
+
+/**
+ * Площадь и занятость по контурам: метры офиса, земли и складов — разные
+ * величины, а машиноместа вообще считаются штуками, поэтому один общий
+ * итог по портфелю смысла не имеет.
+ */
+export function computeContourAreas(
+  properties: Property[],
+  contracts: Contract[],
+  ahchContracts: Contract[],
+): ContourArea[] {
+  const groups = new Map<
+    string,
+    { total: number; leased: number; ahch: number; properties: number }
+  >();
+  const bucket = (label: string) => {
+    const g = groups.get(label) || { total: 0, leased: 0, ahch: 0, properties: 0 };
+    groups.set(label, g);
+    return g;
+  };
+
+  for (const p of properties) {
+    const g = bucket(contourOfType(p.type));
+    g.total += Number(p.area_total || 0);
+    g.properties += 1;
+  }
+  for (const c of contracts) {
+    if (c.status !== "active") continue;
+    bucket(contourOfType(c.property?.type)).leased += Number(c.area || 0);
+  }
+  for (const c of ahchContracts) {
+    if (c.status !== "active") continue;
+    bucket(contourOfType(c.property?.type)).ahch += Number(c.area || 0);
+  }
+
+  return CONTOUR_ORDER.filter((label) => groups.has(label)).map((label) => {
+    const g = groups.get(label)!;
+    const usable = g.total - g.ahch;
+    return {
+      label,
+      unit: contourAreaUnit(label),
+      total: g.total,
+      leased: g.leased,
+      ahch: g.ahch,
+      occupancy: usable > 0 ? (g.leased / usable) * 100 : null,
+      properties: g.properties,
+    };
+  });
+}
+
 export type ContourRate = { label: string; rate: number; unit: string; contracts: number };
 
 /**
@@ -192,7 +260,6 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   const activeContracts = filtered.contracts.filter((c) => c.status === "active");
   const activeAhch = filtered.ahchContracts.filter((c) => c.status === "active");
   const ahchArea = activeAhch.reduce((s, c) => s + Number(c.area || 0), 0);
-  const ahchShare = totalArea > 0 ? (ahchArea / totalArea) * 100 : 0;
   const leasedArea = activeContracts.reduce((s, c) => s + Number(c.area || 0), 0);
   const usableArea = totalArea - ahchArea;
   const occupancy = usableArea > 0 ? (leasedArea / usableArea) * 100 : 0;
@@ -206,6 +273,14 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   // Ставки по контурам: помещения, земля, офис — ₽/м², машиноместа — ₽/место.
   const avgRates = computeContourRates(activeContracts);
   const avgRate = avgRates.find((r) => r.label === "Помещения")?.rate ?? 0;
+
+  // Площадь и занятость по контурам — метры офиса, земли и складов несопоставимы.
+  const areas = computeContourAreas(filtered.properties, activeContracts, activeAhch);
+  const premises = areas.find((a) => a.label === "Помещения");
+  // Долю АХЧ считаем внутри его контура: делить метры складов на сумму
+  // с землёй и машиноместами бессмысленно.
+  const ahchBase = areas.reduce((s, a) => (a.ahch > 0 ? s + a.total : s), 0);
+  const ahchShare = ahchBase > 0 ? (ahchArea / ahchBase) * 100 : 0;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -228,6 +303,9 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
 
   return {
     totalArea,
+    premisesArea: premises?.total ?? 0,
+    premisesOccupancy: premises?.occupancy ?? null,
+    areas,
     propsCount: filtered.properties.length,
     occupancy,
     rentIncome,

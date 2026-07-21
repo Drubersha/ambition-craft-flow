@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeContourRates, contourOfType, type Contract } from "./dashboard";
+import {
+  computeContourAreas,
+  computeContourRates,
+  contourOfType,
+  type Contract,
+  type Property,
+} from "./dashboard";
 
 let seq = 0;
 function contract(over: Partial<Contract> & { area: number; rate: number }): Contract {
@@ -22,6 +28,20 @@ function contract(over: Partial<Contract> & { area: number; rate: number }): Con
 }
 
 const prop = (type: string) => ({ id: "p1", name: "Объект", type, area_total: 1000 });
+
+let propSeq = 0;
+function property(type: string, area: number): Property {
+  propSeq += 1;
+  return {
+    id: `prop${propSeq}`,
+    name: `Объект ${propSeq}`,
+    type,
+    status: "partial",
+    area_total: area,
+    base_rate: null,
+    currency: "RUB",
+  };
+}
 
 describe("contourOfType", () => {
   it("распределяет типы по контурам", () => {
@@ -77,5 +97,69 @@ describe("computeContourRates", () => {
     expect(computeContourRates([])).toEqual([]);
     const rates = computeContourRates([contract({ area: 10, rate: 100, property: prop("land") })]);
     expect(rates.map((r) => r.label)).toEqual(["Земля"]);
+  });
+});
+
+describe("computeContourAreas", () => {
+  it("разделяет площадь и занятость по контурам", () => {
+    const areas = computeContourAreas(
+      [
+        property("warehouse", 1000),
+        property("production", 500),
+        property("land", 4000),
+        property("office", 700),
+        property("parking", 35),
+      ],
+      [
+        contract({ area: 600, rate: 200 }),
+        contract({ area: 4000, rate: 100, property: prop("land") }),
+        contract({ area: 350, rate: 400, property: prop("office") }),
+        contract({ area: 21, rate: 6000, property: prop("parking") }),
+      ],
+      [],
+    );
+    const by = Object.fromEntries(areas.map((a) => [a.label, a]));
+    expect(areas.map((a) => a.label)).toEqual(["Помещения", "Земля", "Офис", "Машиноместа"]);
+    // склад + производство складываются в один контур «Помещения»
+    expect(by["Помещения"].total).toBe(1500);
+    expect(by["Помещения"].properties).toBe(2);
+    expect(by["Помещения"].occupancy).toBeCloseTo(40, 5);
+    expect(by["Земля"].occupancy).toBeCloseTo(100, 5);
+    expect(by["Офис"].occupancy).toBeCloseTo(50, 5);
+    expect(by["Машиноместа"].total).toBe(35);
+    expect(by["Машиноместа"].unit).toBe("мест");
+    expect(by["Земля"].unit).toBe("м²");
+  });
+
+  it("исключает АХЧ из базы занятости", () => {
+    const areas = computeContourAreas(
+      [property("warehouse", 1000)],
+      [contract({ area: 400, rate: 100 })],
+      [contract({ area: 200, rate: 0, kind: "ahch" })],
+    );
+    expect(areas[0].ahch).toBe(200);
+    // 400 / (1000 − 200) = 50%
+    expect(areas[0].occupancy).toBeCloseTo(50, 5);
+  });
+
+  it("не считает занятость, когда у контура нет площади", () => {
+    const areas = computeContourAreas(
+      [property("other", 0)],
+      [contract({ area: 100, rate: 100, property: prop("other") })],
+      [],
+    );
+    expect(areas[0].total).toBe(0);
+    expect(areas[0].occupancy).toBeNull();
+  });
+
+  it("учитывает объекты без договоров и игнорирует неактивные договоры", () => {
+    const areas = computeContourAreas(
+      [property("land", 500)],
+      [contract({ area: 500, rate: 100, property: prop("land"), status: "finished" })],
+      [],
+    );
+    expect(areas.map((a) => a.label)).toEqual(["Земля"]);
+    expect(areas[0].leased).toBe(0);
+    expect(areas[0].occupancy).toBe(0);
   });
 });

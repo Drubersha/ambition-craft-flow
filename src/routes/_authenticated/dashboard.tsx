@@ -125,22 +125,29 @@ function Dashboard() {
 
   const activeContractsForHint = filtered.contracts.filter((c) => c.status === "active");
   const activeAhchForHint = filtered.ahchContracts.filter((c) => c.status === "active");
-  const leasedAreaHint = activeContractsForHint.reduce((s, c) => s + Number(c.area || 0), 0);
   const periodPaymentsHint = filtered.payments.filter((p) => {
     const d = new Date(p.paid_at);
     return d >= periodStart && d <= periodEnd;
   });
   const kpiHints: Record<string, string> = {
-    totalArea: `Сумма площадей ${filtered.properties.length} объектов(а) в фильтре.`,
+    totalArea: `Площади ${filtered.properties.length} объектов(а) в фильтре, раздельно по контурам: ${kpi.areas
+      .map((a) => `${a.label} — ${formatNum(a.total)} ${a.unit}`)
+      .join(", ")}. Метры офиса, склада и земли неравноценны, поэтому общий итог не выводится.`,
     propsCount: `Количество объектов, попавших под текущие фильтры.`,
-    occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea - kpi.ahchArea)} м² общая без АХЧ.`,
+    occupancy: `Занятость каждого контура — сданная площадь к площади контура без АХЧ: ${kpi.areas
+      .filter((a) => a.occupancy !== null)
+      .map((a) => `${a.label} — ${formatNum(a.leased)} из ${formatNum(a.total - a.ahch)} ${a.unit}`)
+      .join("; ")}. Всего ${activeContractsForHint.length} активных договоров.`,
     rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
     avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
     overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
     ahchArea: `Сумма площадей по ${activeAhchForHint.length} активным договорам АХЧ.`,
-    ahchShare: `${formatNum(kpi.ahchArea)} м² АХЧ / ${formatNum(kpi.totalArea)} м² общая площадь.`,
+    ahchShare: `${formatNum(kpi.ahchArea)} м² АХЧ от площади контуров, где есть АХЧ (${kpi.areas
+      .filter((a) => a.ahch > 0)
+      .map((a) => `${a.label} — ${formatNum(a.total)} ${a.unit}`)
+      .join(", ")}). Земля и машиноместа в базу не входят.`,
   };
 
   const resetFilters = () => {
@@ -294,8 +301,21 @@ function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           <Kpi
             icon={Building2}
-            label="Общая площадь"
-            value={`${formatNum(kpi.totalArea)} м²`}
+            label="Площадь: помещения"
+            value={kpi.areas.length === 0 ? "—" : `${formatNum(kpi.premisesArea)} м²`}
+            sub={
+              kpi.areas.filter((a) => a.label !== "Помещения").length > 0 ? (
+                <div className="mt-1 space-y-0.5">
+                  {kpi.areas
+                    .filter((a) => a.label !== "Помещения")
+                    .map((a) => (
+                      <div key={a.label} className="text-[11px] text-muted-foreground">
+                        {a.label}: {formatNum(a.total)} {a.unit}
+                      </div>
+                    ))}
+                </div>
+              ) : undefined
+            }
             hint={showKpiHints ? kpiHints.totalArea : undefined}
           />
           <Kpi
@@ -306,10 +326,21 @@ function Dashboard() {
           />
           <Kpi
             icon={Percent}
-            label="Занятость"
-            value={`${kpi.occupancy.toFixed(1)}%`}
-            tone={occupancyTone(kpi.occupancy)}
-            sub={<Progress value={kpi.occupancy} className="mt-2 h-1.5" />}
+            label="Занятость: помещения"
+            value={kpi.premisesOccupancy === null ? "—" : `${kpi.premisesOccupancy.toFixed(1)}%`}
+            tone={kpi.premisesOccupancy === null ? undefined : occupancyTone(kpi.premisesOccupancy)}
+            sub={
+              <div className="mt-1 space-y-0.5">
+                <Progress value={kpi.premisesOccupancy ?? 0} className="mt-1 h-1.5" />
+                {kpi.areas
+                  .filter((a) => a.label !== "Помещения" && a.occupancy !== null)
+                  .map((a) => (
+                    <div key={a.label} className="text-[11px] text-muted-foreground">
+                      {a.label}: {a.occupancy!.toFixed(1)}%
+                    </div>
+                  ))}
+              </div>
+            }
             hint={showKpiHints ? kpiHints.occupancy : undefined}
           />
           <Kpi

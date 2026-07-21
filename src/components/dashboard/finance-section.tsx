@@ -84,6 +84,7 @@ export function FinanceSection({
       .map(([type, area]) => ({
         type: PROPERTY_TYPE_LABELS[type] || type,
         area,
+        unit: type === "parking" ? "мест" : "м²",
       }))
       .sort((a, b) => b.area - a.area);
   }, [properties]);
@@ -190,7 +191,7 @@ export function FinanceSection({
 
       <Card>
         <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base">Общая площадь по типам объектов</CardTitle>
+          <CardTitle className="text-base">Площадь по типам объектов</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
           {areaByType.length === 0 ? (
@@ -200,9 +201,13 @@ export function FinanceSection({
               <ResponsiveContainer>
                 <BarChart data={areaByType} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} unit=" м²" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
                   <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
-                  <RTooltip formatter={(v: any) => `${formatNum(Number(v))} м²`} />
+                  <RTooltip
+                    formatter={(v: any, _n: any, item: any) =>
+                      `${formatNum(Number(v))} ${item?.payload?.unit ?? "м²"}`
+                    }
+                  />
                   <Bar dataKey="area" fill="var(--info)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
