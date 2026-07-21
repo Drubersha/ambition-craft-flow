@@ -129,6 +129,7 @@ export function FinanceSection({
       .map(([type, v]) => ({
         type: PROPERTY_TYPE_LABELS[type] || type,
         rate: v.den > 0 ? v.num / v.den : 0,
+        unit: type === "parking" ? "₽/место/мес" : "₽/м²/мес",
       }))
       .sort((a, b) => b.rate - a.rate);
   }, [contracts]);
@@ -224,7 +225,11 @@ export function FinanceSection({
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
                   <YAxis type="category" dataKey="type" tick={{ fontSize: 12 }} width={100} />
-                  <RTooltip formatter={(v: any) => `${formatNum(Number(v))} ₽/м²/мес`} />
+                  <RTooltip
+                    formatter={(v: any, _n: any, item: any) =>
+                      `${formatNum(Number(v))} ${item?.payload?.unit ?? "₽/м²/мес"}`
+                    }
+                  />
                   <Bar dataKey="rate" fill="var(--success)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>

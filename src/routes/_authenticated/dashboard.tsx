@@ -136,7 +136,7 @@ function Dashboard() {
     occupancy: `${formatNum(leasedAreaHint)} м² занято по ${activeContractsForHint.length} активным договорам / ${formatNum(kpi.totalArea - kpi.ahchArea)} м² общая без АХЧ.`,
     rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}.`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ).`,
-    avgRate: `Средневзвешенная по площади ставка ${activeContractsForHint.length} активных договоров (₽/м²/мес).`,
+    avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
     overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
     ahchArea: `Сумма площадей по ${activeAhchForHint.length} активным договорам АХЧ.`,
@@ -326,8 +326,21 @@ function Dashboard() {
           />
           <Kpi
             icon={TrendingUp}
-            label="Средняя ставка"
-            value={`${formatNum(kpi.avgRate)} ₽/м²/мес`}
+            label="Ставка: помещения"
+            value={kpi.avgRates.length === 0 ? "—" : `${formatNum(kpi.avgRate)} ₽/м²/мес`}
+            sub={
+              kpi.avgRates.filter((r) => r.label !== "Помещения").length > 0 ? (
+                <div className="mt-1 space-y-0.5">
+                  {kpi.avgRates
+                    .filter((r) => r.label !== "Помещения")
+                    .map((r) => (
+                      <div key={r.label} className="text-[11px] text-muted-foreground">
+                        {r.label}: {formatNum(r.rate)} {r.unit}
+                      </div>
+                    ))}
+                </div>
+              ) : undefined
+            }
             hint={showKpiHints ? kpiHints.avgRate : undefined}
           />
           <Kpi

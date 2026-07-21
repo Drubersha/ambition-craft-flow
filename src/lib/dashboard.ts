@@ -138,6 +138,54 @@ export function filterDashboardData(
   return { properties, contracts, charges, payments, ahchContracts };
 }
 
+/**
+ * Контур аренды по типу объекта: у разных контуров разная природа ставки
+ * (₽/м² у помещений и земли, ₽/место у машиномест), усреднять их вместе нельзя.
+ */
+export const CONTOUR_ORDER = ["Помещения", "Земля", "Офис", "Машиноместа"] as const;
+
+export function contourOfType(type: string | null | undefined): (typeof CONTOUR_ORDER)[number] {
+  if (type === "land") return "Земля";
+  if (type === "office") return "Офис";
+  if (type === "parking") return "Машиноместа";
+  return "Помещения";
+}
+
+export function contourRateUnit(contour: string): string {
+  return contour === "Машиноместа" ? "₽/место/мес" : "₽/м²/мес";
+}
+
+export type ContourRate = { label: string; rate: number; unit: string; contracts: number };
+
+/**
+ * Средневзвешенные по площади ставки по контурам (только договоры с площадью > 0).
+ * Порядок — CONTOUR_ORDER, контуры без договоров опускаются.
+ */
+export function computeContourRates(contracts: Contract[]): ContourRate[] {
+  const groups = new Map<string, { num: number; den: number; contracts: number }>();
+  for (const c of contracts) {
+    if (c.status !== "active") continue;
+    const area = Number(c.area || 0);
+    if (area <= 0) continue;
+    const label = contourOfType(c.property?.type);
+    const monthly = monthlyFromRate(Number(c.rate), c.payment_period);
+    const g = groups.get(label) || { num: 0, den: 0, contracts: 0 };
+    g.num += monthly * area;
+    g.den += area;
+    g.contracts += 1;
+    groups.set(label, g);
+  }
+  return CONTOUR_ORDER.filter((label) => groups.has(label)).map((label) => {
+    const g = groups.get(label)!;
+    return {
+      label,
+      rate: g.den > 0 ? g.num / g.den : 0,
+      unit: contourRateUnit(label),
+      contracts: g.contracts,
+    };
+  });
+}
+
 /** KPI портфеля за период. Занятость считается от площади без АХЧ. */
 export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, periodEnd: Date) {
   const totalArea = filtered.properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
@@ -155,17 +203,9 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   });
   const rentIncome = periodPayments.reduce((s, p) => s + Number(p.amount), 0);
 
-  const ratesWeighted = activeContracts.reduce(
-    (acc, c) => {
-      const monthly = monthlyFromRate(Number(c.rate), c.payment_period);
-      const area = Number(c.area || 0);
-      acc.num += monthly * area;
-      acc.den += area;
-      return acc;
-    },
-    { num: 0, den: 0 },
-  );
-  const avgRate = ratesWeighted.den > 0 ? ratesWeighted.num / ratesWeighted.den : 0;
+  // Ставки по контурам: помещения, земля, офис — ₽/м², машиноместа — ₽/место.
+  const avgRates = computeContourRates(activeContracts);
+  const avgRate = avgRates.find((r) => r.label === "Помещения")?.rate ?? 0;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -192,6 +232,7 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
     occupancy,
     rentIncome,
     avgRate,
+    avgRates,
     overdueAmt,
     expSoon,
     monthlyIncome,
