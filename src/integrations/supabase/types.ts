@@ -8,6 +8,42 @@ export type Database = {
   };
   public: {
     Tables: {
+      ai_messages: {
+        Row: {
+          body: string;
+          created_at: string;
+          facts: string | null;
+          id: string;
+          links: Json;
+          owner_id: string;
+          role: string;
+          tool: string | null;
+          user_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          facts?: string | null;
+          id?: string;
+          links?: Json;
+          owner_id: string;
+          role: string;
+          tool?: string | null;
+          user_id: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          facts?: string | null;
+          id?: string;
+          links?: Json;
+          owner_id?: string;
+          role?: string;
+          tool?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       activity_logs: {
         Row: {
           acted_as_user_id: string | null;

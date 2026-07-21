@@ -22,6 +22,9 @@ const AskInput = z.object({
   question: z.string().min(1).max(500),
 });
 
+/** Сколько последних сообщений показываем при открытии чата. */
+const HISTORY_LIMIT = 100;
+
 /** Owner ids, к данным которых у пользователя есть доступ. */
 async function allowedOwnerIds(supabase: any, userId: string): Promise<string[]> {
   const { data } = await supabase
@@ -138,6 +141,30 @@ export const askAi = createServerFn({ method: "POST" })
       }
     }
 
+    // Сохраняем переписку: чат должен пережить перезагрузку страницы.
+    // Ошибку записи не пробрасываем — ответ пользователю важнее истории.
+    try {
+      await supabaseAdmin.from("ai_messages").insert([
+        {
+          owner_id: ownerIds[0],
+          user_id: context.userId,
+          role: "user",
+          body: data.question,
+        },
+        {
+          owner_id: ownerIds[0],
+          user_id: context.userId,
+          role: "assistant",
+          body: answer,
+          links: result.links,
+          facts: result.summary,
+          tool: plan.tool,
+        },
+      ]);
+    } catch (e) {
+      console.error("[askAi] history save error", e);
+    }
+
     return {
       ok: true as const,
       answer,
@@ -148,4 +175,38 @@ export const askAi = createServerFn({ method: "POST" })
       /** Выжимка из данных: показывается, если формулировка модели разошлась с фактами. */
       facts: result.summary,
     };
+  });
+
+/** История переписки текущего пользователя, старые сообщения — первыми. */
+export const getAiHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("ai_messages")
+      .select("id, role, body, links, facts, created_at")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT);
+    return (data ?? []).reverse().map((m: any) => ({
+      id: m.id as string,
+      role: m.role as "user" | "assistant",
+      text: m.body as string,
+      links: (m.links ?? []) as AiLink[],
+      facts: (m.facts ?? undefined) as string | undefined,
+      createdAt: m.created_at as string,
+    }));
+  });
+
+/** Очистка переписки — по кнопке в интерфейсе. */
+export const clearAiHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("ai_messages")
+      .delete()
+      .eq("user_id", context.userId);
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
   });

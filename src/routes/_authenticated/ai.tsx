@@ -1,16 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
-import { askAi } from "@/lib/ai-chat.functions";
+import { askAi, clearAiHistory, getAiHistory } from "@/lib/ai-chat.functions";
+import { ConfirmButton } from "@/components/confirm-button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
-import { Bot, CornerDownLeft, ExternalLink, Loader2, User } from "lucide-react";
+import { Bot, CornerDownLeft, ExternalLink, Loader2, Trash2, User } from "lucide-react";
 import type { AiLink } from "@/lib/ai-tools.server";
 
 const searchSchema = z.object({
@@ -36,11 +37,41 @@ const EXAMPLES = [
 function AiChatPage() {
   const { q } = Route.useSearch();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const ask = useServerFn(askAi);
+  const loadHistory = useServerFn(getAiHistory);
+  const clearHistory = useServerFn(clearAiHistory);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const askedRef = useRef<string | null>(null);
+  const historyLoadedRef = useRef(false);
+
+  // Переписка хранится на сервере — подхватываем её при открытии страницы.
+  const { data: history, isLoading: historyLoading } = useQuery({
+    queryKey: ["ai-history"],
+    queryFn: () => loadHistory(),
+  });
+
+  useEffect(() => {
+    if (!history || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+    setMessages(
+      history.map((m) =>
+        m.role === "user"
+          ? { role: "user", text: m.text }
+          : { role: "assistant", text: m.text, links: m.links ?? [], facts: m.facts },
+      ),
+    );
+  }, [history]);
+
+  const clearMutation = useMutation({
+    mutationFn: () => clearHistory(),
+    onSuccess: () => {
+      setMessages([]);
+      qc.setQueryData(["ai-history"], []);
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: (question: string) => ask({ data: { question } }),
@@ -94,12 +125,35 @@ function AiChatPage() {
     <div className="space-y-4">
       <PageHeader
         title="Помощник"
-        description="Задайте вопрос по данным программы — ответ со ссылками на источники."
+        description="Задайте вопрос по данным программы — ответ со ссылками на источники. Переписка сохраняется."
+        action={
+          messages.length > 0 ? (
+            <ConfirmButton
+              variant="outline"
+              size="sm"
+              destructive
+              title="Очистить переписку?"
+              description="История вопросов и ответов будет удалена без возможности восстановления."
+              confirmText="Очистить"
+              onConfirm={() => clearMutation.mutate()}
+              disabled={clearMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Очистить
+            </ConfirmButton>
+          ) : undefined
+        }
       />
 
       <Card className="p-3 sm:p-4 space-y-3 min-h-[50vh] flex flex-col">
         <div className="flex-1 space-y-3">
-          {messages.length === 0 && (
+          {historyLoading && messages.length === 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Загружаю переписку…
+            </div>
+          )}
+          {!historyLoading && messages.length === 0 && (
             <div className="text-sm text-muted-foreground space-y-3 py-6">
               <p>Спросите о долгах, доходах, договорах или занятости. Например:</p>
               <div className="flex flex-wrap gap-2">
