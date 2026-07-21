@@ -39,8 +39,16 @@ fi
   # (<hash>_leaseplease-app-1), и следующий запуск падает на конфликте имён.
   # Убираем такие остатки до сборки, иначе деплой встаёт молча.
   docker container prune -f >/dev/null 2>&1 || true
+  # Сборка фронтенда и загруженная модель вместе не помещаются в память
+  # сервера (~12 ГБ, модель занимает ~5): контейнеры создавались, но не
+  # стартовали, и сайт отдавал 502. На время сборки освобождаем память.
+  docker compose stop ollama >/dev/null 2>&1 || true
   docker compose up -d --build --remove-orphans
+  docker compose start ollama >/dev/null 2>&1 || true
   docker image prune -f >/dev/null 2>&1 || true
+  # Сборка могла не поднять контейнеры — проверяем и добиваем.
+  sleep 5
+  docker compose up -d >/dev/null 2>&1 || true
   echo "Now at $(git rev-parse --short HEAD)"
   echo "===== $(date '+%F %T') update end ====="
 } >>"$LOG" 2>&1
