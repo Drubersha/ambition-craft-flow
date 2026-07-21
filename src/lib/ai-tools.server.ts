@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { formatMoney, formatDate, monthlyPayment, todayISO } from "@/lib/format";
+import { resolvePeriod } from "@/lib/ai-intent";
 
 /** Ссылка на запись в программе, из которой взяты данные ответа. */
 export type AiLink = {
@@ -29,56 +30,6 @@ type Ctx = {
   sb: any;
   ownerIds: string[];
 };
-
-/** Границы периода по названию месяца/квартала/года или явным датам. */
-function resolvePeriod(period?: string, from?: string, to?: string): { from: string; to: string } {
-  if (from && to) return { from, to };
-  const now = new Date();
-  const y = now.getFullYear();
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const MONTHS: Record<string, number> = {
-    январь: 0,
-    января: 0,
-    февраль: 1,
-    февраля: 1,
-    март: 2,
-    марта: 2,
-    апрель: 3,
-    апреля: 3,
-    май: 4,
-    мая: 4,
-    июнь: 5,
-    июня: 5,
-    июль: 6,
-    июля: 6,
-    август: 7,
-    августа: 7,
-    сентябрь: 8,
-    сентября: 8,
-    октябрь: 9,
-    октября: 9,
-    ноябрь: 10,
-    ноября: 10,
-    декабрь: 11,
-    декабря: 11,
-  };
-  const p = (period ?? "").toLowerCase().trim();
-  const yearMatch = p.match(/(20\d{2})/);
-  const year = yearMatch ? Number(yearMatch[1]) : y;
-  for (const [name, idx] of Object.entries(MONTHS)) {
-    if (p.includes(name)) {
-      return { from: iso(new Date(year, idx, 1)), to: iso(new Date(year, idx + 1, 0)) };
-    }
-  }
-  if (p.includes("год")) return { from: `${year}-01-01`, to: `${year}-12-31` };
-  if (p.includes("квартал")) {
-    const q = Math.floor(now.getMonth() / 3);
-    return { from: iso(new Date(year, q * 3, 1)), to: iso(new Date(year, q * 3 + 3, 0)) };
-  }
-  // По умолчанию — текущий месяц.
-  return { from: iso(new Date(y, now.getMonth(), 1)), to: iso(new Date(y, now.getMonth() + 1, 0)) };
-}
 
 async function tenantsByName(ctx: Ctx, name?: string) {
   let q = ctx.sb.from("tenants").select("id, name").in("owner_id", ctx.ownerIds);

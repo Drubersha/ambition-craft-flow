@@ -3,10 +3,12 @@ import {
   AI_TOOL_NAMES,
   fallbackPlan,
   isFollowUp,
+  looksRussian,
   matchTenantName,
   mergeWithPreviousPlan,
   PlanSchema,
   refinePlanForTenant,
+  resolvePeriod,
 } from "./ai-intent";
 
 describe("fallbackPlan", () => {
@@ -206,5 +208,94 @@ describe("mergeWithPreviousPlan", () => {
   it("без истории план не меняется", () => {
     const original = fallbackPlan("а средняя");
     expect(mergeWithPreviousPlan(original, "а средняя", null)).toEqual(original);
+  });
+});
+
+describe("resolvePeriod", () => {
+  // 21 июля 2026 — день, когда помощник ответил про июль вместо июня.
+  const TODAY = new Date(2026, 6, 21);
+
+  it("«прошлый месяц» — это июнь, а не текущий июль", () => {
+    expect(resolvePeriod("прошлый месяц", undefined, undefined, TODAY)).toEqual({
+      from: "2026-06-01",
+      to: "2026-06-30",
+    });
+    expect(resolvePeriod("за предыдущий месяц", undefined, undefined, TODAY).from).toBe(
+      "2026-06-01",
+    );
+  });
+
+  it("по умолчанию берёт текущий месяц", () => {
+    expect(resolvePeriod(undefined, undefined, undefined, TODAY)).toEqual({
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+    expect(resolvePeriod("за этот месяц", undefined, undefined, TODAY).from).toBe("2026-07-01");
+  });
+
+  it("понимает названия месяцев в любом падеже", () => {
+    expect(resolvePeriod("доход за июнь", undefined, undefined, TODAY)).toEqual({
+      from: "2026-06-01",
+      to: "2026-06-30",
+    });
+    expect(resolvePeriod("за февраля 2026", undefined, undefined, TODAY)).toEqual({
+      from: "2026-02-01",
+      to: "2026-02-28",
+    });
+    expect(resolvePeriod("в марте", undefined, undefined, TODAY).from).toBe("2026-03-01");
+    expect(resolvePeriod("за май", undefined, undefined, TODAY).from).toBe("2026-05-01");
+  });
+
+  it("названный месяц важнее слова «прошлый»", () => {
+    expect(resolvePeriod("за прошлый январь", undefined, undefined, TODAY).from).toBe("2026-01-01");
+  });
+
+  it("считает годы и кварталы", () => {
+    expect(resolvePeriod("за год", undefined, undefined, TODAY)).toEqual({
+      from: "2026-01-01",
+      to: "2026-12-31",
+    });
+    expect(resolvePeriod("за прошлый год", undefined, undefined, TODAY)).toEqual({
+      from: "2025-01-01",
+      to: "2025-12-31",
+    });
+    expect(resolvePeriod("за квартал", undefined, undefined, TODAY)).toEqual({
+      from: "2026-07-01",
+      to: "2026-09-30",
+    });
+    expect(resolvePeriod("за прошлый квартал", undefined, undefined, TODAY)).toEqual({
+      from: "2026-04-01",
+      to: "2026-06-30",
+    });
+  });
+
+  it("явные даты важнее любых слов", () => {
+    expect(resolvePeriod("прошлый месяц", "2026-01-05", "2026-01-09", TODAY)).toEqual({
+      from: "2026-01-05",
+      to: "2026-01-09",
+    });
+  });
+});
+
+describe("looksRussian", () => {
+  it("отклоняет ответ со срывом на китайский", () => {
+    // Реальный ответ помощника: начался по-русски, закончился иероглифами.
+    expect(
+      looksRussian(
+        "Доход за июль составил 0 рублей, так как期间的租金收入为0元。没有收到任何付款。",
+      ),
+    ).toBe(false);
+    expect(looksRussian("租金收入为0元")).toBe(false);
+  });
+
+  it("принимает нормальный русский ответ", () => {
+    expect(looksRussian("Доход от «ИТК Авто ООО» за июнь 2026 составил 242 448,00 ₽.")).toBe(true);
+    expect(looksRussian("Больше всех должен ИТК Авто — 1 635 512,24 ₽.")).toBe(true);
+  });
+
+  it("не придирается к цифрам, латинским сокращениям и пустоте", () => {
+    expect(looksRussian("242 448,00 ₽")).toBe(true);
+    expect(looksRussian("Договор №ЭВ/2 026/0713 — 164.4 м²")).toBe(true);
+    expect(looksRussian("")).toBe(false);
   });
 });

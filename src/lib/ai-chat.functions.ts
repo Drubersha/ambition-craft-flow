@@ -7,11 +7,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
 import {
   fallbackPlan,
+  looksRussian,
   matchTenantName,
   mergeWithPreviousPlan,
   PlanSchema,
@@ -57,24 +58,36 @@ export const askAi = createServerFn({ method: "POST" })
     let modelUsed = false;
     if (gateway) {
       try {
+        // Строгий structured output ollama выдаёт нестабильно
+        // (AI_NoObjectGeneratedError), поэтому просим JSON текстом и разбираем
+        // сами: невалидный ответ просто оставляет план от эвристики.
         const res = await generateText({
           model: gateway.chatModel(getAiModelName()),
-          experimental_output: Output.object({ schema: PlanSchema }),
+          temperature: 0,
           messages: [
             {
               role: "system",
               content:
-                "Ты — маршрутизатор запросов в системе учёта аренды. Выбери подходящий инструмент " +
-                "и извлеки параметры из вопроса. Отвечай только структурой, ничего не придумывай.\n" +
+                "Ты — маршрутизатор запросов в системе учёта аренды. Верни ТОЛЬКО JSON без пояснений " +
+                'в формате {"tool":"имя","tenant":"","period":""} — tenant и period заполняй, ' +
+                "только если они прямо названы в вопросе, иначе оставляй пустыми.\n" +
                 `Доступные инструменты:\n${TOOL_LIST}`,
             },
             { role: "user", content: data.question },
           ],
         });
-        const out = (res as { experimental_output?: AiPlan }).experimental_output;
-        if (out?.tool) {
-          plan = out;
-          modelUsed = true;
+        const raw = res.text?.match(/\{[\s\S]*\}/)?.[0];
+        if (raw) {
+          const json = JSON.parse(raw);
+          // Пустые строки модель ставит охотно — они не должны затирать эвристику.
+          for (const k of ["tenant", "period", "query"]) {
+            if (!json[k]) delete json[k];
+          }
+          const parsed = PlanSchema.safeParse(json);
+          if (parsed.success) {
+            plan = parsed.data;
+            modelUsed = true;
+          }
         }
       } catch (e) {
         console.error("[askAi] plan error", e);
@@ -141,8 +154,8 @@ export const askAi = createServerFn({ method: "POST" })
             {
               role: "system",
               content:
-                "Ты — ассистент по учёту аренды. Перескажи данные как ответ на вопрос, по-русски, " +
-                "кратко (1–3 предложения), без списков и markdown. " +
+                "Ты — ассистент по учёту аренды. Перескажи данные как ответ на вопрос. " +
+                "Отвечай ТОЛЬКО на русском языке, кратко (1–3 предложения), без списков и markdown. " +
                 "ПЕРВОЕ предложение данных — это главный ответ, начни с него. " +
                 "Не меняй числа, не меняй имена и не делай собственных выводов.",
             },
@@ -150,7 +163,10 @@ export const askAi = createServerFn({ method: "POST" })
           ],
         });
         const text = res.text?.trim();
-        if (text) answer = text;
+        // Модель иногда срывается на китайский посреди фразы — такой ответ
+        // показывать нельзя, выжимка из данных всегда корректна.
+        if (text && looksRussian(text)) answer = text;
+        else if (text) console.error("[askAi] ответ не на русском, показываю выжимку:", text);
       } catch (e) {
         console.error("[askAi] answer error", e);
       }

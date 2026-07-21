@@ -108,6 +108,93 @@ export function refinePlanForTenant(plan: AiPlan, detectedTenant?: string): AiPl
   return next;
 }
 
+const MONTHS: Record<string, number> = {
+  январ: 0,
+  феврал: 1,
+  март: 2,
+  апрел: 3,
+  ма: 4,
+  июн: 5,
+  июл: 6,
+  август: 7,
+  сентябр: 8,
+  октябр: 9,
+  ноябр: 10,
+  декабр: 11,
+};
+
+/**
+ * Границы периода из формулировки вопроса. Понимает «прошлый месяц», «этот
+ * год», названия месяцев и явные даты; по умолчанию — текущий месяц.
+ *
+ * `today` передаётся параметром, иначе функцию нельзя проверить тестами.
+ */
+export function resolvePeriod(
+  period?: string,
+  from?: string,
+  to?: string,
+  today: Date = new Date(),
+): { from: string; to: string } {
+  if (from && to) return { from, to };
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const monthRange = (y: number, m: number) => ({
+    from: iso(new Date(y, m, 1)),
+    to: iso(new Date(y, m + 1, 0)),
+  });
+
+  const p = (period ?? "").toLowerCase().replace(/ё/g, "е").trim();
+  const y = today.getFullYear();
+  const prev = p.includes("прошл") || p.includes("предыдущ") || p.includes("прошедш");
+
+  const yearMatch = p.match(/(20\d{2})/);
+  const year = yearMatch ? Number(yearMatch[1]) : y;
+
+  // Явно названный месяц важнее слова «прошлый»: «за июнь» — это июнь.
+  for (const [root, idx] of Object.entries(MONTHS)) {
+    // «ма» подошло бы к «март», поэтому корень проверяем как начало слова.
+    const re = new RegExp(`(^|[^а-я])${root}[а-я]*`);
+    if (re.test(p)) return monthRange(year, idx);
+  }
+
+  if (p.includes("год")) {
+    const yy = prev ? year - 1 : year;
+    return { from: `${yy}-01-01`, to: `${yy}-12-31` };
+  }
+  if (p.includes("квартал")) {
+    const q = Math.floor(today.getMonth() / 3) - (prev ? 1 : 0);
+    const base = new Date(year, q * 3, 1);
+    return {
+      from: iso(base),
+      to: iso(new Date(base.getFullYear(), base.getMonth() + 3, 0)),
+    };
+  }
+  if (p.includes("недел")) {
+    const day = (today.getDay() + 6) % 7; // понедельник — начало недели
+    const start = new Date(y, today.getMonth(), today.getDate() - day - (prev ? 7 : 0));
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    return { from: iso(start), to: iso(end) };
+  }
+  // «прошлый месяц» и просто «месяц»/пустая строка.
+  return monthRange(y, today.getMonth() - (prev ? 1 : 0));
+}
+
+/**
+ * Проверяет, что ответ написан по-русски: Qwen под нагрузкой иногда
+ * переключается на китайский посреди предложения, и такой ответ показывать
+ * нельзя — вместо него берём готовую выжимку из данных.
+ */
+export function looksRussian(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return false;
+  // Иероглифы, кана, хангыль — верный признак срыва языка.
+  if (/[぀-ヿ㐀-鿿가-힯]/.test(t)) return false;
+  const cyrillic = (t.match(/[а-яё]/gi) ?? []).length;
+  const letters = (t.match(/[a-zа-яё]/gi) ?? []).length;
+  if (letters === 0) return true; // только цифры и знаки — придираться не к чему
+  return cyrillic / letters >= 0.5;
+}
+
 /** Слова организационных форм — по ним арендатора не опознать. */
 const NAME_STOPWORDS = new Set(["ооо", "ип", "оао", "зао", "пао", "ао", "и", "п", "физ", "лицо"]);
 
