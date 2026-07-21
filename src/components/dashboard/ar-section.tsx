@@ -22,7 +22,7 @@ import {
   monthKeyOf,
   monthKeysBetween,
 } from "@/lib/format";
-import type { Charge, Contract, Payment } from "@/lib/dashboard";
+import { computeCollectionRate, type Charge, type Contract, type Payment } from "@/lib/dashboard";
 import { EmptyText, Kpi } from "./ui";
 
 export function ArSection({
@@ -75,14 +75,10 @@ export function ArSection({
     const d = new Date(c.period_end);
     return d >= periodStart && d <= periodEnd;
   });
-  const billed = periodCharges.reduce((s, c) => s + Number(c.total), 0);
-  const paid = payments
-    .filter((p) => {
-      const d = new Date(p.paid_at);
-      return d >= periodStart && d <= periodEnd;
-    })
-    .reduce((s, p) => s + Number(p.amount), 0);
-  const collectionRate = billed > 0 ? (paid / billed) * 100 : 0;
+  // По оплате самих начислений периода: платежи, гасящие долги прошлых
+  // месяцев, к собираемости текущего отношения не имеют.
+  const { billed, rate } = computeCollectionRate(periodCharges);
+  const collectionRate = rate ?? 0;
 
   // Топ должников: группировка по арендатору, внутри — разбивка по договорам.
   const debtors = useMemo(() => {

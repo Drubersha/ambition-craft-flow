@@ -379,6 +379,34 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   };
 }
 
+/**
+ * Собираемость за период: сколько из начисленного за период уже оплачено.
+ *
+ * Считается ТОЛЬКО по начислениям периода и их оплате (paid_total), а не по
+ * всем платежам, пришедшим в эти даты. Иначе гашение старых долгов раздувает
+ * числитель: в июле 2026 платежей пришло 2 399 991 при начислениях 65 721 —
+ * формула «все платежи / начисления периода» давала 3652%, а показ упирался
+ * в потолок 100% и создавал впечатление, что оплатили все.
+ *
+ * Переплата по отдельному начислению не компенсирует недоплату по другому,
+ * поэтому вклад каждого ограничен его же суммой.
+ */
+export function computeCollectionRate(charges: { total: number; paid_total: number }[]): {
+  billed: number;
+  collected: number;
+  rate: number | null;
+} {
+  let billed = 0;
+  let collected = 0;
+  for (const c of charges) {
+    const total = Number(c.total) || 0;
+    const paid = Number(c.paid_total) || 0;
+    billed += total;
+    collected += Math.min(paid, total);
+  }
+  return { billed, collected, rate: billed > 0 ? (collected / billed) * 100 : null };
+}
+
 /** Тон подсветки занятости: ≥90 — ok, ≥70 — warn, ниже — danger. */
 export function occupancyTone(v: number): "ok" | "warn" | "danger" {
   if (v >= 90) return "ok";

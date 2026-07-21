@@ -9,7 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CalendarClock, Gauge, Percent, TrendingDown, Wallet } from "lucide-react";
 import { formatMoney, formatNum } from "@/lib/format";
-import type { Charge, Contract, Payment, Property } from "@/lib/dashboard";
+import {
+  computeCollectionRate,
+  type Charge,
+  type Contract,
+  type Payment,
+  type Property,
+} from "@/lib/dashboard";
 import { Kpi } from "./ui";
 
 export function CurrentMonthOps({
@@ -49,13 +55,12 @@ export function CurrentMonthOps({
   };
 
   const stats = useMemo(() => {
-    const billed = charges
-      .filter((c) => inThisMonth(c.period_end))
-      .reduce((s, c) => s + Number(c.total), 0);
-    const paid = payments
-      .filter((p) => inThisMonth(p.paid_at))
-      .reduce((s, p) => s + Number(p.amount), 0);
-    const collection = billed > 0 ? Math.min(100, (paid / billed) * 100) : null;
+    // Собираемость — по оплате самих начислений месяца. Считать «все платежи
+    // месяца / начисления месяца» нельзя: в июле гасят июньские долги, и
+    // показатель упирался в 100% при реально неоплаченных начислениях.
+    const monthCharges = charges.filter((c) => inThisMonth(c.period_end));
+    const { billed, collected, rate: collection } = computeCollectionRate(monthCharges);
+    const paid = collected;
 
     let dueSoon = 0;
     let overdueSum = 0;

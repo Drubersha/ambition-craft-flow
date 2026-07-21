@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeCollectionRate,
   computeContourAreas,
   computeContourIncomes,
   computeContourRates,
@@ -246,5 +247,48 @@ describe("computeContourIncomes", () => {
       new Date("2026-06-30"),
     );
     expect(incomes[0].rentIncome).toBe(7000);
+  });
+});
+
+describe("computeCollectionRate", () => {
+  it("считает долю оплаченного от начисленного", () => {
+    const r = computeCollectionRate([
+      { total: 100, paid_total: 100 },
+      { total: 100, paid_total: 50 },
+    ]);
+    expect(r.billed).toBe(200);
+    expect(r.collected).toBe(150);
+    expect(r.rate).toBeCloseTo(75, 5);
+  });
+
+  it("переплата по одному начислению не закрывает недоплату по другому", () => {
+    // Иначе гашение долга прошлых месяцев маскирует текущую недоплату.
+    const r = computeCollectionRate([
+      { total: 100, paid_total: 500 },
+      { total: 100, paid_total: 0 },
+    ]);
+    expect(r.collected).toBe(100);
+    expect(r.rate).toBeCloseTo(50, 5);
+  });
+
+  it("никогда не превышает 100%", () => {
+    const r = computeCollectionRate([{ total: 65721, paid_total: 2399991.41 }]);
+    expect(r.rate).toBeLessThanOrEqual(100);
+  });
+
+  it("воспроизводит реальный июль 2026: 87.2%, а не 100%", () => {
+    // Начислено 65 721, оплачено по этим начислениям 57 321, не оплачено 8 400.
+    const r = computeCollectionRate([
+      { total: 57321, paid_total: 57321 },
+      { total: 8400, paid_total: 0 },
+    ]);
+    expect(r.billed).toBe(65721);
+    expect(r.collected).toBe(57321);
+    expect(r.rate).toBeCloseTo(87.2, 1);
+  });
+
+  it("без начислений возвращает null, а не ноль или деление на ноль", () => {
+    expect(computeCollectionRate([]).rate).toBeNull();
+    expect(computeCollectionRate([{ total: 0, paid_total: 0 }]).rate).toBeNull();
   });
 });
