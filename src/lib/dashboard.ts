@@ -343,13 +343,10 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const overdueAmt = filtered.charges.reduce((s, c) => {
-    if (!c.due_date) return s;
-    const remain = Number(c.total) - Number(c.paid_total);
-    if (remain <= 0) return s;
-    const days = Math.floor((today.getTime() - new Date(c.due_date).getTime()) / 86400000);
-    return days > 30 ? s + remain : s;
-  }, 0);
+  // Дебиторка по срокам давности: корзины складываются в общий долг, поэтому
+  // KPI и разбивка под ним всегда сходятся между собой.
+  const aging = computeDebtAging(filtered.charges, today);
+  const overdueAmt = aging.overdue;
 
   const expSoon = activeContracts.filter((c) => {
     const d = daysUntil(c.end_date);
@@ -372,10 +369,81 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
     avgRate,
     avgRates,
     overdueAmt,
+    aging,
     expSoon,
     monthlyIncome,
     ahchArea,
     ahchShare,
+  };
+}
+
+export type AgingBucket = {
+  label: string;
+  amount: number;
+  count: number;
+  /** Просроченные корзины — для подсветки; «срок не наступил» не просрочка. */
+  overdue: boolean;
+};
+
+export type DebtAging = {
+  buckets: AgingBucket[];
+  /** Сумма просроченного (всё, кроме «срок не наступил»). */
+  overdue: number;
+  /** Вся неоплаченная дебиторка, включая ещё не наступившие сроки. */
+  total: number;
+};
+
+/**
+ * Дебиторка по срокам давности. Корзины складываются в общий долг: сумма всех
+ * bucket.amount равна total, поэтому цифры на дашборде сходятся между собой.
+ *
+ * Начисления без срока оплаты попадают в отдельную корзину, а не выпадают из
+ * подсчёта — иначе долг «терялся» бы незаметно.
+ */
+export function computeDebtAging(
+  charges: { total: number; paid_total: number; due_date: string | null }[],
+  today: Date = new Date(),
+): DebtAging {
+  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  // «2026-06-20» парсится как полночь UTC, а midnight — локальная полночь:
+  // в московском поясе разница в 3 часа сдвигала начисления на соседнюю
+  // корзину. Разбираем дату как локальную.
+  const localMidnight = (iso: string): number => {
+    const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+    return new Date(y, (m || 1) - 1, d || 1).getTime();
+  };
+  const rows = [
+    { label: "Срок не наступил", amount: 0, count: 0, overdue: false },
+    { label: "До 30 дней", amount: 0, count: 0, overdue: true },
+    { label: "31–60 дней", amount: 0, count: 0, overdue: true },
+    { label: "61–90 дней", amount: 0, count: 0, overdue: true },
+    { label: "Более 90 дней", amount: 0, count: 0, overdue: true },
+    { label: "Без срока оплаты", amount: 0, count: 0, overdue: false },
+  ];
+
+  for (const c of charges) {
+    const remain = Number(c.total) - Number(c.paid_total);
+    if (remain <= 0.005) continue;
+    let idx: number;
+    if (!c.due_date) {
+      idx = 5;
+    } else {
+      const days = Math.round((midnight - localMidnight(c.due_date)) / 86_400_000);
+      if (days < 0) idx = 0;
+      else if (days <= 30) idx = 1;
+      else if (days <= 60) idx = 2;
+      else if (days <= 90) idx = 3;
+      else idx = 4;
+    }
+    rows[idx].amount += remain;
+    rows[idx].count += 1;
+  }
+
+  const buckets = rows.filter((r) => r.count > 0);
+  return {
+    buckets,
+    overdue: buckets.filter((b) => b.overdue).reduce((s, b) => s + b.amount, 0),
+    total: buckets.reduce((s, b) => s + b.amount, 0),
   };
 }
 

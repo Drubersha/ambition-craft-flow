@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeCollectionRate,
+  computeDebtAging,
   computeContourAreas,
   computeContourIncomes,
   computeContourRates,
@@ -290,5 +291,79 @@ describe("computeCollectionRate", () => {
   it("без начислений возвращает null, а не ноль или деление на ноль", () => {
     expect(computeCollectionRate([]).rate).toBeNull();
     expect(computeCollectionRate([{ total: 0, paid_total: 0 }]).rate).toBeNull();
+  });
+});
+
+describe("computeDebtAging", () => {
+  const TODAY = new Date(2026, 6, 21); // 21.07.2026
+  const charge = (remain: number, due: string | null) => ({
+    total: remain,
+    paid_total: 0,
+    due_date: due,
+  });
+
+  it("раскладывает долг по срокам давности", () => {
+    const a = computeDebtAging(
+      [
+        charge(100, "2026-08-01"), // срок не наступил
+        charge(200, "2026-07-10"), // 11 дней
+        charge(300, "2026-06-10"), // 41 день
+        charge(400, "2026-05-10"), // 72 дня
+        charge(500, "2026-01-10"), // больше 90
+      ],
+      TODAY,
+    );
+    expect(a.buckets.map((b) => [b.label, b.amount])).toEqual([
+      ["Срок не наступил", 100],
+      ["До 30 дней", 200],
+      ["31–60 дней", 300],
+      ["61–90 дней", 400],
+      ["Более 90 дней", 500],
+    ]);
+  });
+
+  it("корзины складываются в общий долг", () => {
+    const a = computeDebtAging(
+      [charge(100, "2026-08-01"), charge(200, "2026-07-10"), charge(500, "2026-01-10")],
+      TODAY,
+    );
+    expect(a.total).toBe(800);
+    expect(a.buckets.reduce((s, b) => s + b.amount, 0)).toBe(a.total);
+    // Просрочка — всё, кроме ещё не наступившего срока.
+    expect(a.overdue).toBe(700);
+  });
+
+  it("начисления без срока не теряются, а идут отдельной корзиной", () => {
+    const a = computeDebtAging([charge(150, null)], TODAY);
+    expect(a.buckets).toEqual([
+      { label: "Без срока оплаты", amount: 150, count: 1, overdue: false },
+    ]);
+    expect(a.total).toBe(150);
+    expect(a.overdue).toBe(0);
+  });
+
+  it("оплаченные и переплаченные начисления в долг не попадают", () => {
+    const a = computeDebtAging(
+      [
+        { total: 100, paid_total: 100, due_date: "2026-01-01" },
+        { total: 100, paid_total: 500, due_date: "2026-01-01" },
+        { total: 100, paid_total: 40, due_date: "2026-01-01" },
+      ],
+      TODAY,
+    );
+    expect(a.total).toBeCloseTo(60, 5);
+  });
+
+  it("пустые корзины не показываются", () => {
+    const a = computeDebtAging([charge(100, "2026-07-10")], TODAY);
+    expect(a.buckets).toHaveLength(1);
+    expect(a.buckets[0].label).toBe("До 30 дней");
+  });
+
+  it("граница ровно 30 и 31 день разводится по корзинам", () => {
+    const at30 = computeDebtAging([charge(10, "2026-06-21")], TODAY);
+    const at31 = computeDebtAging([charge(10, "2026-06-20")], TODAY);
+    expect(at30.buckets[0].label).toBe("До 30 дней");
+    expect(at31.buckets[0].label).toBe("31–60 дней");
   });
 });

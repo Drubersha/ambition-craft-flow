@@ -154,7 +154,11 @@ function Dashboard() {
     rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}; в подстрочнике — разбивка по контурам (платёж относится к контуру через начисление и договор).`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ), в подстрочнике — по контурам.`,
     avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
-    overdueAmt: `Остаток к оплате по начислениям с просрочкой более 30 дней.`,
+    overdueAmt: `Вся неоплаченная дебиторка по срокам давности: ${kpi.aging.buckets
+      .map((b) => `${b.label} — ${formatMoney(b.amount)} (${b.count})`)
+      .join(
+        "; ",
+      )}. Корзины складываются в общий долг ${formatMoney(kpi.aging.total)}, из них просрочено ${formatMoney(kpi.aging.overdue)}.`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
     ahchArea: `Сумма площадей по ${activeAhchForHint.length} активным договорам АХЧ.`,
     ahchShare: `${formatNum(kpi.ahchArea)} м² АХЧ от площади контуров, где есть АХЧ (${kpi.areas
@@ -396,9 +400,17 @@ function Dashboard() {
           />
           <Kpi
             icon={AlertTriangle}
-            label="Дебиторка > 30 дн"
-            value={formatMoney(kpi.overdueAmt)}
+            label="Дебиторка: всего"
+            value={formatMoney(kpi.aging.total)}
             tone={kpi.overdueAmt > 0 ? "danger" : "ok"}
+            sub={
+              <ContourBreakdown
+                items={kpi.aging.buckets.map((b) => ({
+                  label: b.label,
+                  text: formatMoney(b.amount),
+                }))}
+              />
+            }
             hint={showKpiHints ? kpiHints.overdueAmt : undefined}
           />
           <Kpi
