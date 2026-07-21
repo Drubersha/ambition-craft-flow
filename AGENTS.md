@@ -33,6 +33,22 @@ The app image is a Nitro **node-server** build: `bun run build` emits `.output/s
   Trigger on demand with `systemctl start leaseplease-update.service`. Logs go to `/var/log/leaseplease-deploy.log` (override with `DEPLOY_LOG`).
 - Remember: `VITE_*` values are baked in at build time, so the script always rebuilds (`--build`); changing them requires a rebuild, which the update performs automatically.
 
+## Применение миграций на прод
+
+Миграции накатываются вручную:
+
+```bash
+docker exec -i leaseplease-db-1 psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/<файл>.sql
+docker exec leaseplease-db-1 psql -U postgres -d postgres -c "NOTIFY pgrst, 'reload schema';"
+```
+
+**Второй шаг обязателен, если миграция создаёт или меняет таблицу.** PostgREST
+кэширует схему при старте и о новой таблице не знает: чтение может отдавать
+пустой список, а запись — 404. Клиент `supabase-js` ошибки не бросает, он
+возвращает `{ error }`, поэтому такой сбой выглядит как «данные просто не
+сохраняются», без единой строки в логах. Именно так потерялась история чата
+помощника (таблица `ai_messages`, 21.07.2026).
+
 ## Backups (data)
 
 Code is recoverable from git; the irreplaceable part is **data**, so backups cover Postgres (all schemas: `public`, `auth`, `storage`) + the uploaded `storage` files + a copy of `.env`.

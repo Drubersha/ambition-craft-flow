@@ -173,9 +173,11 @@ export const askAi = createServerFn({ method: "POST" })
     }
 
     // Сохраняем переписку: чат должен пережить перезагрузку страницы.
-    // Ошибку записи не пробрасываем — ответ пользователю важнее истории.
+    // Ответ пользователю важнее истории, поэтому сбой записи только логируем —
+    // но именно логируем: supabase-js не бросает исключений, он возвращает
+    // { error }, и раньше молчаливый 404 от PostgREST стоил часов поисков.
     try {
-      await supabaseAdmin.from("ai_messages").insert([
+      const { error: saveError } = await supabaseAdmin.from("ai_messages").insert([
         {
           owner_id: ownerIds[0],
           user_id: context.userId,
@@ -193,8 +195,9 @@ export const askAi = createServerFn({ method: "POST" })
           plan,
         },
       ]);
+      if (saveError) console.error("[askAi] history save error", saveError);
     } catch (e) {
-      console.error("[askAi] history save error", e);
+      console.error("[askAi] history save threw", e);
     }
 
     return {
@@ -214,12 +217,13 @@ export const getAiHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("ai_messages")
       .select("id, role, body, links, facts, created_at")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT);
+    if (error) console.error("[getAiHistory] error", error);
     return (data ?? []).reverse().map((m: any) => ({
       id: m.id as string,
       role: m.role as "user" | "assistant",
