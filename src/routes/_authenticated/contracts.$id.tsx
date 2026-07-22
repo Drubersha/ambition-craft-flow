@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
+import { ContractObjectsEditor } from "@/components/contract-objects-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChargeStatusBadge } from "@/components/status-badges";
@@ -81,19 +82,6 @@ function EditContract() {
         .eq("contract_id", id)
         .eq("active", true)
         .order("created_at");
-      if (error) throw error;
-      return data;
-    },
-  });
-  // Составной договор: полный список объектов со своими площадями.
-  const { data: linkedObjects } = useQuery({
-    queryKey: ["contract-objects", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contract_properties")
-        .select("id,area,property:properties(id,name,type)")
-        .eq("contract_id", id)
-        .order("area", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -344,26 +332,14 @@ function EditContract() {
         />
       </MobileCollapsible>
 
-      {(linkedObjects ?? []).length > 0 && (
-        <MobileCollapsible title={`Объекты договора (${(linkedObjects ?? []).length})`}>
-          <p className="text-xs text-muted-foreground mb-2">
-            Составной договор: охватывает несколько объектов, площадь указана по каждому.
-          </p>
-          <div className="space-y-1.5">
-            {(linkedObjects ?? []).map((lo: any) => (
-              <div
-                key={lo.id}
-                className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2"
-              >
-                <span className="min-w-0 truncate">{lo.property?.name ?? "Объект удалён"}</span>
-                <span className="text-muted-foreground whitespace-nowrap">
-                  {formatNum(Number(lo.area))} {(data as any)?.unit === "space" ? "мест" : "м²"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </MobileCollapsible>
-      )}
+      <MobileCollapsible title="Объекты договора">
+        <ContractObjectsEditor
+          contractId={id}
+          ownerId={(data as any).owner_id}
+          unit={(data as any).unit ?? "sqm"}
+          contractArea={Number(data.area || 0)}
+        />
+      </MobileCollapsible>
 
       {(parentContract || (amendments ?? []).length > 0) && (
         <MobileCollapsible title="Допсоглашения">
