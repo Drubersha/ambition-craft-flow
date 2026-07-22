@@ -30,6 +30,7 @@ import {
   periodLabel,
   type Charge,
   type Contract,
+  type ContractLink,
   type Payment,
   type Period,
   type Property,
@@ -88,7 +89,7 @@ function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-raw"],
     queryFn: async () => {
-      const [pr, co, ch, py] = await Promise.all([
+      const [pr, co, ch, py, cl] = await Promise.all([
         supabase.from("properties").select("id,name,type,status,area_total,base_rate,currency"),
         supabase
           .from("contracts")
@@ -99,16 +100,19 @@ function Dashboard() {
           .from("charges")
           .select("id,contract_id,total,paid_total,status,due_date,period_start,period_end"),
         supabase.from("payments").select("id,charge_id,amount,paid_at,method"),
+        supabase.from("contract_properties").select("contract_id,property_id,area"),
       ]);
       if (pr.error) throw pr.error;
       if (co.error) throw co.error;
       if (ch.error) throw ch.error;
       if (py.error) throw py.error;
+      if (cl.error) throw cl.error;
       return {
         properties: (pr.data ?? []) as Property[],
         contracts: (co.data ?? []) as unknown as Contract[],
         charges: (ch.data ?? []) as Charge[],
         payments: (py.data ?? []) as Payment[],
+        contractLinks: (cl.data ?? []) as ContractLink[],
         loadedAt: new Date(),
       };
     },
@@ -130,7 +134,7 @@ function Dashboard() {
   );
 
   const kpi = useMemo(
-    () => computeKpi(filtered, periodStart, periodEnd),
+    () => computeKpi(filtered, periodStart, periodEnd, data?.contractLinks),
     [filtered, periodStart, periodEnd],
   );
 

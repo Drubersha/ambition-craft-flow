@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCollectionRate,
   computeDebtAging,
+  expandContractLinks,
   monthPaymentsToPast,
   splitByCurrentMonth,
   computeContourAreas,
@@ -394,6 +395,34 @@ describe("computeDebtAging", () => {
     const at31 = computeDebtAging([charge(10, "2026-06-20")], TODAY);
     expect(at30.buckets[0].label).toBe("До 30 дней");
     expect(at31.buckets[0].label).toBe("31–60 дней");
+  });
+});
+
+describe("expandContractLinks", () => {
+  it("раскрывает составной договор по объектам, одиночные не трогает", () => {
+    const single = contract({ area: 100, rate: 200 });
+    const multi = contract({ area: 103.9, rate: 178 });
+    const rooms = [property("office", 45.2), property("office", 30.7)];
+    const links = [
+      { contract_id: multi.id, property_id: rooms[0].id, area: 45.2 },
+      { contract_id: multi.id, property_id: rooms[1].id, area: 30.7 },
+    ];
+    const out = expandContractLinks([single, multi], links, rooms);
+    expect(out).toHaveLength(3);
+    expect(out[0]).toBe(single);
+    const parts = out.slice(1);
+    expect(parts.map((c) => c.area)).toEqual([45.2, 30.7]);
+    expect(parts.map((c) => c.property_id)).toEqual([rooms[0].id, rooms[1].id]);
+    // Виртуальные строки несут тип объекта — контур считается правильно.
+    expect(parts[0].property?.type).toBe("office");
+    // Ставка договора сохраняется в каждой строке, но доход по связкам не считают.
+    expect(parts[0].rate).toBe(178);
+  });
+
+  it("без связок возвращает исходный список как есть", () => {
+    const c = contract({ area: 50, rate: 100 });
+    expect(expandContractLinks([c], [], [])).toEqual([c]);
+    expect(expandContractLinks([c], undefined, [])).toEqual([c]);
   });
 });
 

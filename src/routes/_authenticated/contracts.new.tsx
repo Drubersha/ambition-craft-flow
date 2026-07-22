@@ -34,6 +34,7 @@ function NewContract() {
           number: v.number || null,
           cadastral_no: v.cadastral_no || null,
           area: v.area ? Number(v.area) : null,
+          unit: (v.unit as any) || "sqm",
           rate: Number(v.rate) || 0,
           currency: v.currency || "RUB",
           payment_period: v.payment_period as any,

@@ -13,6 +13,7 @@ import {
   METER_UNITS,
   formatDate,
   formatMoney,
+  formatNum,
   computeDepositWithArea,
   chargeTotalForPeriod,
   monthsInRange,
@@ -84,6 +85,45 @@ function EditContract() {
       return data;
     },
   });
+  // Составной договор: полный список объектов со своими площадями.
+  const { data: linkedObjects } = useQuery({
+    queryKey: ["contract-objects", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contract_properties")
+        .select("id,area,property:properties(id,name,type)")
+        .eq("contract_id", id)
+        .order("area", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+  // Допсоглашения этого договора и, наоборот, основной договор для допника.
+  const { data: amendments } = useQuery({
+    queryKey: ["contract-amendments", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts")
+        .select("id,number,status,area,rate,start_date")
+        .eq("parent_contract_id", id)
+        .order("start_date");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: parentContract } = useQuery({
+    queryKey: ["contract-parent", (data as any)?.parent_contract_id ?? "none"],
+    enabled: Boolean((data as any)?.parent_contract_id),
+    queryFn: async () => {
+      const { data: p, error } = await supabase
+        .from("contracts")
+        .select("id,number,status")
+        .eq("id", (data as any).parent_contract_id)
+        .single();
+      if (error) throw error;
+      return p;
+    },
+  });
 
   const mut = useMutation({
     mutationFn: async (v: ContractFormValues) => {
@@ -97,6 +137,7 @@ function EditContract() {
           number: v.number || null,
           cadastral_no: v.cadastral_no || null,
           area: v.area ? Number(v.area) : null,
+          unit: (v.unit as any) || "sqm",
           rate: rateNum,
           currency: v.currency || "RUB",
           payment_period: v.payment_period as any,
@@ -287,6 +328,7 @@ function EditContract() {
             termination_terms: (data as any).termination_terms ?? "",
             deposit_percent:
               (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
+            unit: (data as any).unit ?? "sqm",
           }}
           onValuesChange={(v) =>
             setLive({
@@ -301,6 +343,63 @@ function EditContract() {
           existingMetersCount={meters?.length ?? 0}
         />
       </MobileCollapsible>
+
+      {(linkedObjects ?? []).length > 0 && (
+        <MobileCollapsible title={`Объекты договора (${(linkedObjects ?? []).length})`}>
+          <p className="text-xs text-muted-foreground mb-2">
+            Составной договор: охватывает несколько объектов, площадь указана по каждому.
+          </p>
+          <div className="space-y-1.5">
+            {(linkedObjects ?? []).map((lo: any) => (
+              <div
+                key={lo.id}
+                className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2"
+              >
+                <span className="min-w-0 truncate">{lo.property?.name ?? "Объект удалён"}</span>
+                <span className="text-muted-foreground whitespace-nowrap">
+                  {formatNum(Number(lo.area))} {(data as any)?.unit === "space" ? "мест" : "м²"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </MobileCollapsible>
+      )}
+
+      {(parentContract || (amendments ?? []).length > 0) && (
+        <MobileCollapsible title="Допсоглашения">
+          {parentContract && (
+            <p className="text-sm mb-2">
+              Это допсоглашение к договору{" "}
+              <Link
+                to="/contracts/$id"
+                params={{ id: (parentContract as any).id }}
+                className="underline underline-offset-2"
+              >
+                {(parentContract as any).number || "б/н"}
+              </Link>
+              .
+            </p>
+          )}
+          {(amendments ?? []).length > 0 && (
+            <div className="space-y-1.5">
+              {(amendments ?? []).map((a: any) => (
+                <Link
+                  key={a.id}
+                  to="/contracts/$id"
+                  params={{ id: a.id }}
+                  className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2 hover:bg-muted/50"
+                >
+                  <span className="min-w-0 truncate">{a.number || "б/н"}</span>
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    {formatNum(Number(a.area || 0))} × {formatNum(Number(a.rate || 0))} ·{" "}
+                    {a.status === "active" ? "действует" : a.status}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </MobileCollapsible>
+      )}
 
       <MobileCollapsible title="Счётчики">
         {!meters || meters.length === 0 ? (

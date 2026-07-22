@@ -58,8 +58,17 @@ export type ContractFormValues = {
   notes: string;
   termination_terms: string;
   deposit_percent: string;
+  /** Чем сдаётся: квадратные метры, машиноместа или лоты. */
+  unit: string;
   /** Новые счётчики, добавленные в форме (создаются при сохранении). */
   meters: MeterDraft[];
+};
+
+/** Подписи полей площади и цены по единице измерения. */
+export const UNIT_LABELS: Record<string, { area: string; rate: string; name: string }> = {
+  sqm: { area: "Площадь, м²", rate: "Цена за м² *", name: "Квадратные метры" },
+  space: { area: "Количество мест", rate: "Цена за место *", name: "Машиноместа" },
+  lot: { area: "Количество лотов", rate: "Цена за лот *", name: "Лоты" },
 };
 
 export function ContractForm({
@@ -96,6 +105,7 @@ export function ContractForm({
     notes: initial?.notes ?? "",
     termination_terms: initial?.termination_terms ?? "",
     deposit_percent: initial?.deposit_percent ?? "",
+    unit: initial?.unit ?? "sqm",
     meters: initial?.meters ?? [],
   });
   const [meterConfirmOpen, setMeterConfirmOpen] = useState(false);
@@ -130,7 +140,7 @@ export function ContractForm({
       (
         await supabase
           .from("properties")
-          .select("id,name,cadastral_no,area_total,base_rate,folder:folders(name)")
+          .select("id,name,type,cadastral_no,area_total,base_rate,folder:folders(name)")
           .order("name")
       ).data ?? [],
   });
@@ -167,9 +177,15 @@ export function ContractForm({
     onSubmit({ ...v, meters: filledMeters });
   }
 
+  // Счётчики бывают только у помещений в квадратных метрах: для земли,
+  // машиномест и лотов напоминание о счётчиках не показывается.
+  const selectedProperty = (properties ?? []).find((p) => p.id === v.property_id);
+  const metersApplicable =
+    v.unit === "sqm" && !["land", "parking"].includes((selectedProperty as any)?.type ?? "");
+
   function handleSubmit() {
     if (meterInvalid) return;
-    if (filledMeters.length + existingMetersCount === 0) {
+    if (metersApplicable && filledMeters.length + existingMetersCount === 0) {
       setMeterConfirmOpen(true);
       return;
     }
@@ -229,7 +245,23 @@ export function ContractForm({
         </F>
       </div>
       <div className="grid sm:grid-cols-3 gap-3">
-        <F label="Площадь, м²">
+        <F label="Единица измерения">
+          <Select value={v.unit} onValueChange={(x) => set("unit", x)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(UNIT_LABELS).map(([key, u]) => (
+                <SelectItem key={key} value={key}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </F>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <F label={(UNIT_LABELS[v.unit] ?? UNIT_LABELS.sqm).area}>
           <Input
             type="number"
             step="0.01"
@@ -242,7 +274,7 @@ export function ContractForm({
             <p className="text-xs text-destructive">Площадь не может быть отрицательной.</p>
           )}
         </F>
-        <F label="Цена за м² *">
+        <F label={(UNIT_LABELS[v.unit] ?? UNIT_LABELS.sqm).rate}>
           <Input
             type="number"
             step="0.01"

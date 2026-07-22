@@ -496,6 +496,48 @@ export type Database = {
           },
         ];
       };
+      contract_properties: {
+        Row: {
+          area: number;
+          contract_id: string;
+          created_at: string;
+          id: string;
+          owner_id: string;
+          property_id: string;
+        };
+        Insert: {
+          area?: number;
+          contract_id: string;
+          created_at?: string;
+          id?: string;
+          owner_id: string;
+          property_id: string;
+        };
+        Update: {
+          area?: number;
+          contract_id?: string;
+          created_at?: string;
+          id?: string;
+          owner_id?: string;
+          property_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contract_properties_contract_id_fkey";
+            columns: ["contract_id"];
+            isOneToOne: false;
+            referencedRelation: "contracts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_properties_property_id_fkey";
+            columns: ["property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       contracts: {
         Row: {
           area: number | null;
@@ -510,9 +552,11 @@ export type Database = {
           notes: string | null;
           number: string | null;
           owner_id: string;
+          parent_contract_id: string | null;
           payment_period: Database["public"]["Enums"]["payment_period"];
           property_id: string;
           rate: number;
+          unit: Database["public"]["Enums"]["lease_unit"];
           start_date: string;
           status: Database["public"]["Enums"]["contract_status"];
           tenant_id: string;
@@ -532,9 +576,11 @@ export type Database = {
           notes?: string | null;
           number?: string | null;
           owner_id: string;
+          parent_contract_id?: string | null;
           payment_period?: Database["public"]["Enums"]["payment_period"];
           property_id: string;
           rate?: number;
+          unit?: Database["public"]["Enums"]["lease_unit"];
           start_date: string;
           status?: Database["public"]["Enums"]["contract_status"];
           tenant_id: string;
@@ -554,9 +600,11 @@ export type Database = {
           notes?: string | null;
           number?: string | null;
           owner_id?: string;
+          parent_contract_id?: string | null;
           payment_period?: Database["public"]["Enums"]["payment_period"];
           property_id?: string;
           rate?: number;
+          unit?: Database["public"]["Enums"]["lease_unit"];
           start_date?: string;
           status?: Database["public"]["Enums"]["contract_status"];
           tenant_id?: string;
@@ -625,6 +673,7 @@ export type Database = {
           parent_id: string | null;
           plan_mime: string | null;
           plan_path: string | null;
+          unit: Database["public"]["Enums"]["lease_unit"];
           updated_at: string;
         };
         Insert: {
@@ -635,6 +684,7 @@ export type Database = {
           parent_id?: string | null;
           plan_mime?: string | null;
           plan_path?: string | null;
+          unit?: Database["public"]["Enums"]["lease_unit"];
           updated_at?: string;
         };
         Update: {
@@ -645,6 +695,7 @@ export type Database = {
           parent_id?: string | null;
           plan_mime?: string | null;
           plan_path?: string | null;
+          unit?: Database["public"]["Enums"]["lease_unit"];
           updated_at?: string;
         };
         Relationships: [
@@ -1599,6 +1650,7 @@ export type Database = {
       lead_source: "avito" | "cian" | "yandex" | "referral" | "website" | "other";
       lead_stage: "inquiry" | "viewing" | "documents" | "contract_sent" | "signed";
       lead_status: "active" | "archived" | "won";
+      lease_unit: "sqm" | "space" | "lot";
       meter_reading_source: "tenant" | "owner";
       meter_type: "electricity" | "water_cold" | "water_hot" | "gas" | "heat";
       payment_period: "monthly" | "quarterly" | "yearly" | "one_time";

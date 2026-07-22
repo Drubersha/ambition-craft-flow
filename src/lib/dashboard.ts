@@ -319,13 +319,65 @@ export function computeContourIncomes(
   }));
 }
 
+/** Связка составного договора с одним из его объектов. */
+export type ContractLink = { contract_id: string; property_id: string; area: number };
+
+/**
+ * Раскрывает составные договоры (несколько объектов через contract_properties)
+ * в виртуальные строки по объектам — только для расчёта площадей и занятости.
+ * Деньги и ставки считаются по исходным договорам: связки могут покрывать не
+ * всю договорную площадь, и деление ставки по ним исказило бы доход.
+ */
+export function expandContractLinks(
+  contracts: Contract[],
+  links: ContractLink[] | undefined,
+  properties: Property[],
+): Contract[] {
+  if (!links || links.length === 0) return contracts;
+  const byContract = new Map<string, ContractLink[]>();
+  for (const l of links) {
+    const arr = byContract.get(l.contract_id) ?? [];
+    arr.push(l);
+    byContract.set(l.contract_id, arr);
+  }
+  const propById = new Map(properties.map((p) => [p.id, p]));
+  const out: Contract[] = [];
+  for (const c of contracts) {
+    const ls = byContract.get(c.id);
+    if (!ls) {
+      out.push(c);
+      continue;
+    }
+    for (const l of ls) {
+      const p = propById.get(l.property_id);
+      out.push({
+        ...c,
+        property_id: l.property_id,
+        area: Number(l.area),
+        property: p
+          ? { id: p.id, name: p.name, type: p.type, area_total: Number(p.area_total) }
+          : c.property,
+      });
+    }
+  }
+  return out;
+}
+
 /** KPI портфеля за период. Занятость считается от площади без АХЧ. */
-export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, periodEnd: Date) {
+export function computeKpi(
+  filtered: FilteredDashboardData,
+  periodStart: Date,
+  periodEnd: Date,
+  links?: ContractLink[],
+) {
   const totalArea = filtered.properties.reduce((s, p) => s + Number(p.area_total || 0), 0);
   const activeContracts = filtered.contracts.filter((c) => c.status === "active");
   const activeAhch = filtered.ahchContracts.filter((c) => c.status === "active");
-  const ahchArea = activeAhch.reduce((s, c) => s + Number(c.area || 0), 0);
-  const leasedArea = activeContracts.reduce((s, c) => s + Number(c.area || 0), 0);
+  // Для площадей составные договоры раскрываются по объектам.
+  const areaContracts = expandContractLinks(activeContracts, links, filtered.properties);
+  const areaAhch = expandContractLinks(activeAhch, links, filtered.properties);
+  const ahchArea = areaAhch.reduce((s, c) => s + Number(c.area || 0), 0);
+  const leasedArea = areaContracts.reduce((s, c) => s + Number(c.area || 0), 0);
   const usableArea = totalArea - ahchArea;
   const occupancy = usableArea > 0 ? (leasedArea / usableArea) * 100 : 0;
 
@@ -340,7 +392,7 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   const avgRate = avgRates.find((r) => r.label === "Помещения")?.rate ?? 0;
 
   // Площадь и занятость по контурам — метры офиса, земли и складов несопоставимы.
-  const areas = computeContourAreas(filtered.properties, activeContracts, activeAhch);
+  const areas = computeContourAreas(filtered.properties, areaContracts, areaAhch);
   const premises = areas.find((a) => a.label === "Помещения");
   // Долю АХЧ считаем внутри его контура: делить метры складов на сумму
   // с землёй и машиноместами бессмысленно.
