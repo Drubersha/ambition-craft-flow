@@ -168,7 +168,7 @@ function Dashboard() {
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
     rentable: premises
       ? `Площадь помещений, доступная к сдаче: ${formatNum(premises.total)} м² всего минус ${formatNum(premises.ahch)} м² под собственные нужды (АХЧ). ` +
-        `Сдано ${formatNum(premises.leased)} м², свободно ${formatNum(premises.free)} м². Проценты — доли от общей площади помещений.`
+        `Сдано ${formatNum(premises.leased)} м², свободно ${formatNum(premises.free)} м². Проценты сдано/свободно — доли от потенциала сдачи (вместе дают 100%), АХЧ — от общей площади.`
       : `Нет помещений под текущими фильтрами.`,
   };
 
@@ -345,15 +345,15 @@ function Dashboard() {
                   items={[
                     {
                       label: "Сдано",
-                      text: `${formatNum(premises.leased)} м² · ${share(premises.leased, premises.total)}`,
+                      text: `${formatNum(premises.leased)} м² · ${share(premises.leased, premises.rentable)}`,
                     },
                     {
                       label: "Свободно",
-                      text: `${formatNum(premises.free)} м² · ${share(premises.free, premises.total)}`,
+                      text: `${formatNum(premises.free)} м² · ${share(premises.free, premises.rentable)}`,
                     },
                     {
                       label: "АХЧ",
-                      text: `${formatNum(premises.ahch)} м² · ${share(premises.ahch, premises.total)}`,
+                      text: `${formatNum(premises.ahch)} м² · ${share(premises.ahch, premises.total)} от общей`,
                     },
                   ]}
                 />
