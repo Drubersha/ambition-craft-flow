@@ -183,12 +183,8 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       qc.invalidateQueries({ queryKey: ["chat-attachments", threadId] });
       qc.invalidateQueries({ queryKey: ["chat-threads"] });
 
-      // Auto-analyze tenant messages
-      if (myRole === "tenant") {
-        analyze({ data: { messageId: msg.id } })
-          .then(() => qc.invalidateQueries({ queryKey: ["task-suggestions"] }))
-          .catch((err) => console.error("[analyze]", err));
-      }
+      // ИИ-анализ сообщений отключён (функция в разработке) — автоматический
+      // вызов analyze убран; серверный выключатель в tasks.functions.ts.
     } catch (e: any) {
       toast.error(e.message ?? "Не удалось отправить");
     } finally {
@@ -198,6 +194,10 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-[60vh]">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/50 border-b">
+        <Sparkles className="h-3 w-3" />
+        ИИ-анализ сообщений — функция ещё в разработке
+      </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 p-3">
         {(messages ?? []).length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">

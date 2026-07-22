@@ -38,10 +38,18 @@ async function allowedOwnerIds(supabase: any, userId: string): Promise<string[]>
   return Array.from(ids);
 }
 
+/**
+ * ИИ-анализ сообщений чата отключён 22.07.2026: функция ещё в разработке.
+ * Ручное создание задач из сообщений (createManualTaskFromMessage) работает.
+ * Для включения обратно поставить false и вернуть автоанализ в chat-thread.
+ */
+const CHAT_AI_DISABLED = true;
+
 export const analyzeMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AnalyzeInput.parse(d))
   .handler(async ({ data, context }) => {
+    if (CHAT_AI_DISABLED) return { ok: false, reason: "disabled" };
     const sb = await admin();
     const { data: msg, error } = await sb
       .from("chat_messages")

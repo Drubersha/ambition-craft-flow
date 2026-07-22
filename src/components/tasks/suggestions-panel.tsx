@@ -83,13 +83,30 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
     };
   }, [qc]);
 
-  if (!suggestions || suggestions.length === 0) return null;
+  // ИИ-разбор чатов отключён: панель остаётся видимой с плашкой, чтобы было
+  // понятно, куда функция вернётся; вручную добавленные предложения работают.
+  if (!suggestions || suggestions.length === 0) {
+    return (
+      <Card className="p-3 sm:p-4 border-dashed">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Sparkles className="h-4 w-4" />
+          <h2 className="font-semibold text-sm">Предложения ИИ</h2>
+          <Badge variant="secondary" className="text-[10px]">
+            функция в разработке
+          </Badge>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-3 sm:p-4 border-primary/40 bg-primary/5">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-primary" />
         <h2 className="font-semibold text-sm">Предложения ИИ ({suggestions.length})</h2>
+        <Badge variant="secondary" className="text-[10px]">
+          функция в разработке
+        </Badge>
       </div>
       <div className="space-y-2">
         {suggestions.map((s) => (

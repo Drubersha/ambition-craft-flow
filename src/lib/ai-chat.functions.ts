@@ -19,6 +19,7 @@ import {
   refinePlanForTenant,
   type AiPlan,
 } from "@/lib/ai-intent";
+import { matchHelpTopic } from "@/lib/ai-help";
 
 const AskInput = z.object({
   question: z.string().min(1).max(500),
@@ -52,6 +53,48 @@ export const askAi = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ownerIds = await allowedOwnerIds(context.supabase, context.userId);
     const ctx = { sb: supabaseAdmin, ownerIds };
+
+    // Шаг 0. Вопросы про методику дашборда («почему дебиторка и просроченные —
+    // разные цифры») получают заготовленный ответ из справки: модель методики
+    // не знает и начала бы сочинять. Если в вопросе назван арендатор, это
+    // запрос данных — справка не вмешивается.
+    const { data: tenantRowsEarly } = await supabaseAdmin
+      .from("tenants")
+      .select("name")
+      .in("owner_id", ownerIds);
+    const knownNames = (tenantRowsEarly ?? []).map((t: any) => t.name as string);
+    const helpTopic = matchTenantName(data.question, knownNames)
+      ? null
+      : matchHelpTopic(data.question);
+    if (helpTopic) {
+      try {
+        const { error: saveError } = await supabaseAdmin.from("ai_messages").insert([
+          { owner_id: ownerIds[0], user_id: context.userId, role: "user", body: data.question },
+          {
+            owner_id: ownerIds[0],
+            user_id: context.userId,
+            role: "assistant",
+            body: helpTopic.answer,
+            links: [],
+            facts: `Справка: ${helpTopic.title}`,
+            tool: "help_faq",
+            plan: null,
+          },
+        ]);
+        if (saveError) console.error("[askAi] history save error", saveError);
+      } catch (e) {
+        console.error("[askAi] history save threw", e);
+      }
+      return {
+        ok: true as const,
+        answer: helpTopic.answer,
+        links: [] as AiLink[],
+        tool: "help_faq",
+        // Готовый ответ справки — модель не нужна, деградации нет.
+        modelUsed: true,
+        facts: `Справка: ${helpTopic.title}`,
+      };
+    }
 
     // Шаг 1. Выбор инструмента.
     let plan: AiPlan = fallbackPlan(data.question);
@@ -94,13 +137,9 @@ export const askAi = createServerFn({ method: "POST" })
       }
     }
 
-    // Имя арендатора ищем по справочнику, а не доверяем модели: она часто
-    // опускает его, и вопрос «доход от АРТстроя» превращался в доход по всем.
-    const { data: tenantRows } = await supabaseAdmin
-      .from("tenants")
-      .select("name")
-      .in("owner_id", ownerIds);
-    const knownNames = (tenantRows ?? []).map((t: any) => t.name as string);
+    // Имя арендатора ищем по справочнику (загружен на шаге 0), а не доверяем
+    // модели: она часто опускает его, и вопрос «доход от АРТстроя»
+    // превращался в доход по всем.
     const detected = matchTenantName(data.question, knownNames);
     // Если арендатор назван, а инструмент считает по всему портфелю, ответ был
     // бы итогом по всем — переключаемся на сводку по этому арендатору.
