@@ -11,6 +11,7 @@ import { AlertTriangle, CalendarClock, Gauge, Percent, TrendingDown, Wallet } fr
 import { formatMoney, formatNum } from "@/lib/format";
 import {
   computeCollectionRate,
+  monthPaymentsToPast,
   type Charge,
   type Contract,
   type Payment,
@@ -61,6 +62,13 @@ export function CurrentMonthOps({
     const monthCharges = charges.filter((c) => inThisMonth(c.period_end));
     const { billed, collected, rate: collection } = computeCollectionRate(monthCharges);
     const paid = collected;
+    // Сколько денег месяца ушло на старые долги — объясняет низкую
+    // собираемость при больших поступлениях.
+    const { monthTotal: monthPayments, toPastPeriods: paidToPast } = monthPaymentsToPast(
+      payments,
+      charges,
+      today,
+    );
 
     let dueSoon = 0;
     let overdueSum = 0;
@@ -103,6 +111,8 @@ export function CurrentMonthOps({
       billed,
       paid,
       collection,
+      monthPayments,
+      paidToPast,
       dueSoon,
       overdueSum,
       overdueCount,
@@ -145,6 +155,7 @@ export function CurrentMonthOps({
             </div>
           </div>
         }
+        hint={`Оплата самих начислений текущего месяца: ${formatMoney(stats.paid)} из ${formatMoney(stats.billed)}. Всего поступлений в этом месяце ${formatMoney(stats.monthPayments)}, из них ${formatMoney(stats.paidToPast)} гасили долги прошлых периодов — собираемость месяца они не поднимают.`}
       />
       <Kpi
         icon={Wallet}

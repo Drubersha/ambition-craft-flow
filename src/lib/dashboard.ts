@@ -420,6 +420,32 @@ export type DebtAging = {
  * цикл: смешивание её со старым долгом делает «Дебиторку: всего» несравнимой
  * с отчётами по просрочке, которые строятся без начислений идущего месяца.
  */
+/**
+ * Поступления текущего месяца и та их часть, что ушла на начисления прошлых
+ * периодов.
+ *
+ * Пара к собираемости: она считается только по начислениям месяца, поэтому
+ * деньги, гасящие старые долги, в ней не видны — без этой цифры «поступило
+ * 2,2 млн, а собираемость 7%» выглядит ошибкой, хотя оба числа честные.
+ */
+export function monthPaymentsToPast(
+  payments: { amount: number; paid_at: string; charge_id: string }[],
+  charges: { id: string; period_start: string }[],
+  today: Date = new Date(),
+): { monthTotal: number; toPastPeriods: number } {
+  const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const periodOf = new Map(charges.map((c) => [c.id, (c.period_start || "").slice(0, 7)]));
+  let monthTotal = 0;
+  let toPastPeriods = 0;
+  for (const p of payments) {
+    if ((p.paid_at || "").slice(0, 7) !== ym) continue;
+    monthTotal += Number(p.amount);
+    const period = periodOf.get(p.charge_id);
+    if (period !== undefined && period < ym) toPastPeriods += Number(p.amount);
+  }
+  return { monthTotal, toPastPeriods };
+}
+
 export function splitByCurrentMonth<T extends { period_start: string }>(
   charges: T[],
   today: Date = new Date(),

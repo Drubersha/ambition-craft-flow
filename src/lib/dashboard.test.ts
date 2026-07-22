@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCollectionRate,
   computeDebtAging,
+  monthPaymentsToPast,
   splitByCurrentMonth,
   computeContourAreas,
   computeContourIncomes,
@@ -416,6 +417,33 @@ describe("splitByCurrentMonth", () => {
   it("прошлогодний тот же месяц — не текущий", () => {
     const { current } = splitByCurrentMonth([ch("2025-07-01")], TODAY);
     expect(current).toHaveLength(0);
+  });
+
+  it("платежи месяца делятся на текущие и гасящие прошлые периоды", () => {
+    // Июль 2026: поступило 300, из них 200 закрыли июньское начисление —
+    // собираемость июля поднимает только сотня, ушедшая на июльское.
+    const charges = [
+      { id: "june", period_start: "2026-06-01" },
+      { id: "july", period_start: "2026-07-01" },
+    ];
+    const payments = [
+      { amount: 200, paid_at: "2026-07-20", charge_id: "june" },
+      { amount: 100, paid_at: "2026-07-22", charge_id: "july" },
+      { amount: 999, paid_at: "2026-06-30", charge_id: "june" }, // не этот месяц
+    ];
+    const r = monthPaymentsToPast(payments, charges, new Date(2026, 6, 22));
+    expect(r.monthTotal).toBe(300);
+    expect(r.toPastPeriods).toBe(200);
+  });
+
+  it("платёж на неизвестное начисление входит в итог, но не в прошлые периоды", () => {
+    const r = monthPaymentsToPast(
+      [{ amount: 50, paid_at: "2026-07-05", charge_id: "ghost" }],
+      [],
+      new Date(2026, 6, 22),
+    );
+    expect(r.monthTotal).toBe(50);
+    expect(r.toPastPeriods).toBe(0);
   });
 
   it("воспроизводит июль 2026: свежая аренда не раздувает дебиторку", () => {
