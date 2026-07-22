@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCollectionRate,
   computeDebtAging,
+  splitByCurrentMonth,
   computeContourAreas,
   computeContourIncomes,
   computeContourRates,
@@ -392,5 +393,42 @@ describe("computeDebtAging", () => {
     const at31 = computeDebtAging([charge(10, "2026-06-20")], TODAY);
     expect(at30.buckets[0].label).toBe("До 30 дней");
     expect(at31.buckets[0].label).toBe("31–60 дней");
+  });
+});
+
+describe("splitByCurrentMonth", () => {
+  const TODAY = new Date(2026, 6, 22); // 22.07.2026
+  const ch = (period_start: string, total = 100, paid_total = 0) => ({
+    period_start,
+    total,
+    paid_total,
+  });
+
+  it("начисления текущего месяца отделяются от прошлых", () => {
+    const { current, past } = splitByCurrentMonth(
+      [ch("2026-07-01"), ch("2026-07-15"), ch("2026-06-01"), ch("2025-07-01")],
+      TODAY,
+    );
+    expect(current.map((c) => c.period_start)).toEqual(["2026-07-01", "2026-07-15"]);
+    expect(past.map((c) => c.period_start)).toEqual(["2026-06-01", "2025-07-01"]);
+  });
+
+  it("прошлогодний тот же месяц — не текущий", () => {
+    const { current } = splitByCurrentMonth([ch("2025-07-01")], TODAY);
+    expect(current).toHaveLength(0);
+  });
+
+  it("воспроизводит июль 2026: свежая аренда не раздувает дебиторку", () => {
+    // Старое начисление 100 (не оплачено) + июльская аренда 200 со сроком 31.08:
+    // дебиторка прошлых периодов = 100, текущий месяц отдельно = 200.
+    const charges = [
+      { period_start: "2026-06-01", total: 100, paid_total: 0, due_date: "2026-07-31" },
+      { period_start: "2026-07-01", total: 200, paid_total: 0, due_date: "2026-08-31" },
+    ];
+    const { current, past } = splitByCurrentMonth(charges, TODAY);
+    const aging = computeDebtAging(past, TODAY);
+    const currentUnpaid = current.reduce((s, c) => s + Math.max(c.total - c.paid_total, 0), 0);
+    expect(aging.total).toBe(100);
+    expect(currentUnpaid).toBe(200);
   });
 });

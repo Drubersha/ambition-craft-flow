@@ -353,8 +353,19 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
   today.setHours(0, 0, 0, 0);
   // Дебиторка по срокам давности: корзины складываются в общий долг, поэтому
   // KPI и разбивка под ним всегда сходятся между собой.
-  const aging = computeDebtAging(filtered.charges, today);
+  // Начисления текущего месяца в дебиторку не входят: это идущий платёжный
+  // цикл, а не долг — после генерации месячной аренды «Дебиторка: всего»
+  // подскакивала на сумму всех свежих начислений, срок которых не наступил.
+  const { current: curMonthCharges, past: pastCharges } = splitByCurrentMonth(
+    filtered.charges,
+    today,
+  );
+  const aging = computeDebtAging(pastCharges, today);
   const overdueAmt = aging.overdue;
+  const currentMonthUnpaid = curMonthCharges.reduce(
+    (s, c) => s + Math.max(Number(c.total) - Number(c.paid_total), 0),
+    0,
+  );
 
   const expSoon = activeContracts.filter((c) => {
     const d = daysUntil(c.end_date);
@@ -378,6 +389,7 @@ export function computeKpi(filtered: FilteredDashboardData, periodStart: Date, p
     avgRates,
     overdueAmt,
     aging,
+    currentMonthUnpaid,
     expSoon,
     monthlyIncome,
     ahchArea,
@@ -400,6 +412,26 @@ export type DebtAging = {
   /** Вся неоплаченная дебиторка, включая ещё не наступившие сроки. */
   total: number;
 };
+
+/**
+ * Делит начисления на текущий календарный месяц и прошлые периоды.
+ *
+ * Неоплаченная аренда текущего месяца — не дебиторка, а обычный платёжный
+ * цикл: смешивание её со старым долгом делает «Дебиторку: всего» несравнимой
+ * с отчётами по просрочке, которые строятся без начислений идущего месяца.
+ */
+export function splitByCurrentMonth<T extends { period_start: string }>(
+  charges: T[],
+  today: Date = new Date(),
+): { current: T[]; past: T[] } {
+  const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const current: T[] = [];
+  const past: T[] = [];
+  for (const c of charges) {
+    ((c.period_start || "").slice(0, 7) === ym ? current : past).push(c);
+  }
+  return { current, past };
+}
 
 /**
  * Дебиторка по срокам давности. Корзины складываются в общий долг: сумма всех

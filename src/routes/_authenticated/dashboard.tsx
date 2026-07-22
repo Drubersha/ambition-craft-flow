@@ -160,11 +160,11 @@ function Dashboard() {
     rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}; в подстрочнике — разбивка по контурам (платёж относится к контуру через начисление и договор).`,
     monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ), в подстрочнике — по контурам.`,
     avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
-    overdueAmt: `Вся неоплаченная дебиторка по срокам давности: ${kpi.aging.buckets
+    overdueAmt: `Неоплаченная дебиторка прошлых периодов по срокам давности: ${kpi.aging.buckets
       .map((b) => `${b.label} — ${formatMoney(b.amount)} (${b.count})`)
       .join(
         "; ",
-      )}. Корзины складываются в общий долг ${formatMoney(kpi.aging.total)}, из них просрочено ${formatMoney(kpi.aging.overdue)}.`,
+      )}. Корзины складываются в общий долг ${formatMoney(kpi.aging.total)}, из них просрочено ${formatMoney(kpi.aging.overdue)}. Начисления текущего месяца сюда не входят и показаны отдельной строкой (${formatMoney(kpi.currentMonthUnpaid)}).`,
     expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
     rentable: premises
       ? `Площадь помещений, доступная к сдаче: ${formatNum(premises.total)} м² всего минус ${formatNum(premises.ahch)} м² под собственные нужды (АХЧ). ` +
@@ -436,10 +436,20 @@ function Dashboard() {
             tone={kpi.overdueAmt > 0 ? "danger" : "ok"}
             sub={
               <ContourBreakdown
-                items={kpi.aging.buckets.map((b) => ({
-                  label: b.label,
-                  text: formatMoney(b.amount),
-                }))}
+                items={[
+                  ...kpi.aging.buckets.map((b) => ({
+                    label: b.label,
+                    text: formatMoney(b.amount),
+                  })),
+                  ...(kpi.currentMonthUnpaid > 0.005
+                    ? [
+                        {
+                          label: "Не оплачено за текущий месяц",
+                          text: formatMoney(kpi.currentMonthUnpaid),
+                        },
+                      ]
+                    : []),
+                ]}
               />
             }
             hint={showKpiHints ? kpiHints.overdueAmt : undefined}
