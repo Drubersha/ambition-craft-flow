@@ -192,6 +192,47 @@ async function incomeForPeriod(
   };
 }
 
+/**
+ * Прибыль за период: поступившие платежи минус расходы бюджета.
+ *
+ * Прибыль и поступления — разные понятия: на вопрос «какая прибыль» нельзя
+ * отвечать суммой платежей. Считается кассовым методом, по арендаторам не
+ * делится — расходы общие на базу.
+ */
+async function profitForPeriod(ctx: Ctx, args: { period?: string; from?: string; to?: string }) {
+  const { from, to } = resolvePeriod(args.period, args.from, args.to);
+  const periodLabel = `${formatDate(from)} — ${formatDate(to)}`;
+
+  const { data: payments } = await ctx.sb
+    .from("payments")
+    .select("amount")
+    .in("owner_id", ctx.ownerIds)
+    .gte("paid_at", from)
+    .lte("paid_at", to);
+  const income = (payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+  const { data: expenses } = await ctx.sb
+    .from("budget_expenses")
+    .select("amount")
+    .in("owner_id", ctx.ownerIds)
+    .eq("archived", false)
+    .gte("spent_at", from)
+    .lte("spent_at", to);
+  const spent = (expenses ?? []).reduce((s: number, e: any) => s + Number(e.amount), 0);
+  const profit = income - spent;
+
+  return {
+    summary:
+      `Прибыль за ${periodLabel} — ${formatMoney(profit)}: поступления ${formatMoney(income)} ` +
+      `минус расходы ${formatMoney(spent)}. Считается кассовым методом — деньги пришли минус ` +
+      `деньги потрачены, без НДС и без начислений.`,
+    links: [
+      { label: "Все платежи", to: "/payments", note: formatMoney(income) },
+      { label: "Дашборд", to: "/dashboard", note: formatMoney(profit) },
+    ],
+  };
+}
+
 /** Начисления: неоплаченные и просроченные. */
 async function unpaidCharges(ctx: Ctx, args: { tenant?: string; limit?: number }) {
   const limit = Math.min(args.limit ?? 10, 25);
@@ -529,6 +570,21 @@ export const AI_TOOLS = {
         .describe("Название арендатора, если доход спрашивают по конкретному"),
     }),
     run: incomeForPeriod,
+  },
+  profit_for_period: {
+    description:
+      "Прибыль за период: поступившие платежи минус расходы бюджета. " +
+      "Используй для вопросов про прибыль, маржу, «сколько заработали», «в плюсе или в минусе». " +
+      "Для дохода и выручки без вычета расходов используй income_for_period.",
+    schema: z.object({
+      period: z
+        .string()
+        .optional()
+        .describe("Период словами: «июнь 2026», «текущий месяц», «год», «квартал»"),
+      from: z.string().optional().describe("Начало периода YYYY-MM-DD"),
+      to: z.string().optional().describe("Конец периода YYYY-MM-DD"),
+    }),
+    run: profitForPeriod,
   },
   unpaid_charges: {
     description:

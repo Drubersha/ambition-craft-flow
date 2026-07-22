@@ -9,6 +9,7 @@ export const AI_TOOL_NAMES = [
   "tenant_debts",
   "tenant_overview",
   "income_for_period",
+  "profit_for_period",
   "unpaid_charges",
   "expiring_contracts",
   "portfolio_overview",
@@ -22,7 +23,12 @@ export type AiToolName = (typeof AI_TOOL_NAMES)[number];
  * Если в вопросе назван арендатор, отвечать ими нельзя — получится итог по
  * всем («сколько метров занимает Профритейл» → площадь всех помещений).
  */
-const PORTFOLIO_WIDE_TOOLS = new Set<string>(["portfolio_overview", "find_entity"]);
+const PORTFOLIO_WIDE_TOOLS = new Set<string>([
+  "portfolio_overview",
+  "find_entity",
+  // Расходы общие на базу — прибыль по одному арендатору не считается.
+  "profit_for_period",
+]);
 
 /** Плоская схема: вложенные объекты небольшая модель заполняет заметно хуже. */
 export const PlanSchema = z.object({
@@ -55,6 +61,11 @@ export function fallbackPlan(question: string): AiPlan {
   // «оплач», а не «оплат»: в слове «оплачено» после «опла» идёт «ч».
   if (has("начислен", "счет", "просроч", "неоплач", "не оплач")) {
     return { tool: "unpaid_charges" };
+  }
+  // «прибл» покрывает и «прибыль», и частую опечатку «прибль»; проверка идёт
+  // раньше доходных слов — прибыль и поступления считаются по-разному.
+  if (has("прибыл", "прибл", "заработал", "марж")) {
+    return { tool: "profit_for_period", period: question };
   }
   if (has("доход", "выручк", "поступил", "заплат", "платеж", "оплат", "денег", "собрал")) {
     return { tool: "income_for_period", period: question };
