@@ -11,6 +11,8 @@ import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
 import {
+  buildDialogContext,
+  DIALOG_CONTEXT_LIMIT,
   fallbackPlan,
   looksRussian,
   matchTenantName,
@@ -68,8 +70,16 @@ export const askAi = createServerFn({ method: "POST" })
       : matchHelpTopic(data.question);
     if (helpTopic) {
       try {
+        // links NOT NULL в схеме: без явного [] у строки вопроса падала вся
+        // пакетная вставка, и переписка молча не сохранялась.
         const { error: saveError } = await supabaseAdmin.from("ai_messages").insert([
-          { owner_id: ownerIds[0], user_id: context.userId, role: "user", body: data.question },
+          {
+            owner_id: ownerIds[0],
+            user_id: context.userId,
+            role: "user",
+            body: data.question,
+            links: [],
+          },
           {
             owner_id: ownerIds[0],
             user_id: context.userId,
@@ -96,6 +106,16 @@ export const askAi = createServerFn({ method: "POST" })
       };
     }
 
+    // Контекст диалога: последние сообщения (вопросы вместе с ответами) видят
+    // и маршрутизатор, и формулировка — «а за май?» опирается именно на них.
+    const { data: histRows } = await supabaseAdmin
+      .from("ai_messages")
+      .select("role, body")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(DIALOG_CONTEXT_LIMIT);
+    const dialog = buildDialogContext((histRows ?? []).reverse());
+
     // Шаг 1. Выбор инструмента.
     let plan: AiPlan = fallbackPlan(data.question);
     let modelUsed = false;
@@ -113,9 +133,11 @@ export const askAi = createServerFn({ method: "POST" })
               content:
                 "Ты — маршрутизатор запросов в системе учёта аренды. Верни ТОЛЬКО JSON без пояснений " +
                 'в формате {"tool":"имя","tenant":"","period":""} — tenant и period заполняй, ' +
-                "только если они прямо названы в вопросе, иначе оставляй пустыми.\n" +
+                "только если они прямо названы в вопросе или однозначно следуют из предыдущих реплик, " +
+                "иначе оставляй пустыми.\n" +
                 `Доступные инструменты:\n${TOOL_LIST}`,
             },
+            ...dialog,
             { role: "user", content: data.question },
           ],
         });
@@ -196,8 +218,10 @@ export const askAi = createServerFn({ method: "POST" })
                 "Ты — ассистент по учёту аренды. Перескажи данные как ответ на вопрос. " +
                 "Отвечай ТОЛЬКО на русском языке, кратко (1–3 предложения), без списков и markdown. " +
                 "ПЕРВОЕ предложение данных — это главный ответ, начни с него. " +
-                "Не меняй числа, не меняй имена и не делай собственных выводов.",
+                "Не меняй числа, не меняй имена и не делай собственных выводов. " +
+                "Предыдущие реплики даны только для связности — числа бери из свежих данных.",
             },
+            ...dialog,
             { role: "user", content: `Вопрос: ${data.question}\n\nДанные: ${result.summary}` },
           ],
         });
@@ -222,6 +246,8 @@ export const askAi = createServerFn({ method: "POST" })
           user_id: context.userId,
           role: "user",
           body: data.question,
+          // links NOT NULL: без явного [] падала вся пакетная вставка.
+          links: [],
         },
         {
           owner_id: ownerIds[0],

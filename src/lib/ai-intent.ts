@@ -65,6 +65,31 @@ export function fallbackPlan(question: string): AiPlan {
   return { tool: "find_entity", query: question };
 }
 
+/** Сколько сообщений истории учитывает помощник (вопросы вместе с ответами). */
+export const DIALOG_CONTEXT_LIMIT = 10;
+
+/**
+ * История диалога для модели: последние сообщения в хронологическом порядке.
+ * Длинные тексты усекаются — CPU-инференс не должен пережёвывать простыни,
+ * а для понимания контекста хватает начала ответа.
+ */
+export function buildDialogContext(
+  rows: { role: string; body: string | null }[],
+  limit: number = DIALOG_CONTEXT_LIMIT,
+  maxLen = 300,
+): { role: "user" | "assistant"; content: string }[] {
+  return rows
+    .filter((r) => (r.role === "user" || r.role === "assistant") && (r.body ?? "").trim())
+    .slice(-limit)
+    .map((r) => {
+      const body = r.body as string;
+      return {
+        role: r.role as "user" | "assistant",
+        content: body.length > maxLen ? `${body.slice(0, maxLen)}…` : body,
+      };
+    });
+}
+
 /**
  * Уточняющая реплика вроде «а средняя» или «а за май»: смысла сама по себе не
  * несёт и опирается на предыдущий вопрос.

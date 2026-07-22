@@ -1,4 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { buildDialogContext } from "./ai-intent";
+
+describe("buildDialogContext", () => {
+  const row = (role: string, body: string | null) => ({ role, body });
+
+  it("берёт не больше лимита последних сообщений в исходном порядке", () => {
+    const rows = Array.from({ length: 14 }, (_, i) =>
+      row(i % 2 ? "assistant" : "user", `сообщение ${i + 1}`),
+    );
+    const ctx = buildDialogContext(rows);
+    expect(ctx).toHaveLength(10);
+    expect(ctx[0].content).toBe("сообщение 5");
+    expect(ctx[9].content).toBe("сообщение 14");
+    expect(ctx[9].role).toBe("assistant");
+  });
+
+  it("усекает длинные ответы и выбрасывает пустые", () => {
+    const long = "а".repeat(500);
+    const ctx = buildDialogContext([row("assistant", long), row("user", "  "), row("user", null)]);
+    expect(ctx).toHaveLength(1);
+    expect(ctx[0].content).toHaveLength(301); // 300 + многоточие
+  });
+
+  it("пустая история — пустой контекст", () => {
+    expect(buildDialogContext([])).toEqual([]);
+  });
+});
 import {
   AI_TOOL_NAMES,
   fallbackPlan,
