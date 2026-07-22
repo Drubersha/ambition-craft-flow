@@ -71,6 +71,14 @@ jobs:
             echo "== Возвращаем realtime =="
             docker compose start realtime || true
 
+            echo "== Страхуем ollama (ИИ-помощник) =="
+            # ollama живёт в docker-compose.override.yml на сервере и деплоем не
+            # пересобирается. Но если он лежит (например, его остановил
+            # scripts/server-update.sh), сам он не поднимется — 21.07.2026 модель
+            # пролежала сутки. Стартуем строго ПОСЛЕ сборки: модель (~5 ГБ) и
+            # сборка фронтенда вместе не помещаются в 12 ГБ памяти сервера.
+            docker compose start ollama || true
+
             echo "== Чистим висячие образы (старые слои app после пересборок) =="
             docker image prune -f
 

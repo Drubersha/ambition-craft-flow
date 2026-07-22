@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# ВНИМАНИЕ: боевой путь деплоя — .github/workflows/deploy.yml (по пушу в main).
+# Этот скрипт — запасной/ручной вариант; не полагайся на него при обычном деплое.
+#
 # Update the production server to the latest `main` and rebuild the app.
 #
 # Manual run:   ./scripts/server-update.sh
