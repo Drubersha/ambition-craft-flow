@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   computeCollectionRate,
+  computeContourDebt,
+  computeContourYear,
   computeDebtAging,
   expandContractLinks,
   monthPaymentsToPast,
@@ -11,6 +13,7 @@ import {
   contourOfType,
   type Charge,
   type Contract,
+  type FilteredDashboardData,
   type Payment,
   type Property,
 } from "./dashboard";
@@ -487,5 +490,175 @@ describe("splitByCurrentMonth", () => {
     const currentUnpaid = current.reduce((s, c) => s + Math.max(c.total - c.paid_total, 0), 0);
     expect(aging.total).toBe(100);
     expect(currentUnpaid).toBe(200);
+  });
+});
+
+describe("computeContourDebt", () => {
+  const TODAY = new Date(2026, 6, 15); // 15.07.2026
+  const filtered = (charges: Charge[], contracts: Contract[]): FilteredDashboardData => ({
+    properties: [],
+    contracts,
+    charges,
+    payments: [],
+    ahchContracts: [],
+  });
+  const charge = (over: Partial<Charge> & { contract_id: string }): Charge => ({
+    id: `ch-${over.contract_id}-${over.period_start ?? ""}`,
+    total: 0,
+    paid_total: 0,
+    status: "unpaid",
+    due_date: null,
+    period_start: "2026-06-01",
+    period_end: "2026-06-30",
+    ...over,
+  });
+
+  it("разносит долг прошлых периодов по контурам, текущий месяц не считает", () => {
+    const premises = contract({ area: 100, rate: 100 });
+    const land = contract({ area: 1000, rate: 50, property: prop("land") });
+    const debt = computeContourDebt(
+      filtered(
+        [
+          charge({
+            contract_id: premises.id,
+            period_start: "2026-06-01",
+            total: 100,
+            paid_total: 0,
+          }),
+          charge({ contract_id: land.id, period_start: "2026-05-01", total: 50, paid_total: 0 }),
+          // текущий месяц — в долг не идёт
+          charge({
+            contract_id: premises.id,
+            period_start: "2026-07-01",
+            total: 999,
+            paid_total: 0,
+          }),
+          // оплаченное — не долг
+          charge({ contract_id: land.id, period_start: "2026-04-01", total: 70, paid_total: 70 }),
+        ],
+        [premises, land],
+      ),
+      TODAY,
+    );
+    expect(debt.get("Помещения")).toBe(100);
+    expect(debt.get("Земля")).toBe(50);
+    // Сумма по контурам сходится с общим долгом прошлых периодов.
+    expect([...debt.values()].reduce((s, v) => s + v, 0)).toBe(150);
+  });
+});
+
+describe("computeContourYear", () => {
+  const TODAY = new Date(2026, 6, 15); // 15.07.2026 → окно авг.2025 … июл.2026
+  const base = (over: Partial<FilteredDashboardData>): FilteredDashboardData => ({
+    properties: [],
+    contracts: [],
+    charges: [],
+    payments: [],
+    ahchContracts: [],
+    ...over,
+  });
+  const charge = (
+    over: Partial<Charge> & { contract_id: string; period_start: string },
+  ): Charge => ({
+    id: `ch-${over.contract_id}-${over.period_start}`,
+    total: 0,
+    paid_total: 0,
+    status: "unpaid",
+    due_date: null,
+    period_end: over.period_start,
+    ...over,
+  });
+  const payment = (charge_id: string, amount: number, paid_at: string): Payment => ({
+    id: `p-${charge_id}-${paid_at}`,
+    charge_id,
+    amount,
+    paid_at,
+    method: null,
+  });
+
+  it("строит 12-месячный ряд с поступлениями, начислениями и занятостью по контурам", () => {
+    const premises = contract({ area: 400, rate: 100, start_date: "2026-05-01" });
+    const land = contract({
+      area: 4000,
+      rate: 50,
+      property: prop("land"),
+      start_date: "2026-01-01",
+    });
+    const premisesCharge = charge({
+      contract_id: premises.id,
+      period_start: "2026-06-01",
+      total: 40000,
+      paid_total: 30000,
+    });
+    const landCharge = charge({
+      contract_id: land.id,
+      period_start: "2026-07-01",
+      total: 200000,
+      paid_total: 200000,
+    });
+    const series = computeContourYear(
+      base({
+        properties: [property("warehouse", 1000), property("land", 4000)],
+        contracts: [premises, land],
+        charges: [premisesCharge, landCharge],
+        payments: [
+          payment(premisesCharge.id, 30000, "2026-06-10"),
+          payment(landCharge.id, 200000, "2026-07-05"),
+        ],
+      }),
+      undefined,
+      TODAY,
+    );
+
+    const premisesRow = series.get("Помещения")!;
+    const landRow = series.get("Земля")!;
+    expect(premisesRow).toHaveLength(12);
+    expect(premisesRow[0].month).toBe("2025-08");
+    expect(premisesRow[11].month).toBe("2026-07");
+
+    const pm = Object.fromEntries(premisesRow.map((r) => [r.month, r]));
+    // Июнь: поступление 30 000, начислено 40 000, оплачено 30 000, занятость 400/1000.
+    expect(pm["2026-06"].income).toBe(30000);
+    expect(pm["2026-06"].billed).toBe(40000);
+    expect(pm["2026-06"].collected).toBe(30000);
+    expect(pm["2026-06"].occupancy).toBeCloseTo(40, 5);
+    // До начала договора (апрель) — занятость 0, денег нет.
+    expect(pm["2026-04"].occupancy).toBe(0);
+    expect(pm["2026-04"].income).toBe(0);
+
+    const lm = Object.fromEntries(landRow.map((r) => [r.month, r]));
+    expect(lm["2026-07"].income).toBe(200000);
+    expect(lm["2026-07"].billed).toBe(200000);
+    expect(lm["2026-07"].occupancy).toBeCloseTo(100, 5);
+    // Земля занята с января — в декабре прошлого года занятости ещё нет.
+    expect(lm["2025-12"].occupancy).toBe(0);
+  });
+
+  it("оплаченное сверх начисления не задирает collected выше billed", () => {
+    const c = contract({ area: 100, rate: 100, start_date: "2026-01-01" });
+    const series = computeContourYear(
+      base({
+        properties: [property("warehouse", 1000)],
+        contracts: [c],
+        charges: [
+          charge({ contract_id: c.id, period_start: "2026-06-01", total: 100, paid_total: 500 }),
+        ],
+      }),
+      undefined,
+      TODAY,
+    );
+    const june = series.get("Помещения")!.find((r) => r.month === "2026-06")!;
+    expect(june.billed).toBe(100);
+    expect(june.collected).toBe(100);
+  });
+
+  it("занятость null, когда у контура нет площади под сдачу", () => {
+    const c = contract({ area: 50, rate: 100, property: prop("other"), start_date: "2026-01-01" });
+    const series = computeContourYear(
+      base({ properties: [property("other", 0)], contracts: [c] }),
+      undefined,
+      TODAY,
+    );
+    expect(series.get("Помещения")!.every((r) => r.occupancy === null)).toBe(true);
   });
 });

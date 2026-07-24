@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { OnboardingQuest } from "@/components/onboarding-quest";
 import {
   Select,
@@ -15,19 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatDate } from "@/lib/format";
 import {
-  PROPERTY_STATUS_LABELS,
-  PROPERTY_TYPE_LABELS,
-  formatDate,
-  formatMoney,
-  formatNum,
-} from "@/lib/format";
-import {
+  computeCollectionRate,
+  computeContourDebt,
+  computeContourYear,
   computeKpi,
   filterDashboardData,
   getPeriodRange,
-  occupancyTone,
   periodLabel,
+  splitByCurrentMonth,
   type Charge,
   type Contract,
   type ContractLink,
@@ -36,43 +32,24 @@ import {
   type Property,
 } from "@/lib/dashboard";
 import {
-  ContourBreakdown,
-  Kpi,
+  CollapsibleSection,
   MultiSelectPopover,
   PlaceholderCard,
   Section,
 } from "@/components/dashboard/ui";
+import { OverviewSummary } from "@/components/dashboard/overview-summary";
+import { ContourPanel } from "@/components/dashboard/contour-panel";
 import { PropertiesTable } from "@/components/dashboard/properties-table";
 import { ExpiringLists, RateHistoryTable } from "@/components/dashboard/contracts-cards";
 import { ArSection } from "@/components/dashboard/ar-section";
 import { FinanceSection } from "@/components/dashboard/finance-section";
 import { CurrentMonthOps } from "@/components/dashboard/current-month-ops";
 import { ProfitSummary } from "@/components/dashboard/profit-summary";
-import {
-  AlertTriangle,
-  Building2,
-  CalendarClock,
-  Filter,
-  Gauge,
-  Percent,
-  TrendingUp,
-  Wallet,
-  X,
-} from "lucide-react";
+import { Filter, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
-
-/** Контуры, кроме помещений: они выносятся в подстрочник, помещения — в основную цифру. */
-function otherContours<T extends { label: string }>(items: T[]): T[] {
-  return items.filter((i) => i.label !== "Помещения");
-}
-
-/** Доля от общей площади контура — «—», когда делить не на что. */
-function share(part: number, total: number): string {
-  return total > 0 ? `${((part / total) * 100).toFixed(1)}%` : "—";
-}
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
@@ -135,46 +112,28 @@ function Dashboard() {
 
   const kpi = useMemo(
     () => computeKpi(filtered, periodStart, periodEnd, data?.contractLinks),
-    [filtered, periodStart, periodEnd],
+    [filtered, periodStart, periodEnd, data?.contractLinks],
   );
+
+  // Собираемость текущего календарного месяца — только по его начислениям.
+  const collectionRate = useMemo(() => {
+    const { current } = splitByCurrentMonth(filtered.charges, new Date());
+    return computeCollectionRate(current).rate;
+  }, [filtered]);
+
+  // Годовые ряды и долг по контурам для панелей.
+  const contourYear = useMemo(
+    () => computeContourYear(filtered, data?.contractLinks, new Date()),
+    [filtered, data?.contractLinks],
+  );
+  const contourDebt = useMemo(() => computeContourDebt(filtered, new Date()), [filtered]);
 
   if (isLoading) return <div className="p-6">Загрузка…</div>;
   if (!data) return null;
 
+  const perLabel = periodLabel(period);
   const allTypes = Array.from(new Set(data.properties.map((p) => p.type)));
   const allStatuses = Array.from(new Set(data.properties.map((p) => p.status)));
-
-  const activeContractsForHint = filtered.contracts.filter((c) => c.status === "active");
-  const premises = kpi.areas.find((a) => a.label === "Помещения");
-  const periodPaymentsHint = filtered.payments.filter((p) => {
-    const d = new Date(p.paid_at);
-    return d >= periodStart && d <= periodEnd;
-  });
-  const kpiHints: Record<string, string> = {
-    totalArea: `Площади ${filtered.properties.length} объектов(а) в фильтре, раздельно по контурам: ${kpi.areas
-      .map((a) => `${a.label} — ${formatNum(a.total)} ${a.unit}`)
-      .join(", ")}. Метры офиса, склада и земли неравноценны, поэтому общий итог не выводится.`,
-    propsCount: `Объекты под текущими фильтрами, по контурам: ${kpi.areas
-      .map((a) => `${a.label} — ${a.properties}`)
-      .join(", ")}.`,
-    occupancy: `Занятость каждого контура — сданная площадь к площади контура без АХЧ: ${kpi.areas
-      .filter((a) => a.occupancy !== null)
-      .map((a) => `${a.label} — ${formatNum(a.leased)} из ${formatNum(a.total - a.ahch)} ${a.unit}`)
-      .join("; ")}. Всего ${activeContractsForHint.length} активных договоров.`,
-    rentIncome: `Сумма ${periodPaymentsHint.length} платежей за период ${formatDate(periodStart.toISOString())} — ${formatDate(periodEnd.toISOString())}; в подстрочнике — разбивка по контурам (платёж относится к контуру через начисление и договор).`,
-    monthlyIncome: `Сумма месячных платежей по ${activeContractsForHint.length} активным договорам (ставка × площадь, без АХЧ), в подстрочнике — по контурам.`,
-    avgRate: `Средневзвешенные по площади ставки активных договоров, раздельно по контурам: помещения и земля — ₽/м², машиноместа — ₽/место. Договоры с фиксированной суммой (площадь 1) искажают ставку своего контура.`,
-    overdueAmt: `Неоплаченная дебиторка прошлых периодов по срокам давности: ${kpi.aging.buckets
-      .map((b) => `${b.label} — ${formatMoney(b.amount)} (${b.count})`)
-      .join(
-        "; ",
-      )}. Корзины складываются в общий долг ${formatMoney(kpi.aging.total)}, из них просрочено ${formatMoney(kpi.aging.overdue)}. Начисления текущего месяца сюда не входят и показаны отдельной строкой (${formatMoney(kpi.currentMonthUnpaid)}).`,
-    expSoon: `Активные договоры с датой окончания в ближайшие 90 дней.`,
-    rentable: premises
-      ? `Площадь помещений, доступная к сдаче: ${formatNum(premises.total)} м² всего минус ${formatNum(premises.ahch)} м² под собственные нужды (АХЧ). ` +
-        `Сдано ${formatNum(premises.leased)} м², свободно ${formatNum(premises.free)} м². Проценты сдано/свободно — доли от потенциала сдачи (вместе дают 100%), АХЧ — от общей площади.`
-      : `Нет помещений под текущими фильтрами.`,
-  };
 
   const resetFilters = () => {
     setPeriod("month");
@@ -310,9 +269,9 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Block 1: Portfolio KPI */}
+      {/* Общее — сквозные показатели за 5 секунд */}
       <Section
-        title="Портфель — ключевые показатели"
+        title="Общее"
         right={
           <label className="flex items-center gap-2 text-xs font-normal normal-case tracking-normal text-muted-foreground cursor-pointer">
             <input
@@ -324,152 +283,40 @@ function Dashboard() {
           </label>
         }
       >
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          <Kpi
-            icon={Building2}
-            label="Площадь: помещения"
-            value={kpi.areas.length === 0 ? "—" : `${formatNum(kpi.premisesArea)} м²`}
-            sub={
-              <ContourBreakdown
-                items={otherContours(kpi.areas).map((a) => ({
-                  label: a.label,
-                  text: `${formatNum(a.total)} ${a.unit}`,
-                }))}
+        <OverviewSummary
+          kpi={kpi}
+          collectionRate={collectionRate}
+          periodLabel={perLabel}
+          showHints={showKpiHints}
+        />
+      </Section>
+
+      {/* Контуры — состояние сейчас и графики за год */}
+      <Section title="Контуры — состояние и динамика за год">
+        <div className="space-y-3">
+          {kpi.areas.length === 0 ? (
+            <PlaceholderCard
+              title="Нет объектов"
+              text="Под текущими фильтрами объектов нет — измените фильтры выше."
+            />
+          ) : (
+            kpi.areas.map((a) => (
+              <ContourPanel
+                key={a.label}
+                area={a}
+                rate={kpi.avgRates.find((r) => r.label === a.label)}
+                income={kpi.incomes.find((i) => i.label === a.label)}
+                debt={contourDebt.get(a.label) ?? 0}
+                series={contourYear.get(a.label) ?? []}
+                periodLabel={perLabel}
               />
-            }
-            hint={showKpiHints ? kpiHints.totalArea : undefined}
-          />
-          <Kpi
-            icon={Gauge}
-            label="Потенциал сдачи"
-            value={premises ? `${formatNum(premises.rentable)} м²` : "—"}
-            sub={
-              premises ? (
-                <ContourBreakdown
-                  items={[
-                    {
-                      label: "Сдано",
-                      text: `${formatNum(premises.leased)} м² · ${share(premises.leased, premises.rentable)}`,
-                    },
-                    {
-                      label: "Свободно",
-                      text: `${formatNum(premises.free)} м² · ${share(premises.free, premises.rentable)}`,
-                    },
-                    {
-                      label: "АХЧ",
-                      text: `${formatNum(premises.ahch)} м² · ${share(premises.ahch, premises.total)} от общей`,
-                    },
-                  ]}
-                />
-              ) : undefined
-            }
-            hint={showKpiHints ? kpiHints.rentable : undefined}
-          />
-          <Kpi
-            icon={Building2}
-            label="Объектов"
-            value={kpi.propsCount}
-            sub={
-              <ContourBreakdown
-                items={kpi.areas.map((a) => ({ label: a.label, text: String(a.properties) }))}
-              />
-            }
-            hint={showKpiHints ? kpiHints.propsCount : undefined}
-          />
-          <Kpi
-            icon={Percent}
-            label="Занятость: помещения"
-            value={kpi.premisesOccupancy === null ? "—" : `${kpi.premisesOccupancy.toFixed(1)}%`}
-            tone={kpi.premisesOccupancy === null ? undefined : occupancyTone(kpi.premisesOccupancy)}
-            sub={
-              <>
-                <Progress value={kpi.premisesOccupancy ?? 0} className="mt-2 h-1.5" />
-                <ContourBreakdown
-                  items={otherContours(kpi.areas)
-                    .filter((a) => a.occupancy !== null)
-                    .map((a) => ({ label: a.label, text: `${a.occupancy!.toFixed(1)}%` }))}
-                />
-              </>
-            }
-            hint={showKpiHints ? kpiHints.occupancy : undefined}
-          />
-          <Kpi
-            icon={Wallet}
-            label="Арендный доход"
-            value={formatMoney(kpi.rentIncome)}
-            sub={
-              <ContourBreakdown
-                items={kpi.incomes
-                  .filter((i) => i.rentIncome > 0)
-                  .map((i) => ({ label: i.label, text: formatMoney(i.rentIncome) }))}
-              />
-            }
-            hint={showKpiHints ? kpiHints.rentIncome : undefined}
-          />
-          <Kpi
-            icon={Wallet}
-            label="Месячные платежи"
-            value={formatMoney(kpi.monthlyIncome)}
-            sub={
-              <ContourBreakdown
-                items={kpi.incomes
-                  .filter((i) => i.monthlyIncome > 0)
-                  .map((i) => ({ label: i.label, text: formatMoney(i.monthlyIncome) }))}
-              />
-            }
-            hint={showKpiHints ? kpiHints.monthlyIncome : undefined}
-          />
-          <Kpi
-            icon={TrendingUp}
-            label="Ставка: помещения"
-            value={kpi.avgRates.length === 0 ? "—" : `${formatNum(kpi.avgRate)} ₽/м²/мес`}
-            sub={
-              <ContourBreakdown
-                items={otherContours(kpi.avgRates).map((r) => ({
-                  label: r.label,
-                  text: `${formatNum(r.rate)} ${r.unit}`,
-                }))}
-              />
-            }
-            hint={showKpiHints ? kpiHints.avgRate : undefined}
-          />
-          <Kpi
-            icon={AlertTriangle}
-            label="Дебиторка: всего"
-            value={formatMoney(kpi.aging.total)}
-            tone={kpi.overdueAmt > 0 ? "danger" : "ok"}
-            sub={
-              <ContourBreakdown
-                items={[
-                  ...kpi.aging.buckets.map((b) => ({
-                    label: b.label,
-                    text: formatMoney(b.amount),
-                  })),
-                  ...(kpi.currentMonthUnpaid > 0.005
-                    ? [
-                        {
-                          label: "Не оплачено за текущий месяц",
-                          text: formatMoney(kpi.currentMonthUnpaid),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            }
-            hint={showKpiHints ? kpiHints.overdueAmt : undefined}
-          />
-          <Kpi
-            icon={CalendarClock}
-            label="Истекают за 90 дн"
-            value={kpi.expSoon}
-            tone={kpi.expSoon > 0 ? "warn" : "ok"}
-            hint={showKpiHints ? kpiHints.expSoon : undefined}
-          />
+            ))
+          )}
         </div>
       </Section>
 
-      {/* Block 1a2: operational snapshot of the current month */}
-      <Section title="Оперативно: текущий месяц">
+      {/* Подробные разделы — под катом, монтируются при раскрытии */}
+      <CollapsibleSection title="Оперативно: текущий месяц">
         <CurrentMonthOps
           charges={filtered.charges}
           contracts={filtered.contracts}
@@ -477,15 +324,13 @@ function Dashboard() {
           properties={filtered.properties}
           ahchContracts={filtered.ahchContracts}
         />
-      </Section>
+      </CollapsibleSection>
 
-      {/* Block 1b: Income, Expenses, Profit */}
-      <Section title="Доходы, расходы и прибыль">
+      <CollapsibleSection title="Доходы, расходы и прибыль">
         <ProfitSummary periodStart={periodStart} periodEnd={periodEnd} />
-      </Section>
+      </CollapsibleSection>
 
-      {/* Block 2: AR (выше объектов — оперативно важнее) */}
-      <Section title="Дебиторская задолженность">
+      <CollapsibleSection title="Дебиторская задолженность">
         <ArSection
           charges={filtered.charges}
           contracts={filtered.contracts}
@@ -493,10 +338,9 @@ function Dashboard() {
           periodStart={periodStart}
           periodEnd={periodEnd}
         />
-      </Section>
+      </CollapsibleSection>
 
-      {/* Block 3: Properties table */}
-      <Section title="Объекты и помещения">
+      <CollapsibleSection title="Объекты и помещения">
         <Card>
           <CardContent className="p-3 space-y-2">
             <Input
@@ -521,10 +365,9 @@ function Dashboard() {
             />
           </CardContent>
         </Card>
-      </Section>
+      </CollapsibleSection>
 
-      {/* Block 3: Contracts */}
-      <Section title="Договорная база">
+      <CollapsibleSection title="Договорная база">
         <div className="grid lg:grid-cols-2 gap-3">
           <ExpiringLists contracts={filtered.contracts} />
           <RateHistoryTable contracts={filtered.contracts} />
@@ -533,10 +376,9 @@ function Dashboard() {
             text="Источник данных по лидам/просмотрам/переговорам не подключён."
           />
         </div>
-      </Section>
+      </CollapsibleSection>
 
-      {/* Block 5: Finance */}
-      <Section title="Финансовые показатели">
+      <CollapsibleSection title="Финансовые показатели">
         <FinanceSection
           payments={filtered.payments}
           properties={filtered.properties}
@@ -544,7 +386,7 @@ function Dashboard() {
           periodStart={periodStart}
           periodEnd={periodEnd}
         />
-      </Section>
+      </CollapsibleSection>
     </div>
   );
 }

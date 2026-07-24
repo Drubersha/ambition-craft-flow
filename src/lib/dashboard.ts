@@ -449,6 +449,191 @@ export function computeKpi(
   };
 }
 
+/** Неоплаченная дебиторка прошлых периодов по контурам (без начислений текущего
+ *  месяца — как в KPI «Дебиторка: всего»). Сумма по всем контурам сходится с
+ *  aging.total из computeKpi. */
+export function computeContourDebt(
+  filtered: FilteredDashboardData,
+  today: Date = new Date(),
+): Map<string, number> {
+  const contourByContract = new Map<string, string>();
+  for (const c of filtered.contracts) {
+    contourByContract.set(c.id, contourOfType(c.property?.type));
+  }
+  const { past } = splitByCurrentMonth(filtered.charges, today);
+  const out = new Map<string, number>();
+  for (const ch of past) {
+    const remain = Number(ch.total) - Number(ch.paid_total);
+    if (remain <= 0.005) continue;
+    const contour = contourByContract.get(ch.contract_id);
+    if (!contour) continue;
+    out.set(contour, (out.get(contour) || 0) + remain);
+  }
+  return out;
+}
+
+/** Точка месячного ряда контура: поступления, начислено/оплачено и занятость. */
+export type ContourMonthPoint = {
+  /** Ключ месяца "YYYY-MM". */
+  month: string;
+  /** Поступило платежей за месяц по контуру (платёж → начисление → договор). */
+  income: number;
+  /** Начислено за месяц (начисления, чей период приходится на этот месяц). */
+  billed: number;
+  /** Оплачено по начислениям месяца (min(paid_total, total) по каждому). */
+  collected: number;
+  /** Занятость контура в месяце, %; null — если у контура нет площади под сдачу. */
+  occupancy: number | null;
+};
+
+/**
+ * Годовые ряды по контурам (по умолчанию 12 последних месяцев, включая текущий).
+ *
+ * Деньги считаются по исходным договорам (составные договоры не дробятся:
+ * оплата приходит на договор целиком). Занятость — по раскрытым связкам, чтобы
+ * составной договор разложился по своим контурам, как в снимке «сейчас».
+ *
+ * Знаменатель занятости — площадь контура без АХЧ на текущий момент: у объектов
+ * нет истории площади, поэтому прошлые месяцы делятся на сегодняшнюю базу (та же
+ * оговорка, что и в 12-месячном графике занятости).
+ */
+export function computeContourYear(
+  filtered: FilteredDashboardData,
+  links: ContractLink[] | undefined,
+  today: Date = new Date(),
+  months = 12,
+): Map<string, ContourMonthPoint[]> {
+  const monthList: string[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    monthList.push(monthKeyLocal(today.getFullYear(), today.getMonth() - i));
+  }
+  const inWindow = new Set(monthList);
+
+  // Контур каждого договора и начисления — для денег берём исходные договоры.
+  const contourByContract = new Map<string, string>();
+  for (const c of filtered.contracts) {
+    contourByContract.set(c.id, contourOfType(c.property?.type));
+  }
+  const contourByCharge = new Map<string, string>();
+  for (const ch of filtered.charges) {
+    const label = contourByContract.get(ch.contract_id);
+    if (label) contourByCharge.set(ch.id, label);
+  }
+
+  const money = new Map<
+    string,
+    Map<string, { income: number; billed: number; collected: number }>
+  >();
+  const cell = (contour: string, month: string) => {
+    let m = money.get(contour);
+    if (!m) {
+      m = new Map();
+      money.set(contour, m);
+    }
+    let c = m.get(month);
+    if (!c) {
+      c = { income: 0, billed: 0, collected: 0 };
+      m.set(month, c);
+    }
+    return c;
+  };
+
+  for (const p of filtered.payments) {
+    const month = (p.paid_at || "").slice(0, 7);
+    if (!inWindow.has(month)) continue;
+    const contour = contourByCharge.get(p.charge_id);
+    if (!contour) continue;
+    cell(contour, month).income += Number(p.amount);
+  }
+  for (const ch of filtered.charges) {
+    const month = (ch.period_start || "").slice(0, 7);
+    if (!inWindow.has(month)) continue;
+    const contour = contourByContract.get(ch.contract_id);
+    if (!contour) continue;
+    const total = Number(ch.total) || 0;
+    const paid = Number(ch.paid_total) || 0;
+    const c = cell(contour, month);
+    c.billed += total;
+    c.collected += Math.min(paid, total);
+  }
+
+  // Занятость: сданная площадь контура в месяце к его площади без АХЧ (сейчас).
+  const totalByContour = new Map<string, number>();
+  for (const pr of filtered.properties) {
+    const k = contourOfType(pr.type);
+    totalByContour.set(k, (totalByContour.get(k) || 0) + Number(pr.area_total || 0));
+  }
+  const activeAhch = expandContractLinks(
+    filtered.ahchContracts.filter((c) => c.status === "active"),
+    links,
+    filtered.properties,
+  );
+  const ahchByContour = new Map<string, number>();
+  for (const c of activeAhch) {
+    const k = contourOfType(c.property?.type);
+    ahchByContour.set(k, (ahchByContour.get(k) || 0) + Number(c.area || 0));
+  }
+  const usableByContour = new Map<string, number>();
+  for (const label of CONTOUR_ORDER) {
+    usableByContour.set(
+      label,
+      Math.max(0, (totalByContour.get(label) || 0) - (ahchByContour.get(label) || 0)),
+    );
+  }
+
+  const monthBounds = monthList.map((k) => {
+    const [y, m] = k.split("-").map(Number);
+    return { key: k, start: new Date(y, m - 1, 1), end: new Date(y, m, 0, 23, 59, 59, 999) };
+  });
+  const leased = new Map<string, Map<string, number>>();
+  const expanded = expandContractLinks(filtered.contracts, links, filtered.properties);
+  for (const c of expanded) {
+    if (!c.start_date) continue;
+    const area = Number(c.area || 0);
+    if (area <= 0) continue;
+    const contour = contourOfType(c.property?.type);
+    const start = new Date(c.start_date);
+    const end = c.end_date ? new Date(c.end_date) : null;
+    for (const mb of monthBounds) {
+      if (start <= mb.end && (!end || end >= mb.start)) {
+        let m = leased.get(contour);
+        if (!m) {
+          m = new Map();
+          leased.set(contour, m);
+        }
+        m.set(mb.key, (m.get(mb.key) || 0) + area);
+      }
+    }
+  }
+
+  const result = new Map<string, ContourMonthPoint[]>();
+  for (const contour of CONTOUR_ORDER) {
+    if (!totalByContour.has(contour) && !money.has(contour) && !leased.has(contour)) continue;
+    const usable = usableByContour.get(contour) || 0;
+    result.set(
+      contour,
+      monthList.map((month) => {
+        const c = money.get(contour)?.get(month);
+        const lea = leased.get(contour)?.get(month) || 0;
+        return {
+          month,
+          income: c?.income || 0,
+          billed: c?.billed || 0,
+          collected: c?.collected || 0,
+          occupancy: usable > 0 ? Math.min(100, (lea / usable) * 100) : null,
+        };
+      }),
+    );
+  }
+  return result;
+}
+
+/** Ключ месяца "YYYY-MM" из года и (возможно отрицательного) индекса месяца. */
+function monthKeyLocal(year: number, monthIndex: number): string {
+  const d = new Date(year, monthIndex, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export type AgingBucket = {
   label: string;
   amount: number;

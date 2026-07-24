@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import { toneClass } from "@/lib/dashboard";
 
 export function Section({
@@ -27,6 +27,37 @@ export function Section({
         {right}
       </div>
       {children}
+    </section>
+  );
+}
+
+/**
+ * Секция «под катом»: заголовок-кнопка, тело монтируется только когда открыто.
+ * Ленивый монтаж не даёт тяжёлым графикам и таблицам рендериться, пока раздел
+ * свёрнут, — первый экран дашборда остаётся лёгким.
+ */
+export function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
+        {title}
+      </button>
+      {open && children}
     </section>
   );
 }
