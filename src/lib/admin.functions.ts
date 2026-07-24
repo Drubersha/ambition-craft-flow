@@ -1,27 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getAdminRoles, requireAdministrator, type AdminRole } from "@/lib/auth-roles.server";
 
-export type AdminRole = "developer" | "moderator";
-
-async function getCallerRoles(supabase: any, userId: string): Promise<AdminRole[]> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return (data ?? [])
-    .map((r: any) => r.role)
-    .filter((r: string): r is AdminRole => r === "developer" || r === "moderator");
-}
+export type { AdminRole } from "@/lib/auth-roles.server";
 
 export const getCurrentAdminRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
+    const roles = await getAdminRoles(context.supabase, context.userId);
     return { roles, userId: context.userId };
   });
 
 export const listAllUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (roles.length === 0) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles, error } = await supabaseAdmin.from("profiles").select("id, full_name");
     if (error) throw new Error(error.message);
@@ -51,8 +45,8 @@ export const getUserOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (roles.length === 0) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [profile, userRoles, props, tenants, contracts, payments, tasks] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").eq("id", data.userId).maybeSingle(),
@@ -101,8 +95,8 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string; full_name?: string | null }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("moderator") && !roles.includes("developer")) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
@@ -111,13 +105,14 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
       .update(patch as never)
       .eq("id", data.userId);
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: data.userId,
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: data.userId,
       action: "moderator_action",
-      entity_type: "profile",
-      entity_id: data.userId,
-      metadata: { changes: patch } as never,
+      entityType: "profile",
+      entityId: data.userId,
+      metadata: { changes: patch },
     });
     return { ok: true };
   });
@@ -126,16 +121,15 @@ export const ownerSetRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string; role: AdminRole | "manager"; grant: boolean }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
+    const roles = await getAdminRoles(context.supabase, context.userId);
     if (!roles.includes("developer")) throw new Error("Only developer can manage roles");
     if (data.userId === context.userId && data.role === "developer" && !data.grant) {
       throw new Error("Developer cannot remove own developer role");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.grant) {
-      await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: data.userId, role: data.role } as never, { onConflict: "user_id,role" });
+      const { grantRole } = await import("@/lib/roles-links.server");
+      await grantRole(supabaseAdmin, data.userId, data.role);
     } else {
       await supabaseAdmin
         .from("user_roles")
@@ -143,13 +137,14 @@ export const ownerSetRole = createServerFn({ method: "POST" })
         .eq("user_id", data.userId)
         .eq("role", data.role);
     }
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: data.userId,
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: data.userId,
       action: "moderator_action",
-      entity_type: "user_role",
-      entity_id: data.userId,
-      metadata: { role: data.role, grant: data.grant } as never,
+      entityType: "user_role",
+      entityId: data.userId,
+      metadata: { role: data.role, grant: data.grant },
     });
     return { ok: true };
   });
@@ -162,8 +157,8 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     (input: { email: string; password: string; fullName?: string; role: CreatableRole }) => input,
   )
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (roles.length === 0) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const email = data.email.trim().toLowerCase();
     if (!email || !data.password || data.password.length < 8)
       throw new Error("Email и пароль (≥8 символов) обязательны");
@@ -179,17 +174,17 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     const newId = created.user?.id;
     if (!newId) throw new Error("Не удалось создать пользователя");
     if (data.role !== baseRole) {
-      await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: newId, role: data.role } as never, { onConflict: "user_id,role" });
+      const { grantRole } = await import("@/lib/roles-links.server");
+      await grantRole(supabaseAdmin, newId, data.role);
     }
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: newId,
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: newId,
       action: "create",
-      entity_type: "user",
-      entity_id: newId,
-      metadata: { email, role: data.role } as never,
+      entityType: "user",
+      entityId: newId,
+      metadata: { email, role: data.role },
     });
     return { ok: true, userId: newId };
   });
@@ -198,19 +193,19 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (roles.length === 0) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     if (data.userId === context.userId) throw new Error("Нельзя удалить свой аккаунт");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: data.userId,
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: data.userId,
       action: "delete",
-      entity_type: "user",
-      entity_id: data.userId,
-      metadata: {} as never,
+      entityType: "user",
+      entityId: data.userId,
     });
     return { ok: true };
   });
@@ -219,32 +214,27 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { memberUserId: string; ownerUserId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (roles.length === 0) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     if (data.memberUserId === data.ownerUserId) throw new Error("Нельзя привязать к самому себе");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: data.memberUserId, role: "tenant" } as never, {
-        onConflict: "user_id,role",
-      });
-    const { error } = await supabaseAdmin.from("user_links").upsert(
-      {
-        owner_user_id: data.ownerUserId,
-        member_user_id: data.memberUserId,
-        role: "tenant",
-        created_by: context.userId,
-      } as never,
-      { onConflict: "owner_user_id,member_user_id,role" },
-    );
-    if (error) throw new Error(error.message);
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: data.memberUserId,
+    const { grantRole, upsertUserLink } = await import("@/lib/roles-links.server");
+    await grantRole(supabaseAdmin, data.memberUserId, "tenant");
+    const linkErr = await upsertUserLink(supabaseAdmin, {
+      ownerUserId: data.ownerUserId,
+      memberUserId: data.memberUserId,
+      role: "tenant",
+      createdBy: context.userId,
+    });
+    if (linkErr) throw new Error(linkErr.message);
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: data.memberUserId,
       action: "moderator_action",
-      entity_type: "user_link",
-      entity_id: data.memberUserId,
-      metadata: { owner_user_id: data.ownerUserId, role: "tenant", added_role: true } as never,
+      entityType: "user_link",
+      entityId: data.memberUserId,
+      metadata: { owner_user_id: data.ownerUserId, role: "tenant", added_role: true },
     });
     return { ok: true };
   });
@@ -255,8 +245,8 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     (input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input,
   )
   .handler(async ({ data, context }) => {
-    const roles = await getCallerRoles(context.supabase, context.userId);
-    if (!roles.includes("moderator") && !roles.includes("developer")) throw new Error("Forbidden");
+    const roles = await getAdminRoles(context.supabase, context.userId);
+    requireAdministrator(roles);
     const email = data.email.trim().toLowerCase();
     if (!email) throw new Error("Email обязателен");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -275,18 +265,16 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     const { data: srcAuth } = await supabaseAdmin.auth.admin.getUserById(data.sourceUserId);
     const srcEmail = (srcAuth?.user?.email ?? "").toLowerCase();
     if (srcEmail && email === srcEmail) {
-      await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: data.sourceUserId, role: newRole } as never, {
-          onConflict: "user_id,role",
-        });
-      await supabaseAdmin.from("activity_logs").insert({
-        user_id: context.userId,
-        acted_as_user_id: data.sourceUserId,
+      const { grantRole } = await import("@/lib/roles-links.server");
+      await grantRole(supabaseAdmin, data.sourceUserId, newRole);
+      const { logAdminAction } = await import("@/lib/audit.server");
+      await logAdminAction(supabaseAdmin, {
+        userId: context.userId,
+        actedAs: data.sourceUserId,
         action: "moderator_action",
-        entity_type: "user_role",
-        entity_id: data.sourceUserId,
-        metadata: { role: newRole, grant: true, companion_same_email: true } as never,
+        entityType: "user_role",
+        entityId: data.sourceUserId,
+        metadata: { role: newRole, grant: true, companion_same_email: true },
       });
       return { ok: true, userId: data.sourceUserId, role: newRole, sameAccount: true };
     }
@@ -310,22 +298,21 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     if (!newId) throw new Error("Не удалось создать аккаунт");
     const ownerId = newRole === "owner" ? newId : data.sourceUserId;
     const memberId = newRole === "tenant" ? newId : data.sourceUserId;
-    await supabaseAdmin.from("user_links").upsert(
-      {
-        owner_user_id: ownerId,
-        member_user_id: memberId,
-        role: "tenant",
-        created_by: context.userId,
-      } as never,
-      { onConflict: "owner_user_id,member_user_id,role" },
-    );
-    await supabaseAdmin.from("activity_logs").insert({
-      user_id: context.userId,
-      acted_as_user_id: newId,
+    const { upsertUserLink } = await import("@/lib/roles-links.server");
+    await upsertUserLink(supabaseAdmin, {
+      ownerUserId: ownerId,
+      memberUserId: memberId,
+      role: "tenant",
+      createdBy: context.userId,
+    });
+    const { logAdminAction } = await import("@/lib/audit.server");
+    await logAdminAction(supabaseAdmin, {
+      userId: context.userId,
+      actedAs: newId,
       action: "create",
-      entity_type: "user",
-      entity_id: newId,
-      metadata: { companion_of: data.sourceUserId, role: newRole, email } as never,
+      entityType: "user",
+      entityId: newId,
+      metadata: { companion_of: data.sourceUserId, role: newRole, email },
     });
     return { ok: true, userId: newId, role: newRole, sameAccount: false };
   });

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getUserRoles } from "@/lib/auth-roles.server";
 
 export type DemoKind = "demo" | "demo2" | "moderator" | "developer";
 
@@ -59,11 +60,8 @@ export const ensureDemoAccount = createServerFn({ method: "POST" })
     const acc = DEMO_ACCOUNTS[data.kind];
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Only an existing developer/admin may (re)provision demo accounts.
-    const { data: isDev } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "developer",
-    });
-    if (!isDev) throw new Error("Forbidden");
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (!roles.includes("developer")) throw new Error("Forbidden");
     const password = getPrivilegedPasswordFromEnv(data.kind);
     if (!password) {
       throw new Error("Пароль для этого демо-аккаунта не сконфигурирован на сервере");
@@ -148,11 +146,10 @@ export const resetDemo2Account = createServerFn({ method: "POST" })
     if (!user) return { ok: true };
     const uid = user.id;
     // Only the demo2 account itself, or a developer, may wipe demo2 data.
-    const { data: isDev } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "developer",
-    });
-    if (context.userId !== uid && !isDev) throw new Error("Forbidden");
+    if (context.userId !== uid) {
+      const roles = await getUserRoles(context.supabase, context.userId);
+      if (!roles.includes("developer")) throw new Error("Forbidden");
+    }
     // Tables to wipe (activity_logs intentionally preserved).
     const ownerTables = [
       "payments",
