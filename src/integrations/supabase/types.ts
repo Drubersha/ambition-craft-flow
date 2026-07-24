@@ -1068,6 +1068,7 @@ export type Database = {
           floor: string | null;
           folder_id: string | null;
           id: string;
+          is_general: boolean;
           name: string;
           notes: string | null;
           owner_id: string;
@@ -1090,6 +1091,7 @@ export type Database = {
           floor?: string | null;
           folder_id?: string | null;
           id?: string;
+          is_general?: boolean;
           name: string;
           notes?: string | null;
           owner_id: string;
@@ -1112,6 +1114,7 @@ export type Database = {
           floor?: string | null;
           folder_id?: string | null;
           id?: string;
+          is_general?: boolean;
           name?: string;
           notes?: string | null;
           owner_id?: string;

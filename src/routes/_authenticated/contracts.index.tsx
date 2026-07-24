@@ -26,12 +26,48 @@ function ContractsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contracts")
-        .select("*, tenant:tenants(name), property:properties(name, folder_id)")
+        .select("*, tenant:tenants(name), property:properties(name, folder_id, is_general)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
+
+  // Для надписей: какие объекты обозначены на картах и какие договоры составные.
+  const { data: coverage } = useQuery({
+    queryKey: ["contracts-coverage"],
+    queryFn: async () => {
+      const [mk, cp] = await Promise.all([
+        supabase.from("property_markings").select("property_id"),
+        supabase.from("contract_properties").select("contract_id,property_id"),
+      ]);
+      if (mk.error) throw mk.error;
+      if (cp.error) throw cp.error;
+      const marked = new Set((mk.data ?? []).map((m) => m.property_id));
+      const linksByContract = new Map<string, string[]>();
+      for (const l of cp.data ?? []) {
+        const arr = linksByContract.get(l.contract_id) ?? [];
+        arr.push(l.property_id);
+        linksByContract.set(l.contract_id, arr);
+      }
+      return { marked, linksByContract };
+    },
+  });
+
+  // Активные договоры аренды на общих объектах («Машиноместа», остаток земли):
+  // без привязки к конкретному месту/участку. Составные (со связками) — привязаны.
+  const activeRent = (data ?? []).filter((c: any) => c.status === "active" && c.kind !== "ahch");
+  const onGeneral = coverage
+    ? activeRent.filter((c: any) => c.property?.is_general && !coverage.linksByContract.has(c.id))
+    : [];
+  // Договор «не на карте», если ни его объект, ни объекты его связок не размечены.
+  const unmapped = coverage
+    ? activeRent.filter((c: any) => {
+        if (coverage.marked.has(c.property_id)) return false;
+        const linked = coverage.linksByContract.get(c.id) ?? [];
+        return !linked.some((pid) => coverage.marked.has(pid));
+      })
+    : [];
 
   const filtered = (data ?? []).filter((c: any) => {
     if (folderFilterEnabled) {
@@ -102,6 +138,18 @@ function ContractsList() {
           </button>
         )}
       </div>
+      {coverage && (
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          <div
+            title={onGeneral.map((c: any) => c.tenant?.name ?? c.number).join(", ") || undefined}
+          >
+            Договоров без объекта (на общих контурах) — {onGeneral.length}
+          </div>
+          <div title={unmapped.map((c: any) => c.tenant?.name ?? c.number).join(", ") || undefined}>
+            Договоров без обозначения на карте — {unmapped.length}
+          </div>
+        </div>
+      )}
       {isLoading ? (
         <div>Загрузка...</div>
       ) : filtered.length === 0 ? (

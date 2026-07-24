@@ -670,6 +670,11 @@ function FolderMapMarkup({
 
   const existing = markings.find((m) => m.property_id === selectedPropertyId);
 
+  // Объекты без фигуры на ЭТОМ плане: для общей карты — всё поддерево,
+  // для подпапки — только её объекты (properties уже собраны по поддереву).
+  const markedIds = useMemo(() => new Set(markings.map((m) => m.property_id)), [markings]);
+  const unmarked = properties.filter((p) => !markedIds.has(p.id));
+
   const hasUsablePlan = !!folder.plan_path && folder.plan_mime !== "application/pdf";
 
   if (!hasUsablePlan) {
@@ -697,10 +702,15 @@ function FolderMapMarkup({
             <Switch checked={ahchView} onCheckedChange={setAhchView} aria-label="Режим АХЧ" />
             АХЧ
           </label>
-          <div className="text-xs text-muted-foreground">
-            {markings.length > 0
-              ? `Размечено: ${markings.length}`
-              : "Наведите курсор на фигуру, чтобы увидеть детали"}
+          <div className="text-xs text-muted-foreground text-right">
+            <div>
+              {markings.length > 0
+                ? `Размечено: ${markings.length}`
+                : "Наведите курсор на фигуру, чтобы увидеть детали"}
+            </div>
+            <div title={unmarked.map((p) => p.name).join(", ") || undefined}>
+              Объектов без обозначения на карте — {unmarked.length}
+            </div>
           </div>
         </div>
       </div>
