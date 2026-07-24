@@ -297,7 +297,11 @@ function FoldersPage() {
           ) : (
             <Card className="p-12 text-center text-muted-foreground">
               <FolderIcon className="h-12 w-12 mx-auto mb-3" />
-              Выберите папку слева или создайте новую
+              <div>Выберите папку слева или создайте новую</div>
+              <div className="text-xs mt-2">
+                Карты объектов хранятся в папках: выберите папку, чтобы открыть её карту и разметку
+                объектов.
+              </div>
             </Card>
           )}
         </div>

@@ -21,16 +21,17 @@ export const Route = createFileRoute("/_authenticated/properties/")({
 function PropertiesPage() {
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="list">
+      {/* Папки — первыми: карты объектов живут в папках, с них и начинают. */}
+      <Tabs defaultValue="folders">
         <TabsList>
-          <TabsTrigger value="list">Список</TabsTrigger>
           <TabsTrigger value="folders">Папки</TabsTrigger>
+          <TabsTrigger value="list">Список</TabsTrigger>
         </TabsList>
-        <TabsContent value="list" className="mt-4">
-          <PropertiesList />
-        </TabsContent>
         <TabsContent value="folders" className="mt-4">
           <FoldersView />
+        </TabsContent>
+        <TabsContent value="list" className="mt-4">
+          <PropertiesList />
         </TabsContent>
       </Tabs>
     </div>
