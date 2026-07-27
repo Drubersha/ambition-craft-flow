@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { allowedOwnerIds } from "@/lib/auth-roles.server";
 import { AI_TOOLS, runAiTool, type AiLink } from "@/lib/ai-tools.server";
 import {
   buildDialogContext,
@@ -29,18 +30,6 @@ const AskInput = z.object({
 
 /** Сколько последних сообщений показываем при открытии чата. */
 const HISTORY_LIMIT = 100;
-
-/** Owner ids, к данным которых у пользователя есть доступ. */
-async function allowedOwnerIds(supabase: any, userId: string): Promise<string[]> {
-  const { data } = await supabase
-    .from("user_links")
-    .select("owner_user_id")
-    .eq("member_user_id", userId)
-    .eq("role", "manager");
-  const ids = new Set<string>([userId]);
-  (data ?? []).forEach((r: any) => ids.add(r.owner_user_id));
-  return Array.from(ids);
-}
 
 const TOOL_LIST = Object.entries(AI_TOOLS)
   .map(([name, t]) => `- ${name}: ${t.description}`)

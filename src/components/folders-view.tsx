@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +37,8 @@ import {
   type Marking,
   type MarkingShape,
 } from "@/lib/markings";
-import { uploadSizeIssue } from "@/lib/upload-limits";
-import { normalizeToPng } from "@/lib/plan-normalize";
+import { PLAN_ACCEPT, PLAN_BUCKET, removePlanFile, uploadPlanFile } from "@/lib/plan-file";
+import { useSignedUrl } from "@/lib/use-signed-url";
 import {
   Select,
   SelectContent,
@@ -49,9 +49,6 @@ import {
 import { cn } from "@/lib/utils";
 
 export { FoldersPage as FoldersView };
-
-const PLAN_BUCKET = "documents";
-const PLAN_ALLOWED = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 
 function PlanFileControls({
   pathPrefix,
@@ -69,29 +66,10 @@ function PlanFileControls({
   const [busy, setBusy] = useState(false);
 
   const handleFile = async (file: File) => {
-    if (!PLAN_ALLOWED.includes(file.type)) {
-      toast.error("Допустимы PNG, JPG, WEBP или PDF");
-      return;
-    }
-    const sizeIssue = uploadSizeIssue(file);
-    if (sizeIssue) {
-      toast.error(sizeIssue);
-      return;
-    }
     setBusy(true);
     try {
-      const { blob, filename } = await normalizeToPng(file);
-      if (currentPath) {
-        await supabase.storage.from(PLAN_BUCKET).remove([currentPath]);
-      }
-      const safeName = filename.replace(/[^\w.-]+/g, "_");
-      const path = `${pathPrefix}/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from(PLAN_BUCKET).upload(path, blob, {
-        contentType: "image/png",
-        upsert: true,
-      });
-      if (error) throw error;
-      await onChange({ path, mime: "image/png" });
+      const next = await uploadPlanFile({ file, pathPrefix, currentPath });
+      await onChange(next);
       toast.success("План загружен");
     } catch (e: any) {
       toast.error(e.message ?? "Ошибка загрузки");
@@ -104,7 +82,7 @@ function PlanFileControls({
     if (!currentPath) return;
     setBusy(true);
     try {
-      await supabase.storage.from(PLAN_BUCKET).remove([currentPath]);
+      await removePlanFile(currentPath);
       await onChange({ path: null, mime: null });
       toast.success("План удалён");
     } catch (e: any) {
@@ -119,7 +97,7 @@ function PlanFileControls({
       <label>
         <input
           type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf"
+          accept={PLAN_ACCEPT}
           className="hidden"
           disabled={busy}
           onChange={(e) => {
@@ -226,7 +204,7 @@ function FoldersPage() {
       if ((propCount ?? 0) > 0) throw new Error("В папке есть объекты — перенесите их или удалите");
       const folder = folders.find((f) => f.id === id);
       if (folder?.plan_path) {
-        await supabase.storage.from("documents").remove([folder.plan_path]);
+        await removePlanFile(folder.plan_path);
       }
       const { error } = await supabase.from("folders").delete().eq("id", id);
       if (error) throw error;
@@ -569,28 +547,10 @@ function FolderMapMarkup({
   onPlanChange: (p: { path: string | null; mime: string | null }) => Promise<void> | void;
 }) {
   const qc = useQueryClient();
-  const [url, setUrl] = useState<string | null>(null);
+  const url = useSignedUrl(PLAN_BUCKET, folder.plan_path, 60 * 60);
   const [edit, setEdit] = useState<EditState>({ mode: "view" });
   const [ahchView, setAhchView] = useState(false);
   const colorMode: PlanColorMode = ahchView ? "ahch" : "occupancy";
-
-  // signed url for plan
-  useEffect(() => {
-    let cancel = false;
-    if (!folder.plan_path) {
-      setUrl(null);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase.storage
-        .from("documents")
-        .createSignedUrl(folder.plan_path!, 60 * 60);
-      if (!cancel) setUrl(data?.signedUrl ?? null);
-    })();
-    return () => {
-      cancel = true;
-    };
-  }, [folder.plan_path]);
 
   // All folder IDs whose properties may be shown on this plan = this folder + descendants
   const allFolderIds = useMemo(

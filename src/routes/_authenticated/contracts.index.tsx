@@ -9,8 +9,7 @@ import { Plus, FileText, Search } from "lucide-react";
 import { useState } from "react";
 import { formatDate, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
-import { FolderPicker } from "@/components/folder-picker";
-import { useFolders, descendantIds } from "@/lib/folders";
+import { FolderFilterBar, useFolderFilter } from "@/components/folder-filter";
 
 export const Route = createFileRoute("/_authenticated/contracts/")({
   component: ContractsList,
@@ -18,9 +17,8 @@ export const Route = createFileRoute("/_authenticated/contracts/")({
 
 function ContractsList() {
   const [q, setQ] = useState("");
-  const [folderId, setFolderId] = useState<string | null>(null);
-  const [folderFilterEnabled, setFolderFilterEnabled] = useState(false);
-  const { data: folders = [] } = useFolders();
+  // Договоры фильтруются с учётом вложенных папок.
+  const folderFilter = useFolderFilter({ includeDescendants: true });
   const { data, isLoading } = useQuery({
     queryKey: ["contracts"],
     queryFn: async () => {
@@ -70,16 +68,7 @@ function ContractsList() {
     : [];
 
   const filtered = (data ?? []).filter((c: any) => {
-    if (folderFilterEnabled) {
-      const pf = c.property?.folder_id ?? null;
-      if (folderId === null) {
-        if (pf !== null) return false;
-      } else {
-        // include the folder and all of its descendants
-        const allowed = descendantIds(folders, folderId);
-        if (!pf || !allowed.has(pf)) return false;
-      }
-    }
+    if (!folderFilter.matches(c.property?.folder_id)) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -114,30 +103,7 @@ function ContractsList() {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="w-full sm:max-w-xs">
-          <FolderPicker
-            value={folderFilterEnabled ? folderId : null}
-            onChange={(id) => {
-              setFolderId(id);
-              setFolderFilterEnabled(true);
-            }}
-            placeholder="Фильтр по папке (вкл. вложенные)"
-          />
-        </div>
-        {folderFilterEnabled && (
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => {
-              setFolderFilterEnabled(false);
-              setFolderId(null);
-            }}
-          >
-            Сбросить
-          </button>
-        )}
-      </div>
+      <FolderFilterBar filter={folderFilter} placeholder="Фильтр по папке (вкл. вложенные)" />
       {coverage && (
         <div className="text-xs text-muted-foreground space-y-0.5">
           <div

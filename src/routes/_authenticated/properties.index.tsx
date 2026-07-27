@@ -9,8 +9,8 @@ import { Plus, Building2, Search, Folder } from "lucide-react";
 import { useState } from "react";
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
-import { FolderPicker } from "@/components/folder-picker";
-import { useFolders, folderBreadcrumb } from "@/lib/folders";
+import { FolderFilterBar, useFolderFilter } from "@/components/folder-filter";
+import { folderBreadcrumb } from "@/lib/folders";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FoldersView } from "@/components/folders-view";
 
@@ -40,9 +40,9 @@ function PropertiesPage() {
 
 function PropertiesList() {
   const [q, setQ] = useState("");
-  const [folderId, setFolderId] = useState<string | null>(null);
-  const [folderFilterEnabled, setFolderFilterEnabled] = useState(false);
-  const { data: folders = [] } = useFolders();
+  // Объекты фильтруются по точному совпадению папки, без вложенных.
+  const folderFilter = useFolderFilter({ includeDescendants: false });
+  const folders = folderFilter.folders;
   const { data, isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
@@ -56,10 +56,7 @@ function PropertiesList() {
   });
 
   const filtered = (data ?? []).filter((p) => {
-    if (folderFilterEnabled) {
-      if (folderId === null && p.folder_id !== null) return false;
-      if (folderId !== null && p.folder_id !== folderId) return false;
-    }
+    if (!folderFilter.matches(p.folder_id)) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -95,30 +92,7 @@ function PropertiesList() {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="w-full sm:max-w-xs">
-          <FolderPicker
-            value={folderFilterEnabled ? folderId : null}
-            onChange={(id) => {
-              setFolderId(id);
-              setFolderFilterEnabled(true);
-            }}
-            placeholder="Фильтр по папке"
-          />
-        </div>
-        {folderFilterEnabled && (
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => {
-              setFolderFilterEnabled(false);
-              setFolderId(null);
-            }}
-          >
-            Сбросить
-          </button>
-        )}
-      </div>
+      <FolderFilterBar filter={folderFilter} placeholder="Фильтр по папке" />
 
       {isLoading ? (
         <div>Загрузка...</div>

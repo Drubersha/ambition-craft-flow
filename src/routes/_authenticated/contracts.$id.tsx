@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
 import { ContractObjectsEditor } from "@/components/contract-objects-editor";
+import { contractRowFromForm } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChargeStatusBadge } from "@/components/status-badges";
@@ -119,27 +120,7 @@ function EditContract() {
       const areaNum = Number(v.area) || 0;
       const { error } = await supabase
         .from("contracts")
-        .update({
-          tenant_id: v.tenant_id,
-          property_id: v.property_id,
-          number: v.number || null,
-          cadastral_no: v.cadastral_no || null,
-          area: v.area ? Number(v.area) : null,
-          unit: (v.unit as any) || "sqm",
-          rate: rateNum,
-          currency: v.currency || "RUB",
-          payment_period: v.payment_period as any,
-          status: v.status as any,
-          kind: v.kind as any,
-          start_date: v.start_date,
-          end_date: v.end_date || null,
-          notes: v.notes || null,
-          termination_terms: v.termination_terms || null,
-          deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
-          deposit_amount: v.deposit_percent
-            ? computeDepositWithArea(rateNum, v.payment_period, areaNum, Number(v.deposit_percent))
-            : null,
-        })
+        .update(contractRowFromForm(v))
         .eq("id", id);
       if (error) throw error;
 

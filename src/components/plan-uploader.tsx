@@ -1,16 +1,12 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { PlanViewer } from "@/components/plan-viewer";
-import { normalizeToPng } from "@/lib/plan-normalize";
-import { uploadSizeIssue } from "@/lib/upload-limits";
-
-const BUCKET = "documents";
-const ALLOWED = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
+import { PLAN_ACCEPT, PLAN_BUCKET, removePlanFile, uploadPlanFile } from "@/lib/plan-file";
+import { useSignedUrl } from "@/lib/use-signed-url";
 
 export function PlanUploader({
   pathPrefix,
@@ -26,52 +22,14 @@ export function PlanUploader({
   onChange: (next: { path: string | null; mime: string | null }) => Promise<void> | void;
   disabled?: boolean;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const url = useSignedUrl(PLAN_BUCKET, currentPath, 60 * 60);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let cancel = false;
-    if (!currentPath) {
-      setUrl(null);
-      return;
-    }
-    (async () => {
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(currentPath, 60 * 60);
-      if (!cancel && !error) setUrl(data.signedUrl);
-    })();
-    return () => {
-      cancel = true;
-    };
-  }, [currentPath]);
-
   const handleFile = async (file: File) => {
-    if (!ALLOWED.includes(file.type)) {
-      toast.error("Допустимы PNG, JPG, WEBP или PDF");
-      return;
-    }
-    const sizeIssue = uploadSizeIssue(file);
-    if (sizeIssue) {
-      toast.error(sizeIssue);
-      return;
-    }
     setBusy(true);
     try {
-      // Convert any input to a universal PNG before upload.
-      const { blob, filename } = await normalizeToPng(file);
-      // Delete the old file if present
-      if (currentPath) {
-        await supabase.storage.from(BUCKET).remove([currentPath]);
-      }
-      const safeName = filename.replace(/[^\w.-]+/g, "_");
-      const path = `${pathPrefix}/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-        contentType: "image/png",
-        upsert: true,
-      });
-      if (error) throw error;
-      await onChange({ path, mime: "image/png" });
+      const next = await uploadPlanFile({ file, pathPrefix, currentPath });
+      await onChange(next);
       toast.success("План загружен");
     } catch (e: any) {
       toast.error(e.message ?? "Ошибка загрузки");
@@ -84,7 +42,7 @@ export function PlanUploader({
     if (!currentPath) return;
     setBusy(true);
     try {
-      await supabase.storage.from(BUCKET).remove([currentPath]);
+      await removePlanFile(currentPath);
       await onChange({ path: null, mime: null });
       toast.success("План удалён");
     } catch (e: any) {
@@ -122,7 +80,7 @@ export function PlanUploader({
             <label>
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp,application/pdf"
+                accept={PLAN_ACCEPT}
                 className="hidden"
                 disabled={disabled || busy}
                 onChange={(e) => {
@@ -155,7 +113,7 @@ export function PlanUploader({
         <label className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer text-sm text-muted-foreground hover:bg-muted/50 rounded">
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp,application/pdf"
+            accept={PLAN_ACCEPT}
             className="hidden"
             disabled={disabled || busy}
             onChange={(e) => {

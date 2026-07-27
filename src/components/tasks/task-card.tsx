@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Trash2, ImageIcon } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
+import { AttachmentThumb } from "@/components/tasks/attachment-thumb";
 
 export type Task = {
   id: string;
@@ -18,26 +17,7 @@ export type Task = {
 };
 
 function Thumb({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    supabase.storage
-      .from("chat-attachments")
-      .createSignedUrl(path, 3600)
-      .then(({ data }) => {
-        if (active) setUrl(data?.signedUrl ?? null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [path]);
-  if (!url)
-    return (
-      <div className="h-20 w-full rounded bg-muted flex items-center justify-center">
-        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
-    );
-  return <img src={url} alt="Вложение задачи" className="h-20 w-full rounded object-cover" />;
+  return <AttachmentThumb path={path} className="h-20 w-full" alt="Вложение задачи" />;
 }
 
 export function TaskCard({

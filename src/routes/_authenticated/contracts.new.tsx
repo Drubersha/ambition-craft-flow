@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
-import { computeDepositWithArea } from "@/lib/format";
+import { contractRowFromForm } from "@/lib/contracts";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MobileActionBar } from "@/components/mobile-action-bar";
@@ -27,33 +27,7 @@ function NewContract() {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
       const { data, error } = await supabase
         .from("contracts")
-        .insert({
-          owner_id: ownerId,
-          tenant_id: v.tenant_id,
-          property_id: v.property_id,
-          number: v.number || null,
-          cadastral_no: v.cadastral_no || null,
-          area: v.area ? Number(v.area) : null,
-          unit: (v.unit as any) || "sqm",
-          rate: Number(v.rate) || 0,
-          currency: v.currency || "RUB",
-          payment_period: v.payment_period as any,
-          status: v.status as any,
-          kind: v.kind as any,
-          start_date: v.start_date,
-          end_date: v.end_date || null,
-          notes: v.notes || null,
-          termination_terms: v.termination_terms || null,
-          deposit_percent: v.deposit_percent ? Number(v.deposit_percent) : null,
-          deposit_amount: v.deposit_percent
-            ? computeDepositWithArea(
-                Number(v.rate) || 0,
-                v.payment_period,
-                Number(v.area) || 0,
-                Number(v.deposit_percent),
-              )
-            : null,
-        })
+        .insert({ owner_id: ownerId, ...contractRowFromForm(v) })
         .select()
         .single();
       if (error) throw error;

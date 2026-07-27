@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getAdminRoles, requireAdministrator, type AdminRole } from "@/lib/auth-roles.server";
+import { getAdminRoles, requireAdminRoles, type AdminRole } from "@/lib/auth-roles.server";
 
 export type { AdminRole } from "@/lib/auth-roles.server";
 
@@ -14,8 +14,7 @@ export const getCurrentAdminRoles = createServerFn({ method: "GET" })
 export const listAllUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles, error } = await supabaseAdmin.from("profiles").select("id, full_name");
     if (error) throw new Error(error.message);
@@ -45,8 +44,7 @@ export const getUserOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    const roles = await requireAdminRoles(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [profile, userRoles, props, tenants, contracts, payments, tasks] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").eq("id", data.userId).maybeSingle(),
@@ -95,8 +93,7 @@ export const moderatorUpdateProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string; full_name?: string | null }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
@@ -157,8 +154,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     (input: { email: string; password: string; fullName?: string; role: CreatableRole }) => input,
   )
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     const email = data.email.trim().toLowerCase();
     if (!email || !data.password || data.password.length < 8)
       throw new Error("Email и пароль (≥8 символов) обязательны");
@@ -193,8 +189,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     if (data.userId === context.userId) throw new Error("Нельзя удалить свой аккаунт");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
@@ -214,8 +209,7 @@ export const adminAddTenantRoleAndLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { memberUserId: string; ownerUserId: string }) => input)
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     if (data.memberUserId === data.ownerUserId) throw new Error("Нельзя привязать к самому себе");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { grantRole, upsertUserLink } = await import("@/lib/roles-links.server");
@@ -245,8 +239,7 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
     (input: { sourceUserId: string; email: string; password: string; fullName?: string }) => input,
   )
   .handler(async ({ data, context }) => {
-    const roles = await getAdminRoles(context.supabase, context.userId);
-    requireAdministrator(roles);
+    await requireAdminRoles(context.supabase, context.userId);
     const email = data.email.trim().toLowerCase();
     if (!email) throw new Error("Email обязателен");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Check, X, ImageIcon } from "lucide-react";
+import { Sparkles, Check, X } from "lucide-react";
+import { AttachmentThumb } from "@/components/tasks/attachment-thumb";
 import { acceptSuggestion, dismissSuggestion } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
@@ -21,26 +22,7 @@ type Suggestion = {
 };
 
 function PhotoThumb({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    supabase.storage
-      .from("chat-attachments")
-      .createSignedUrl(path, 3600)
-      .then(({ data }) => {
-        if (active) setUrl(data?.signedUrl ?? null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [path]);
-  if (!url)
-    return (
-      <div className="h-14 w-14 rounded bg-muted flex items-center justify-center">
-        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
-    );
-  return <img src={url} alt="Вложение из сообщения" className="h-14 w-14 rounded object-cover" />;
+  return <AttachmentThumb path={path} className="h-14 w-14" alt="Вложение из сообщения" />;
 }
 
 export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all" }) {

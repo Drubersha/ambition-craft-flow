@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
 import { ensureChatThreadFn } from "@/lib/chat.functions";
 import { uploadSizeIssue } from "@/lib/upload-limits";
+import { useSignedUrl } from "@/lib/use-signed-url";
 
 type Props = {
   threadId: string;
@@ -317,19 +318,7 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
 }
 
 function AttachmentRow({ attachment, mine }: { attachment: Attachment; mine: boolean }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    supabase.storage
-      .from("chat-attachments")
-      .createSignedUrl(attachment.storage_path, 3600)
-      .then(({ data }) => {
-        if (active) setUrl(data?.signedUrl ?? null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [attachment.storage_path]);
+  const url = useSignedUrl("chat-attachments", attachment.storage_path);
 
   const isImage = (attachment.mime ?? "").startsWith("image/");
   if (isImage && url) {
