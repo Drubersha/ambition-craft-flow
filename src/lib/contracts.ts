@@ -40,6 +40,7 @@ export type ContractRowInput = {
   deposit_paid_at?: string;
   ownership_basis?: string;
   jurisdiction?: string;
+  amendment_subject?: string;
 };
 
 /** Пустое поле формы → NULL: «не заполнено» и «ноль» — разные вещи. */
@@ -87,5 +88,6 @@ export function contractRowFromForm(v: ContractRowInput) {
     deposit_paid_at: textOrNull(v.deposit_paid_at),
     ownership_basis: textOrNull(v.ownership_basis),
     jurisdiction: textOrNull(v.jurisdiction),
+    amendment_subject: textOrNull(v.amendment_subject),
   };
 }
