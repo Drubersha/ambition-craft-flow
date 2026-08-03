@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
 import { ContractObjectsEditor } from "@/components/contract-objects-editor";
 import { contractRowFromForm } from "@/lib/contracts";
+import { diffContractTerms } from "@/lib/amendments";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChargeStatusBadge } from "@/components/status-badges";
@@ -93,7 +94,8 @@ function EditContract() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contracts")
-        .select("id,number,status,area,rate,start_date")
+        // Все поля: по ним считается, чем допсоглашение отличается от договора.
+        .select("*")
         .eq("parent_contract_id", id)
         .order("start_date");
       if (error) throw error;
@@ -351,41 +353,79 @@ function EditContract() {
         />
       </MobileCollapsible>
 
-      {(parentContract || (amendments ?? []).length > 0) && (
-        <MobileCollapsible title="Допсоглашения">
-          {parentContract && (
-            <p className="text-sm mb-2">
-              Это допсоглашение к договору{" "}
-              <Link
-                to="/contracts/$id"
-                params={{ id: (parentContract as any).id }}
-                className="underline underline-offset-2"
-              >
-                {(parentContract as any).number || "б/н"}
+      <MobileCollapsible
+        title="Допсоглашения"
+        action={
+          !parentContract ? (
+            <Button size="sm" asChild>
+              <Link to="/contracts/new" search={{ parent: id } as any}>
+                <Plus className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Добавить</span>
               </Link>
-              .
-            </p>
-          )}
-          {(amendments ?? []).length > 0 && (
-            <div className="space-y-1.5">
-              {(amendments ?? []).map((a: any) => (
+            </Button>
+          ) : undefined
+        }
+      >
+        {parentContract && (
+          <p className="text-sm mb-2">
+            Это допсоглашение к договору{" "}
+            <Link
+              to="/contracts/$id"
+              params={{ id: (parentContract as any).id }}
+              className="underline underline-offset-2"
+            >
+              {(parentContract as any).number || "б/н"}
+            </Link>
+            {(data as any).amendment_subject ? `. ${(data as any).amendment_subject}` : "."}
+          </p>
+        )}
+        {!parentContract && (amendments ?? []).length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Допсоглашений нет. Добавьте, если условия договора менялись — ставка, площадь, сроки или
+            реквизиты. Договор сохранит действующие условия, а история останется здесь.
+          </p>
+        )}
+        {(amendments ?? []).length > 0 && (
+          <div className="space-y-1.5">
+            {(amendments ?? []).map((a: any) => {
+              const changes = diffContractTerms(data as any, a);
+              return (
                 <Link
                   key={a.id}
                   to="/contracts/$id"
                   params={{ id: a.id }}
-                  className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2 hover:bg-muted/50"
+                  className="block text-sm border rounded-md px-3 py-2 hover:bg-muted/50"
                 >
-                  <span className="min-w-0 truncate">{a.number || "б/н"}</span>
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    {formatNum(Number(a.area || 0))} × {formatNum(Number(a.rate || 0))} ·{" "}
-                    {a.status === "active" ? "действует" : a.status}
-                  </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate font-medium">{a.number || "б/н"}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDate(a.start_date)}
+                    </span>
+                  </div>
+                  {a.amendment_subject && (
+                    <div className="text-xs text-muted-foreground mt-0.5 break-words">
+                      {a.amendment_subject}
+                    </div>
+                  )}
+                  {changes.length > 0 && (
+                    <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                      {changes.map((c) => (
+                        <div key={c.key}>
+                          {c.label}: {c.before} → <span className="text-foreground">{c.after}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </Link>
-              ))}
-            </div>
-          )}
-        </MobileCollapsible>
-      )}
+              );
+            })}
+            <p className="text-xs text-muted-foreground pt-1">
+              Показано отличие от действующих условий договора. У последнего допсоглашения отличий
+              обычно нет — его условия уже перенесены в договор.
+            </p>
+          </div>
+        )}
+      </MobileCollapsible>
 
       <MobileCollapsible title="Счётчики">
         {!meters || meters.length === 0 ? (

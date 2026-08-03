@@ -540,6 +540,7 @@ export type Database = {
       };
       contracts: {
         Row: {
+          amendment_subject: string | null;
           vat_rate: number | null;
           vat_included: boolean;
           payment_day: number | null;
@@ -580,6 +581,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          amendment_subject?: string | null;
           vat_rate?: number | null;
           vat_included?: boolean;
           payment_day?: number | null;
@@ -620,6 +622,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          amendment_subject?: string | null;
           vat_rate?: number | null;
           vat_included?: boolean;
           payment_day?: number | null;

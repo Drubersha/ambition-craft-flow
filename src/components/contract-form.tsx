@@ -82,6 +82,8 @@ export type ContractFormValues = {
   /** Основание права собственности арендодателя и подсудность споров. */
   ownership_basis: string;
   jurisdiction: string;
+  /** Для допсоглашения: чем оно меняет договор (в т.ч. то, чего нет в полях). */
+  amendment_subject: string;
   /** Новые счётчики, добавленные в форме (создаются при сохранении). */
   meters: MeterDraft[];
 };
@@ -108,6 +110,7 @@ export function ContractForm({
   hideSubmit,
   onValuesChange,
   existingMetersCount = 0,
+  isAmendment = false,
 }: {
   initial?: Partial<ContractFormValues>;
   onSubmit: (v: ContractFormValues) => void;
@@ -117,6 +120,8 @@ export function ContractForm({
   onValuesChange?: (v: ContractFormValues) => void;
   /** Сколько счётчиков уже привязано к договору (для страницы редактирования). */
   existingMetersCount?: number;
+  /** Режим допсоглашения: свой номер и поле «что меняется». */
+  isAmendment?: boolean;
 }) {
   const [v, setV] = useState<ContractFormValues>({
     tenant_id: initial?.tenant_id ?? "",
@@ -151,6 +156,7 @@ export function ContractForm({
     deposit_paid_at: initial?.deposit_paid_at ?? "",
     ownership_basis: initial?.ownership_basis ?? "",
     jurisdiction: initial?.jurisdiction ?? "",
+    amendment_subject: initial?.amendment_subject ?? "",
     meters: initial?.meters ?? [],
   });
   const [meterConfirmOpen, setMeterConfirmOpen] = useState(false);
@@ -282,13 +288,31 @@ export function ContractForm({
         </F>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <F label="Номер договора">
-          <Input value={v.number} onChange={(e) => set("number", e.target.value)} />
+        <F label={isAmendment ? "Номер допсоглашения" : "Номер договора"}>
+          <Input
+            value={v.number}
+            onChange={(e) => set("number", e.target.value)}
+            placeholder={isAmendment ? "например, ДС-1" : undefined}
+          />
         </F>
         <F label="Кадастровый номер">
           <Input value={v.cadastral_no} onChange={(e) => set("cadastral_no", e.target.value)} />
         </F>
       </div>
+      {isAmendment && (
+        <F label="Что меняет допсоглашение">
+          <Textarea
+            rows={2}
+            value={v.amendment_subject}
+            onChange={(e) => set("amendment_subject", e.target.value)}
+            placeholder="Например: изменение ставки с 01.01.2026; смена банковских реквизитов арендатора"
+          />
+          <p className="text-xs text-muted-foreground">
+            Изменения ставки, площади и сроков программа определит сама, сравнив поля ниже. Здесь
+            опишите то, чего в полях нет, — например смену реквизитов стороны.
+          </p>
+        </F>
+      )}
       <div className="grid sm:grid-cols-3 gap-3">
         <F label="Единица измерения">
           <Select value={v.unit} onValueChange={(x) => set("unit", x)}>
