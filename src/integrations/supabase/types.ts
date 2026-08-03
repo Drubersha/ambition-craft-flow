@@ -540,6 +540,22 @@ export type Database = {
       };
       contracts: {
         Row: {
+          vat_rate: number | null;
+          vat_included: boolean;
+          payment_day: number | null;
+          payment_timing: string | null;
+          has_variable_part: boolean;
+          variable_payment_day: number | null;
+          variable_part_note: string | null;
+          penalty_percent_per_day: number | null;
+          misuse_penalty_percent: number | null;
+          handover_date: string | null;
+          auto_renew: boolean;
+          renew_months: number | null;
+          termination_notice_days: number | null;
+          deposit_paid_at: string | null;
+          ownership_basis: string | null;
+          jurisdiction: string | null;
           area: number | null;
           cadastral_no: string | null;
           created_at: string;
@@ -564,6 +580,22 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          vat_rate?: number | null;
+          vat_included?: boolean;
+          payment_day?: number | null;
+          payment_timing?: string | null;
+          has_variable_part?: boolean;
+          variable_payment_day?: number | null;
+          variable_part_note?: string | null;
+          penalty_percent_per_day?: number | null;
+          misuse_penalty_percent?: number | null;
+          handover_date?: string | null;
+          auto_renew?: boolean;
+          renew_months?: number | null;
+          termination_notice_days?: number | null;
+          deposit_paid_at?: string | null;
+          ownership_basis?: string | null;
+          jurisdiction?: string | null;
           area?: number | null;
           cadastral_no?: string | null;
           created_at?: string;
@@ -588,6 +620,22 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          vat_rate?: number | null;
+          vat_included?: boolean;
+          payment_day?: number | null;
+          payment_timing?: string | null;
+          has_variable_part?: boolean;
+          variable_payment_day?: number | null;
+          variable_part_note?: string | null;
+          penalty_percent_per_day?: number | null;
+          misuse_penalty_percent?: number | null;
+          handover_date?: string | null;
+          auto_renew?: boolean;
+          renew_months?: number | null;
+          termination_notice_days?: number | null;
+          deposit_paid_at?: string | null;
+          ownership_basis?: string | null;
+          jurisdiction?: string | null;
           area?: number | null;
           cadastral_no?: string | null;
           created_at?: string;
@@ -1033,6 +1081,16 @@ export type Database = {
       };
       profiles: {
         Row: {
+          short_name: string | null;
+          inn: string | null;
+          ogrn: string | null;
+          legal_address: string | null;
+          postal_address: string | null;
+          bank_name: string | null;
+          bank_account: string | null;
+          bank_bik: string | null;
+          bank_corr_account: string | null;
+          registration_basis: string | null;
           created_at: string;
           full_name: string | null;
           id: string;
@@ -1040,6 +1098,16 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          short_name?: string | null;
+          inn?: string | null;
+          ogrn?: string | null;
+          legal_address?: string | null;
+          postal_address?: string | null;
+          bank_name?: string | null;
+          bank_account?: string | null;
+          bank_bik?: string | null;
+          bank_corr_account?: string | null;
+          registration_basis?: string | null;
           created_at?: string;
           full_name?: string | null;
           id: string;
@@ -1047,6 +1115,16 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          short_name?: string | null;
+          inn?: string | null;
+          ogrn?: string | null;
+          legal_address?: string | null;
+          postal_address?: string | null;
+          bank_name?: string | null;
+          bank_account?: string | null;
+          bank_bik?: string | null;
+          bank_corr_account?: string | null;
+          registration_basis?: string | null;
           created_at?: string;
           full_name?: string | null;
           id?: string;
@@ -1369,6 +1447,18 @@ export type Database = {
       };
       tenants: {
         Row: {
+          kpp: string | null;
+          ogrn: string | null;
+          legal_address: string | null;
+          actual_address: string | null;
+          postal_address: string | null;
+          bank_name: string | null;
+          bank_account: string | null;
+          bank_bik: string | null;
+          bank_corr_account: string | null;
+          signatory_name: string | null;
+          signatory_position: string | null;
+          signatory_basis: string | null;
           contact_person: string | null;
           created_at: string;
           email: string | null;
@@ -1382,6 +1472,18 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          kpp?: string | null;
+          ogrn?: string | null;
+          legal_address?: string | null;
+          actual_address?: string | null;
+          postal_address?: string | null;
+          bank_name?: string | null;
+          bank_account?: string | null;
+          bank_bik?: string | null;
+          bank_corr_account?: string | null;
+          signatory_name?: string | null;
+          signatory_position?: string | null;
+          signatory_basis?: string | null;
           contact_person?: string | null;
           created_at?: string;
           email?: string | null;
@@ -1395,6 +1497,18 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          kpp?: string | null;
+          ogrn?: string | null;
+          legal_address?: string | null;
+          actual_address?: string | null;
+          postal_address?: string | null;
+          bank_name?: string | null;
+          bank_account?: string | null;
+          bank_bik?: string | null;
+          bank_corr_account?: string | null;
+          signatory_name?: string | null;
+          signatory_position?: string | null;
+          signatory_basis?: string | null;
           contact_person?: string | null;
           created_at?: string;
           email?: string | null;

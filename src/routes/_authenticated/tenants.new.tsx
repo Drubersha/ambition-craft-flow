@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
+import { tenantRowFromForm } from "@/lib/tenants";
 import { toast } from "sonner";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
@@ -18,21 +19,9 @@ function NewTenant() {
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
-      const primary = v.contacts[0];
       const { data, error } = await supabase
         .from("tenants")
-        .insert({
-          owner_id: ownerId,
-          name: v.name,
-          kind: v.kind as any,
-          inn: v.inn || null,
-          // Legacy fields mirror the primary contact: the tenant cabinet
-          // resolves accounts by tenants.email, list search uses phone/email.
-          phone: primary?.phone.trim() || null,
-          email: primary?.email.trim() || null,
-          contact_person: primary?.full_name.trim() || null,
-          notes: v.notes || null,
-        })
+        .insert({ owner_id: ownerId, ...tenantRowFromForm(v) })
         .select()
         .single();
       if (error) throw error;

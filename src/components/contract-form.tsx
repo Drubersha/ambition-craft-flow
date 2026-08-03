@@ -60,8 +60,37 @@ export type ContractFormValues = {
   deposit_percent: string;
   /** Чем сдаётся: квадратные метры, машиноместа или лоты. */
   unit: string;
+  /** НДС: ставка в % и признак «в том числе» (иначе начисляется сверх). */
+  vat_rate: string;
+  vat_included: boolean;
+  /** Порядок оплаты: день месяца и к какому месяцу он относится. */
+  payment_day: string;
+  payment_timing: string;
+  /** Переменная часть — возмещение коммуналки, оплачивается отдельным сроком. */
+  has_variable_part: boolean;
+  variable_payment_day: string;
+  variable_part_note: string;
+  /** Санкции по договору. */
+  penalty_percent_per_day: string;
+  misuse_penalty_percent: string;
+  /** Срок: считается от акта приёма-передачи и может продлеваться сам. */
+  handover_date: string;
+  auto_renew: boolean;
+  renew_months: string;
+  termination_notice_days: string;
+  deposit_paid_at: string;
+  /** Основание права собственности арендодателя и подсудность споров. */
+  ownership_basis: string;
+  jurisdiction: string;
   /** Новые счётчики, добавленные в форме (создаются при сохранении). */
   meters: MeterDraft[];
+};
+
+/** К какому месяцу относится день оплаты фиксированной части. */
+export const PAYMENT_TIMING_LABELS: Record<string, string> = {
+  advance: "Предоплата — до N числа предыдущего месяца",
+  current: "В расчётном месяце — до N числа",
+  arrears: "Постоплата — до N числа следующего месяца",
 };
 
 /** Подписи полей площади и цены по единице измерения. */
@@ -106,6 +135,22 @@ export function ContractForm({
     termination_terms: initial?.termination_terms ?? "",
     deposit_percent: initial?.deposit_percent ?? "",
     unit: initial?.unit ?? "sqm",
+    vat_rate: initial?.vat_rate ?? "",
+    vat_included: initial?.vat_included ?? true,
+    payment_day: initial?.payment_day ?? "",
+    payment_timing: initial?.payment_timing ?? "",
+    has_variable_part: initial?.has_variable_part ?? false,
+    variable_payment_day: initial?.variable_payment_day ?? "",
+    variable_part_note: initial?.variable_part_note ?? "",
+    penalty_percent_per_day: initial?.penalty_percent_per_day ?? "",
+    misuse_penalty_percent: initial?.misuse_penalty_percent ?? "",
+    handover_date: initial?.handover_date ?? "",
+    auto_renew: initial?.auto_renew ?? false,
+    renew_months: initial?.renew_months ?? "",
+    termination_notice_days: initial?.termination_notice_days ?? "",
+    deposit_paid_at: initial?.deposit_paid_at ?? "",
+    ownership_basis: initial?.ownership_basis ?? "",
+    jurisdiction: initial?.jurisdiction ?? "",
     meters: initial?.meters ?? [],
   });
   const [meterConfirmOpen, setMeterConfirmOpen] = useState(false);
@@ -352,6 +397,192 @@ export function ContractForm({
           </p>
         </F>
       </div>
+
+      {/* Условия из бумажного договора: НДС, сроки оплаты, санкции. Влияют на
+          выручку без НДС, дату платежа и расчёт просрочки. */}
+      <details className="rounded-md border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          Условия договора: НДС, сроки оплаты, пени
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Ставка НДС, %">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={v.vat_rate}
+                onChange={(e) => set("vat_rate", e.target.value)}
+                placeholder="20 — или пусто, если без НДС"
+              />
+            </F>
+            <F label="НДС в сумме">
+              <Select
+                value={v.vat_included ? "included" : "added"}
+                onValueChange={(x) => set("vat_included", x === "included")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="included">В том числе НДС</SelectItem>
+                  <SelectItem value="added">НДС сверх суммы</SelectItem>
+                </SelectContent>
+              </Select>
+            </F>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="День оплаты">
+              <Input
+                type="number"
+                min="1"
+                max="31"
+                value={v.payment_day}
+                onChange={(e) => set("payment_day", e.target.value)}
+                placeholder="например, 25"
+              />
+            </F>
+            <F label="Порядок оплаты">
+              <Select
+                value={v.payment_timing || "none"}
+                onValueChange={(x) => set("payment_timing", x === "none" ? "" : x)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="не указан" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">не указан</SelectItem>
+                  {Object.entries(PAYMENT_TIMING_LABELS).map(([k, l]) => (
+                    <SelectItem key={k} value={k}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </F>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={v.has_variable_part}
+              onChange={(e) => set("has_variable_part", e.target.checked)}
+            />
+            Есть переменная часть (возмещение коммуналки)
+          </label>
+          {v.has_variable_part && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              <F label="День оплаты переменной части">
+                <Input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={v.variable_payment_day}
+                  onChange={(e) => set("variable_payment_day", e.target.value)}
+                  placeholder="например, 15"
+                />
+              </F>
+              <F label="Что входит в переменную часть">
+                <Input
+                  value={v.variable_part_note}
+                  onChange={(e) => set("variable_part_note", e.target.value)}
+                  placeholder="электро, вода, тепло, интернет"
+                />
+              </F>
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Пени за день просрочки, %">
+              <Input
+                type="number"
+                step="0.0001"
+                min="0"
+                value={v.penalty_percent_per_day}
+                onChange={(e) => set("penalty_percent_per_day", e.target.value)}
+                placeholder="например, 0.1"
+              />
+            </F>
+            <F label="Штраф за нецелевое использование, %">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={v.misuse_penalty_percent}
+                onChange={(e) => set("misuse_penalty_percent", e.target.value)}
+                placeholder="например, 20"
+              />
+            </F>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Дата акта приёма-передачи">
+              <Input
+                type="date"
+                value={v.handover_date}
+                onChange={(e) => set("handover_date", e.target.value)}
+              />
+            </F>
+            <F label="Обеспечительный платёж внесён">
+              <Input
+                type="date"
+                value={v.deposit_paid_at}
+                onChange={(e) => set("deposit_paid_at", e.target.value)}
+              />
+            </F>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={v.auto_renew}
+              onChange={(e) => set("auto_renew", e.target.checked)}
+            />
+            Автоматическая пролонгация
+          </label>
+          {v.auto_renew && (
+            <F label="Продлевается на, месяцев">
+              <Input
+                type="number"
+                min="1"
+                max="120"
+                value={v.renew_months}
+                onChange={(e) => set("renew_months", e.target.value)}
+                placeholder="например, 11"
+              />
+            </F>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Срок уведомления о расторжении, дней">
+              <Input
+                type="number"
+                min="0"
+                value={v.termination_notice_days}
+                onChange={(e) => set("termination_notice_days", e.target.value)}
+                placeholder="например, 14"
+              />
+            </F>
+            <F label="Подсудность">
+              <Input
+                value={v.jurisdiction}
+                onChange={(e) => set("jurisdiction", e.target.value)}
+                placeholder="Арбитражный суд Республики Татарстан"
+              />
+            </F>
+          </div>
+
+          <F label="Основание права собственности арендодателя">
+            <Input
+              value={v.ownership_basis}
+              onChange={(e) => set("ownership_basis", e.target.value)}
+              placeholder="Договор купли-продажи КП-194/2021 от 29.12.2021"
+            />
+          </F>
+        </div>
+      </details>
       <div className="grid sm:grid-cols-2 gap-3">
         <F label="Статус">
           <Select value={v.status} onValueChange={(x) => set("status", x)}>

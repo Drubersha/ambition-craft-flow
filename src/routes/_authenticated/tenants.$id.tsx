@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
+import { tenantRowFromForm } from "@/lib/tenants";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,21 +61,7 @@ function EditTenant() {
 
   const mut = useMutation({
     mutationFn: async (v: TenantFormValues) => {
-      const primary = v.contacts[0];
-      const { error } = await supabase
-        .from("tenants")
-        .update({
-          name: v.name,
-          kind: v.kind as any,
-          inn: v.inn || null,
-          // Legacy fields mirror the primary contact (tenant-cabinet email
-          // match + list search keep working unchanged).
-          phone: primary?.phone.trim() || null,
-          email: primary?.email.trim() || null,
-          contact_person: primary?.full_name.trim() || null,
-          notes: v.notes || null,
-        })
-        .eq("id", id);
+      const { error } = await supabase.from("tenants").update(tenantRowFromForm(v)).eq("id", id);
       if (error) throw error;
 
       // Reconcile contact persons: update kept rows, insert new, delete removed.
@@ -169,6 +156,18 @@ function EditTenant() {
             kind: data.kind,
             inn: data.inn ?? "",
             notes: data.notes ?? "",
+            kpp: (data as any).kpp ?? "",
+            ogrn: (data as any).ogrn ?? "",
+            legal_address: (data as any).legal_address ?? "",
+            actual_address: (data as any).actual_address ?? "",
+            postal_address: (data as any).postal_address ?? "",
+            bank_name: (data as any).bank_name ?? "",
+            bank_account: (data as any).bank_account ?? "",
+            bank_bik: (data as any).bank_bik ?? "",
+            bank_corr_account: (data as any).bank_corr_account ?? "",
+            signatory_name: (data as any).signatory_name ?? "",
+            signatory_position: (data as any).signatory_position ?? "",
+            signatory_basis: (data as any).signatory_basis ?? "",
             contacts:
               (contacts ?? []).length > 0
                 ? (contacts ?? []).map((c) => ({

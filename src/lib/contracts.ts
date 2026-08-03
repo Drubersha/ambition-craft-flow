@@ -24,7 +24,28 @@ export type ContractRowInput = {
   notes?: string;
   termination_terms?: string;
   deposit_percent?: string;
+  vat_rate?: string;
+  vat_included?: boolean;
+  payment_day?: string;
+  payment_timing?: string;
+  has_variable_part?: boolean;
+  variable_payment_day?: string;
+  variable_part_note?: string;
+  penalty_percent_per_day?: string;
+  misuse_penalty_percent?: string;
+  handover_date?: string;
+  auto_renew?: boolean;
+  renew_months?: string;
+  termination_notice_days?: string;
+  deposit_paid_at?: string;
+  ownership_basis?: string;
+  jurisdiction?: string;
 };
+
+/** Пустое поле формы → NULL: «не заполнено» и «ноль» — разные вещи. */
+const numOrNull = (s: string | undefined) =>
+  s === undefined || s.trim() === "" ? null : Number(s);
+const textOrNull = (s: string | undefined) => s?.trim() || null;
 
 export function contractRowFromForm(v: ContractRowInput) {
   const rate = Number(v.rate) || 0;
@@ -50,5 +71,21 @@ export function contractRowFromForm(v: ContractRowInput) {
     deposit_amount: v.deposit_percent
       ? computeDepositWithArea(rate, v.payment_period, area, Number(v.deposit_percent))
       : null,
+    vat_rate: numOrNull(v.vat_rate),
+    vat_included: v.vat_included ?? true,
+    payment_day: numOrNull(v.payment_day),
+    payment_timing: textOrNull(v.payment_timing),
+    has_variable_part: v.has_variable_part ?? false,
+    variable_payment_day: numOrNull(v.variable_payment_day),
+    variable_part_note: textOrNull(v.variable_part_note),
+    penalty_percent_per_day: numOrNull(v.penalty_percent_per_day),
+    misuse_penalty_percent: numOrNull(v.misuse_penalty_percent),
+    handover_date: textOrNull(v.handover_date),
+    auto_renew: v.auto_renew ?? false,
+    renew_months: numOrNull(v.renew_months),
+    termination_notice_days: numOrNull(v.termination_notice_days),
+    deposit_paid_at: textOrNull(v.deposit_paid_at),
+    ownership_basis: textOrNull(v.ownership_basis),
+    jurisdiction: textOrNull(v.jurisdiction),
   };
 }
