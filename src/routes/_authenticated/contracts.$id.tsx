@@ -298,6 +298,35 @@ function EditContract() {
             deposit_percent:
               (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
             unit: (data as any).unit ?? "sqm",
+            vat_rate: (data as any).vat_rate != null ? String((data as any).vat_rate) : "",
+            vat_included: (data as any).vat_included ?? true,
+            payment_day: (data as any).payment_day != null ? String((data as any).payment_day) : "",
+            payment_timing: (data as any).payment_timing ?? "",
+            has_variable_part: (data as any).has_variable_part ?? false,
+            variable_payment_day:
+              (data as any).variable_payment_day != null
+                ? String((data as any).variable_payment_day)
+                : "",
+            variable_part_note: (data as any).variable_part_note ?? "",
+            penalty_percent_per_day:
+              (data as any).penalty_percent_per_day != null
+                ? String((data as any).penalty_percent_per_day)
+                : "",
+            misuse_penalty_percent:
+              (data as any).misuse_penalty_percent != null
+                ? String((data as any).misuse_penalty_percent)
+                : "",
+            handover_date: (data as any).handover_date ?? "",
+            auto_renew: (data as any).auto_renew ?? false,
+            renew_months:
+              (data as any).renew_months != null ? String((data as any).renew_months) : "",
+            termination_notice_days:
+              (data as any).termination_notice_days != null
+                ? String((data as any).termination_notice_days)
+                : "",
+            deposit_paid_at: (data as any).deposit_paid_at ?? "",
+            ownership_basis: (data as any).ownership_basis ?? "",
+            jurisdiction: (data as any).jurisdiction ?? "",
           }}
           onValuesChange={(v) =>
             setLive({

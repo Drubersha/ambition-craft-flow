@@ -29,8 +29,38 @@ export type TenantFormValues = {
   kind: string;
   inn: string;
   notes: string;
+  /** Реквизиты — нужны для счетов, актов и сверок; заполняются из договора. */
+  kpp: string;
+  ogrn: string;
+  legal_address: string;
+  actual_address: string;
+  postal_address: string;
+  bank_name: string;
+  bank_account: string;
+  bank_bik: string;
+  bank_corr_account: string;
+  /** Кто подписывает и на каком основании («Генеральный директор …, устав»). */
+  signatory_name: string;
+  signatory_position: string;
+  signatory_basis: string;
   /** 1..5 валидных контактных лиц (первое обязательно). */
   contacts: TenantContactDraft[];
+};
+
+/** Пустые значения реквизитов — общий дефолт для формы и вызывающих страниц. */
+export const EMPTY_TENANT_REQUISITES = {
+  kpp: "",
+  ogrn: "",
+  legal_address: "",
+  actual_address: "",
+  postal_address: "",
+  bank_name: "",
+  bank_account: "",
+  bank_bik: "",
+  bank_corr_account: "",
+  signatory_name: "",
+  signatory_position: "",
+  signatory_basis: "",
 };
 
 const emptyContact = (): TenantContactDraft => ({ full_name: "", email: "", phone: "" });
@@ -65,6 +95,18 @@ export function TenantForm({
     kind: initial?.kind ?? "company",
     inn: initial?.inn ?? "",
     notes: initial?.notes ?? "",
+    kpp: initial?.kpp ?? "",
+    ogrn: initial?.ogrn ?? "",
+    legal_address: initial?.legal_address ?? "",
+    actual_address: initial?.actual_address ?? "",
+    postal_address: initial?.postal_address ?? "",
+    bank_name: initial?.bank_name ?? "",
+    bank_account: initial?.bank_account ?? "",
+    bank_bik: initial?.bank_bik ?? "",
+    bank_corr_account: initial?.bank_corr_account ?? "",
+    signatory_name: initial?.signatory_name ?? "",
+    signatory_position: initial?.signatory_position ?? "",
+    signatory_basis: initial?.signatory_basis ?? "",
   });
   const [contacts, setContacts] = useState<TenantContactDraft[]>(
     initial?.contacts && initial.contacts.length > 0 ? initial.contacts : [emptyContact()],
@@ -110,9 +152,81 @@ export function TenantForm({
           </SelectContent>
         </Select>
       </F>
-      <F label="ИНН">
-        <Input value={v.inn} onChange={(e) => set("inn", e.target.value)} />
-      </F>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <F label="ИНН">
+          <Input value={v.inn} onChange={(e) => set("inn", e.target.value)} />
+        </F>
+        <F label="КПП">
+          <Input value={v.kpp} onChange={(e) => set("kpp", e.target.value)} />
+        </F>
+      </div>
+
+      <details className="rounded-md border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          Реквизиты для счетов и актов
+        </summary>
+        <div className="mt-3 space-y-3">
+          <F label="ОГРН / ОГРНИП">
+            <Input value={v.ogrn} onChange={(e) => set("ogrn", e.target.value)} />
+          </F>
+          <F label="Юридический адрес">
+            <Input value={v.legal_address} onChange={(e) => set("legal_address", e.target.value)} />
+          </F>
+          <F label="Фактический адрес">
+            <Input
+              value={v.actual_address}
+              onChange={(e) => set("actual_address", e.target.value)}
+              placeholder="если отличается от юридического"
+            />
+          </F>
+          <F label="Почтовый адрес">
+            <Input
+              value={v.postal_address}
+              onChange={(e) => set("postal_address", e.target.value)}
+            />
+          </F>
+          <F label="Банк">
+            <Input value={v.bank_name} onChange={(e) => set("bank_name", e.target.value)} />
+          </F>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Расчётный счёт">
+              <Input value={v.bank_account} onChange={(e) => set("bank_account", e.target.value)} />
+            </F>
+            <F label="БИК">
+              <Input value={v.bank_bik} onChange={(e) => set("bank_bik", e.target.value)} />
+            </F>
+          </div>
+          <F label="Корреспондентский счёт">
+            <Input
+              value={v.bank_corr_account}
+              onChange={(e) => set("bank_corr_account", e.target.value)}
+            />
+          </F>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <F label="Подписант (ФИО)">
+              <Input
+                value={v.signatory_name}
+                onChange={(e) => set("signatory_name", e.target.value)}
+                placeholder="Хасбиев Д. Ш."
+              />
+            </F>
+            <F label="Должность">
+              <Input
+                value={v.signatory_position}
+                onChange={(e) => set("signatory_position", e.target.value)}
+                placeholder="Генеральный директор"
+              />
+            </F>
+          </div>
+          <F label="Действует на основании">
+            <Input
+              value={v.signatory_basis}
+              onChange={(e) => set("signatory_basis", e.target.value)}
+              placeholder="устава / доверенности № … от …"
+            />
+          </F>
+        </div>
+      </details>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">

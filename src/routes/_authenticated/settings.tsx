@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
+import { LandlordRequisitesCard } from "@/components/landlord-requisites-card";
 import { Check, Eye, EyeOff, KeyRound, Loader2, Mail, X } from "lucide-react";
 import { ROLE_LABELS, useDemoIdentity } from "@/lib/demo-identity";
 import { changePassword, PASSWORD_MIN } from "@/lib/account.functions";
@@ -229,6 +230,7 @@ function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+      <LandlordRequisitesCard />
       <ChangePasswordCard isDemo={isDemo} />
     </div>
   );
