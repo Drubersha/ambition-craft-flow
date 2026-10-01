@@ -1,0 +1,64 @@
+# Боевая надстройка над docker-compose.yml: Caddy (HTTPS), realtime, ollama и настройки ИИ-помощника.
+# На сервере этот файл лежит под именем docker-compose.override.yml — Docker подхватывает его сам.
+# Восстановление: cp docker-compose.prod.yml docker-compose.override.yml && docker compose up -d
+# Секретов здесь нет: пароли и ключи берутся из .env (в git не хранится).
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+      - kong
+  realtime:
+    image: supabase/realtime:v2.34.47
+    container_name: realtime-dev.realtime
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      # Держим модель в памяти 10 минут после запроса и не грузим две сразу:
+      # на сервере всего ~9 ГБ свободных, ночная пересборка тоже требует памяти.
+      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_NUM_PARALLEL: 1
+    mem_limit: 6g
+    volumes:
+      - ollama-data:/root/.ollama
+  app:
+    environment:
+      AI_BASE_URL: http://ollama:11434/v1
+      AI_API_KEY: ollama
+      AI_MODEL: qwen2.5:7b-instruct-q4_K_M
+volumes:
+  caddy-data:
+  caddy-config:
+  ollama-data:

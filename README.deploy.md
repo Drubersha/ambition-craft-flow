@@ -78,9 +78,18 @@ SQL
 
 Через UI приложения (`/auth` → Регистрация) — `GOTRUE_MAILER_AUTOCONFIRM=true` в dev режиме сразу активирует аккаунт. Триггер `handle_new_user` назначит роль `owner` автоматически.
 
-## 7. HTTPS через Caddy (опционально)
+## 7. HTTPS через Caddy
 
-`Caddyfile`:
+Боевые `Caddyfile` и `docker-compose.prod.yml` лежат в репозитории. На новом сервере:
+
+```bash
+cp docker-compose.prod.yml docker-compose.override.yml
+docker compose up -d
+```
+
+`Caddyfile` должен существовать ДО запуска: если его нет, Docker создаст на его месте пустую папку, и Caddy не стартует (так сайт лежал 19–25.08.2026). После правки override на сервере — обновите и `docker-compose.prod.yml` в репозитории.
+
+Образец `Caddyfile` для другого домена:
 
 ```
 leaseplease.example.com {

@@ -1,0 +1,6 @@
+leaseplease.ru {
+  reverse_proxy app:3000
+}
+api.leaseplease.ru {
+  reverse_proxy kong:8000
+}
