@@ -47,7 +47,12 @@ function timeAgo(iso: string) {
   return `${d} дн назад`;
 }
 
-export function NotificationsBell() {
+/**
+ * Колокольчик смонтирован дважды (боковая панель и мобильная шапка), поэтому
+ * Realtime-подписка и тосты включаются только у одного экземпляра (`subscribe`),
+ * иначе каждое уведомление показывалось двумя тостами.
+ */
+export function NotificationsBell({ subscribe = false }: { subscribe?: boolean }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const list = useServerFn(listMyNotifications);
@@ -80,6 +85,7 @@ export function NotificationsBell() {
   const unread = useMemo(() => items.filter((n: any) => !n.read_at).length, [items]);
 
   useEffect(() => {
+    if (!subscribe) return;
     let cancelled = false;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
@@ -134,7 +140,7 @@ export function NotificationsBell() {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [qc]);
+  }, [qc, subscribe, navigate]);
 
   async function openItem(n: any) {
     // Navigate first so the click always lands on the target page even if

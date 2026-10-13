@@ -452,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={role === "tenant" ? "/me" : "/dashboard"}
           />
           <div className="ml-auto">
-            <NotificationsBell />
+            <NotificationsBell subscribe />
           </div>
         </div>
         <IdentitySwitcher />
