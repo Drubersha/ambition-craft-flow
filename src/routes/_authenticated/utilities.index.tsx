@@ -41,6 +41,7 @@ function UtilitiesPage() {
         await supabase
           .from("contracts")
           .select("id,number,property_id,area,start_date,end_date,status,tenant:tenants(id,name)")
+          .is("parent_contract_id", null)
           .order("start_date", { ascending: false })
       ).data ?? [],
   });

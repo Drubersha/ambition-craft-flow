@@ -38,6 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatMoney, monthlyPayment, PAYMENT_PERIOD_LABELS } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
   component: UserOverviewPage,
@@ -93,7 +94,7 @@ function UserOverviewPage() {
       setLinkOwner("");
       qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
   const unlinkMut = useMutation({
     mutationFn: (linkId: string) => unlinkFn({ data: { linkId } }),
@@ -101,7 +102,7 @@ function UserOverviewPage() {
       toast.success("Отвязано");
       qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   const [name, setName] = useState<string | null>(null);
@@ -112,7 +113,7 @@ function UserOverviewPage() {
       toast.success("Профиль обновлён");
       qc.invalidateQueries({ queryKey: ["admin-user-overview", userId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   const roleMut = useMutation({
@@ -122,7 +123,7 @@ function UserOverviewPage() {
       toast.success("Роль обновлена");
       qc.invalidateQueries({ queryKey: ["admin-user-overview", userId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: () => deleteFn({ data: { userId } }),
@@ -130,7 +131,7 @@ function UserOverviewPage() {
       toast.success("Аккаунт удалён");
       navigate({ to: "/admin/users" });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   const [companionOpen, setCompanionOpen] = useState(false);
@@ -158,7 +159,7 @@ function UserOverviewPage() {
       qc.invalidateQueries({ queryKey: ["admin-user-links", userId] });
       qc.invalidateQueries({ queryKey: ["admin-all-users"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   if (q.isLoading) return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>;

@@ -7,6 +7,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { PlanViewer } from "@/components/plan-viewer";
 import { PLAN_ACCEPT, PLAN_BUCKET, removePlanFile, uploadPlanFile } from "@/lib/plan-file";
 import { useSignedUrl } from "@/lib/use-signed-url";
+import { humanError } from "@/lib/human-error";
 
 export function PlanUploader({
   pathPrefix,
@@ -32,7 +33,7 @@ export function PlanUploader({
       await onChange(next);
       toast.success("План загружен");
     } catch (e: any) {
-      toast.error(e.message ?? "Ошибка загрузки");
+      toast.error(humanError(e, "Ошибка загрузки"));
     } finally {
       setBusy(false);
     }
@@ -46,7 +47,7 @@ export function PlanUploader({
       await onChange({ path: null, mime: null });
       toast.success("План удалён");
     } catch (e: any) {
-      toast.error(e.message ?? "Ошибка удаления");
+      toast.error(humanError(e, "Ошибка удаления"));
     } finally {
       setBusy(false);
     }

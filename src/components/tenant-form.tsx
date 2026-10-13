@@ -290,9 +290,7 @@ export function TenantForm({
                   />
                 </F>
               </div>
-              {i === 0 && (
-                <p className="text-[11px] text-muted-foreground">* — email и/или телефон</p>
-              )}
+              {i === 0 && <p className="text-xs text-muted-foreground">* — email и/или телефон</p>}
             </div>
           ))}
         </div>
@@ -302,7 +300,11 @@ export function TenantForm({
         <Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
       </F>
       {!hideSubmit && (
-        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={submitting}
+          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+        >
           {submitting ? "Сохранение..." : "Сохранить"}
         </Button>
       )}

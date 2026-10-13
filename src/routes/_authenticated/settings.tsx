@@ -9,52 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { LandlordRequisitesCard } from "@/components/landlord-requisites-card";
-import { Check, Eye, EyeOff, KeyRound, Loader2, Mail, X } from "lucide-react";
+import { Check, KeyRound, Loader2, Mail, X } from "lucide-react";
 import { ROLE_LABELS, useDemoIdentity } from "@/lib/demo-identity";
 import { changePassword, PASSWORD_MIN } from "@/lib/account.functions";
+import { PasswordInput } from "@/components/password-input";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
-
-function PasswordInput({
-  id,
-  value,
-  onChange,
-  autoComplete,
-  disabled,
-}: {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete: string;
-  disabled?: boolean;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative">
-      <Input
-        id={id}
-        type={visible ? "text" : "password"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete={autoComplete}
-        disabled={disabled}
-        required
-        className="pr-10"
-      />
-      <button
-        type="button"
-        tabIndex={-1}
-        onClick={() => setVisible((v) => !v)}
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-        aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
-      >
-        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  );
-}
 
 function Requirement({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -110,8 +73,8 @@ function ChangePasswordCard({ isDemo }: { isDemo: boolean }) {
           ? "Пароль изменён. Уведомление отправлено на почту."
           : "Пароль изменён. Остальные сессии завершены.",
       );
-    } catch (e: any) {
-      toast.error(e?.message ?? "Не удалось изменить пароль");
+    } catch (e) {
+      toast.error(humanError(e, "Не удалось изменить пароль"));
     } finally {
       setBusy(false);
     }

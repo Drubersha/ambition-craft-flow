@@ -30,9 +30,31 @@ export function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Сегодня в формате YYYY-MM-DD (по UTC — как new Date().toISOString()). */
+/**
+ * Сегодня в формате YYYY-MM-DD по ЛОКАЛЬНОМУ времени.
+ * Раньше бралось из toISOString() (UTC): в Казани с 00:00 до 03:00 «сегодня»
+ * было вчера, и дата платежа по умолчанию подставлялась неверно.
+ */
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toISO(new Date());
+}
+
+/**
+ * Период начисления по умолчанию для диалога «Начислить»: текущий календарный
+ * месяц (квартал / год — по периодичности договора), срок оплаты — последний день
+ * периода. Считается локальными датами: через toISOString() первое число месяца
+ * восточнее Гринвича превращалось в последнее число предыдущего, а сумма — в два месяца.
+ */
+export function defaultChargePeriod(
+  today: Date,
+  period: string,
+): { start: string; end: string; due: string } {
+  let monthsAhead = 1;
+  if (period === "quarterly") monthsAhead = 3;
+  if (period === "yearly") monthsAhead = 12;
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  const last = new Date(today.getFullYear(), today.getMonth() + monthsAhead, 0);
+  return { start: toISO(first), end: toISO(last), due: toISO(last) };
 }
 
 /** Ключ месяца "YYYY-MM" для даты. */

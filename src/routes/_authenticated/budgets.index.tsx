@@ -15,6 +15,7 @@ import {
   type BudgetExpense,
 } from "@/lib/budget";
 import { formatMoney } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/budgets/")({
   component: BudgetsIndex,
@@ -61,7 +62,7 @@ function BudgetsIndex() {
       toast.success("План создан");
       qc.invalidateQueries({ queryKey: ["budgets-index"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   if (isLoading) return <div className="text-muted-foreground">Загрузка…</div>;
@@ -115,8 +116,10 @@ function BudgetsIndex() {
           const totalLimit = cats.reduce((s, c) => s + Number(c.limit_amount), 0);
           const totalSpent = periodExps.reduce((s, e) => s + Number(e.amount), 0);
           const pct = totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0;
+          // Ровно 100 % — лимит исчерпан, но не превышен; «Перерасход» только сверх лимита.
           const warn = pct >= plan.warning_percent && pct < 100;
-          const over = pct >= 100;
+          const atLimit = totalLimit > 0 && pct >= 100 && pct <= 100.0001;
+          const over = totalLimit > 0 && pct > 100.0001;
           return (
             <Link key={f.id} to="/budgets/$folderId" params={{ folderId: f.id }}>
               <Card className="hover:border-primary transition-colors">
@@ -127,6 +130,11 @@ function BudgetsIndex() {
                       <Badge variant="destructive" className="shrink-0">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Перерасход
+                      </Badge>
+                    )}
+                    {atLimit && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Лимит исчерпан
                       </Badge>
                     )}
                     {warn && (

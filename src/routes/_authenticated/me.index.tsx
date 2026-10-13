@@ -25,7 +25,9 @@ function MeDashboard() {
         .from("contracts")
         .select("id, number, status, start_date, end_date, currency, property:properties(name)")
         .eq("tenant_id", tenantId!)
-        .eq("status", "active");
+        .eq("status", "active")
+        // Допсоглашения — не отдельные договоры.
+        .is("parent_contract_id", null);
       const { data: charges } = await supabase
         .from("charges")
         .select(
@@ -78,7 +80,7 @@ function MeDashboard() {
               <div className="text-xs text-muted-foreground mt-1">
                 до {formatDate(data.upcoming.due_date)}
               </div>
-              <Badge variant="secondary" className="mt-2 text-[10px]">
+              <Badge variant="secondary" className="mt-2 text-xs">
                 {CHARGE_STATUS_LABELS[data.upcoming.status]}
               </Badge>
             </>

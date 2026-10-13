@@ -5,6 +5,9 @@ import {
   splitContractPeriods,
   monthsInRange,
   computeDepositWithArea,
+  toISO,
+  todayISO,
+  defaultChargePeriod,
 } from "./format";
 
 describe("monthlyPayment", () => {
@@ -82,5 +85,25 @@ describe("splitContractPeriods", () => {
     expect(out.length).toBe(3);
     expect(out[0]).toEqual({ period_start: "2024-01-01", period_end: "2024-03-31" });
     expect(out[2].period_end).toBe("2024-09-30");
+  });
+});
+
+describe("local-date helpers (UTC+ timezones)", () => {
+  it("toISO uses local calendar date, not UTC", () => {
+    // Полночь по локальному времени восточнее Гринвича через toISOString()
+    // превращалась бы в предыдущий день.
+    expect(toISO(new Date(2026, 9, 1))).toBe("2026-10-01");
+    expect(toISO(new Date(2026, 9, 31))).toBe("2026-10-31");
+  });
+  it("todayISO matches toISO(new Date())", () => {
+    expect(todayISO()).toBe(toISO(new Date()));
+  });
+  it("defaultChargePeriod covers the current calendar month with due on its last day", () => {
+    const p = defaultChargePeriod(new Date(2026, 9, 13), "monthly");
+    expect(p).toEqual({ start: "2026-10-01", end: "2026-10-31", due: "2026-10-31" });
+    const q = defaultChargePeriod(new Date(2026, 9, 13), "quarterly");
+    expect(q).toEqual({ start: "2026-10-01", end: "2026-12-31", due: "2026-12-31" });
+    const y = defaultChargePeriod(new Date(2026, 1, 5), "yearly");
+    expect(y.end).toBe("2027-01-31");
   });
 });

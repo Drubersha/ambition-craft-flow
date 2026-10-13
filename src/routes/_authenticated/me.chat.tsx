@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { humanError } from "@/lib/human-error";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,7 +36,7 @@ function MyChat() {
       .then(setThreadId)
       .catch((e) => {
         console.error("ensureChatThread failed", e);
-        toast.error(`Чат: ${e?.message ?? "ошибка"}`);
+        toast.error(`Чат: ${humanError(e, "ошибка")}`);
         setThreadId(null);
       });
   }, [tenantId]);

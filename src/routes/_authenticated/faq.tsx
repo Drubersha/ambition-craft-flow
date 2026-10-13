@@ -21,6 +21,7 @@ import {
   getSectionTutorialState,
 } from "@/components/section-tutorial";
 import { submitFeedback } from "@/lib/feedback.functions";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/faq")({
   component: FaqPage,
@@ -104,7 +105,7 @@ function SectionTutorialsCard() {
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <span className="truncate">{t.label}</span>
                     {done && (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                      <Badge variant="secondary" className="shrink-0 text-xs">
                         <Check className="mr-0.5 h-3 w-3" />
                         Пройдено
                       </Badge>
@@ -169,7 +170,7 @@ function FaqPage() {
       }
       setMessage("");
     } catch (err: any) {
-      toast.error(err?.message ?? "Не удалось отправить");
+      toast.error(humanError(err, "Не удалось отправить"));
     } finally {
       setSending(false);
     }

@@ -10,6 +10,7 @@ import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
 import { insertContractMeters } from "@/lib/meters";
+import { humanError } from "@/lib/human-error";
 
 const search = z.object({
   tenant: z.string().optional(),
@@ -153,7 +154,7 @@ function NewContract() {
         navigate({ to: "/contracts/$id", params: { id: data.id } });
       }
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   if (parentId && parentLoading) return <div className="p-6">Загрузка договора…</div>;

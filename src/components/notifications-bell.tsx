@@ -47,7 +47,12 @@ function timeAgo(iso: string) {
   return `${d} дн назад`;
 }
 
-export function NotificationsBell() {
+/**
+ * Колокольчик смонтирован дважды (боковая панель и мобильная шапка), поэтому
+ * Realtime-подписка и тосты включаются только у одного экземпляра (`subscribe`),
+ * иначе каждое уведомление показывалось двумя тостами.
+ */
+export function NotificationsBell({ subscribe = false }: { subscribe?: boolean }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const list = useServerFn(listMyNotifications);
@@ -80,6 +85,7 @@ export function NotificationsBell() {
   const unread = useMemo(() => items.filter((n: any) => !n.read_at).length, [items]);
 
   useEffect(() => {
+    if (!subscribe) return;
     let cancelled = false;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
@@ -134,7 +140,7 @@ export function NotificationsBell() {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [qc]);
+  }, [qc, subscribe, navigate]);
 
   async function openItem(n: any) {
     // Navigate first so the click always lands on the target page even if
@@ -155,7 +161,7 @@ export function NotificationsBell() {
         <Button variant="ghost" size="icon" aria-label="Уведомления" className="relative">
           <BrandIcon icon={Bell} size="md" />
           {unread > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
@@ -212,7 +218,7 @@ export function NotificationsBell() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-sm font-medium truncate">{n.title}</div>
-                      <div className="text-[10px] text-muted-foreground shrink-0">
+                      <div className="text-xs text-muted-foreground shrink-0">
                         {timeAgo(n.created_at)}
                       </div>
                     </div>

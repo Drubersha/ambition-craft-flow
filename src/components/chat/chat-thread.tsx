@@ -12,6 +12,7 @@ import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functio
 import { ensureChatThreadFn } from "@/lib/chat.functions";
 import { uploadSizeIssue } from "@/lib/upload-limits";
 import { useSignedUrl } from "@/lib/use-signed-url";
+import { humanError } from "@/lib/human-error";
 
 type Props = {
   threadId: string;
@@ -187,7 +188,7 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
       // ИИ-анализ сообщений отключён (функция в разработке) — автоматический
       // вызов analyze убран; серверный выключатель в tasks.functions.ts.
     } catch (e: any) {
-      toast.error(e.message ?? "Не удалось отправить");
+      toast.error(humanError(e, "Не удалось отправить"));
     } finally {
       setSending(false);
     }
@@ -195,7 +196,7 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-[60vh]">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/50 border-b">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground bg-muted/50 border-b">
         <Sparkles className="h-3 w-3" />
         ИИ-анализ сообщений — функция ещё в разработке
       </div>
@@ -219,13 +220,13 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
                   )}
                 >
                   {m.sender_label && (
-                    <div className={cn("text-[10px] mb-1 opacity-70")}>{m.sender_label}</div>
+                    <div className={cn("text-xs mb-1 opacity-70")}>{m.sender_label}</div>
                   )}
                   {m.body && <div className="whitespace-pre-wrap break-words">{m.body}</div>}
                   {atts.map((a) => (
                     <AttachmentRow key={a.id} attachment={a} mine={mine} />
                   ))}
-                  <div className={cn("text-[10px] mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
+                  <div className={cn("text-xs mt-1 opacity-60")}>{timeLabel(m.created_at)}</div>
                 </div>
                 {myRole !== "tenant" && m.sender_role === "tenant" && (
                   <button
@@ -239,7 +240,7 @@ export function ChatThread({ threadId, myRole, myLabel }: Props) {
                         toast.error("Не удалось");
                       }
                     }}
-                    className="self-start inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary px-1"
+                    className="self-start inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-1"
                   >
                     <Sparkles className="h-3 w-3" /> В задачи
                   </button>

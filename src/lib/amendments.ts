@@ -55,7 +55,9 @@ export const AMENDMENT_FIELDS: FieldSpec[] = [
   { key: "penalty_percent_per_day", label: "Пени за день просрочки, %", kind: "number" },
   { key: "misuse_penalty_percent", label: "Штраф за нецелевое, %", kind: "number" },
   { key: "deposit_percent", label: "Обеспечительный платёж, %", kind: "number" },
-  { key: "start_date", label: "Дата начала", kind: "date" },
+  // start_date намеренно не сравнивается: у допсоглашения это дата его
+  // подписания, а не новое начало аренды. Иначе каждый допник показывал
+  // «Дата начала: 01.01 → 01.07» и переносил свою дату в основной договор.
   { key: "end_date", label: "Дата окончания", kind: "date" },
   { key: "auto_renew", label: "Автопролонгация", kind: "bool" },
   { key: "renew_months", label: "Продление, месяцев", kind: "number" },

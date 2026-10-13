@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChargeStatusBadge } from "@/components/status-badges";
 import { useTenantContext } from "@/lib/tenant-context";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formatDate, formatMoney, todayISO } from "@/lib/format";
+import { formatDate, formatMoney, toISO, todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/me/calendar")({
@@ -35,8 +35,10 @@ function MyCalendar() {
           "id, due_date, total, paid_total, status, contract:contracts!inner(number, currency, tenant_id)",
         )
         .eq("contract.tenant_id", tenantId!)
-        .gte("due_date", monthStart.toISOString().slice(0, 10))
-        .lte("due_date", monthEnd.toISOString().slice(0, 10))
+        // Локальные даты: через toISOString() 1-е число уезжало на последнее число
+        // предыдущего месяца, и сроки оплаты 31-го выпадали из календаря.
+        .gte("due_date", toISO(monthStart))
+        .lte("due_date", toISO(monthEnd))
         .order("due_date");
       if (error) throw error;
       return data ?? [];
@@ -77,16 +79,18 @@ function MyCalendar() {
           <Button
             variant="outline"
             size="icon"
+            aria-label="Предыдущий месяц"
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-sm font-medium min-w-[140px] text-center">
+          <div className="text-sm font-medium min-w-[140px] text-center" aria-live="polite">
             {monthStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
           </div>
           <Button
             variant="outline"
             size="icon"
+            aria-label="Следующий месяц"
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
           >
             <ChevronRight className="h-4 w-4" />
@@ -94,7 +98,7 @@ function MyCalendar() {
         </div>
       </div>
       <Card className="p-2">
-        <div className="grid grid-cols-7 gap-1 text-[10px] text-muted-foreground uppercase mb-1">
+        <div className="grid grid-cols-7 gap-1 text-xs text-muted-foreground uppercase mb-1">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => (
             <div key={d} className="text-center">
               {d}
@@ -103,7 +107,7 @@ function MyCalendar() {
         </div>
         <div className="grid grid-cols-7 gap-1">
           {cells.map(({ date, inMonth }, i) => {
-            const key = date.toISOString().slice(0, 10);
+            const key = toISO(date);
             const items = byDay.get(key) ?? [];
             const isToday = key === today;
             const hasOverdue = items.some((c) => c.status === "overdue");

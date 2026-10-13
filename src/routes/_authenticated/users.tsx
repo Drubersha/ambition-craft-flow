@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/users")({
   component: UsersPage,
@@ -47,7 +48,7 @@ function UsersPage() {
       setEmail("");
       qc.invalidateQueries({ queryKey: ["my-links"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
   const unlinkMut = useMutation({
     mutationFn: (linkId: string) => unlinkFn({ data: { linkId } }),
@@ -55,7 +56,7 @@ function UsersPage() {
       toast.success("Отвязано");
       qc.invalidateQueries({ queryKey: ["my-links"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   const links = q.data ?? [];

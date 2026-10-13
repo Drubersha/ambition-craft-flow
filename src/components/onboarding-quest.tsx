@@ -337,7 +337,7 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
               <Badge variant="secondary" className="whitespace-nowrap">
                 {levelName(doneCount, total)}
               </Badge>
-              <span className="text-[10px] text-muted-foreground">{doneCount * 100} XP</span>
+              <span className="text-xs text-muted-foreground">{doneCount * 100} XP</span>
             </div>
           </div>
           <div className="mt-2 flex items-center gap-2">

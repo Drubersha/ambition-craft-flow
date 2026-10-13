@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2 } from "lucide-react";
 import { toast } from "sonner";
+import { humanError } from "@/lib/human-error";
 
 const FIELDS = [
   { key: "short_name", label: "Краткое наименование", hint: "ИП Марченко Э. В." },
@@ -84,7 +85,7 @@ export function LandlordRequisitesCard() {
       qc.invalidateQueries({ queryKey: ["landlord-requisites"] });
       toast.success("Реквизиты сохранены");
     },
-    onError: (e: any) => toast.error(e.message ?? "Не удалось сохранить"),
+    onError: (e: any) => toast.error(humanError(e, "Не удалось сохранить")),
   });
 
   return (

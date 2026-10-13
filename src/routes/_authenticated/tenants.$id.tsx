@@ -14,6 +14,7 @@ import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/tenants/$id")({
   component: EditTenant,
@@ -100,7 +101,7 @@ function EditTenant() {
       qc.invalidateQueries({ queryKey: ["tenants"] });
       toast.success("Сохранено");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const del = useMutation({
@@ -113,7 +114,7 @@ function EditTenant() {
       toast.success("Удалено");
       navigate({ to: "/tenants" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   // Contacts must be loaded before the form mounts: they seed its local state.
@@ -248,16 +249,17 @@ function EditTenant() {
 
       <MobileActionBar>
         <ConfirmButton
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
+          variant="outline"
+          size="icon"
+          className="min-h-11 min-w-11 text-destructive border-destructive/40"
+          aria-label="Удалить арендатора"
           destructive
           title="Удалить арендатора?"
           description="Арендатор и связанные договоры будут удалены. Действие необратимо."
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4" />
         </ConfirmButton>
         <Button
           type="submit"

@@ -42,6 +42,7 @@ import {
   type MeterReading,
 } from "@/lib/meters";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
+import { humanError } from "@/lib/human-error";
 
 /** Вкладка «Счётчики»: реестр с последними показаниями, добавление и удаление. */
 export function MetersTab({
@@ -73,7 +74,7 @@ export function MetersTab({
       qc.invalidateQueries({ queryKey: ["meters"] });
       toast.success("Счётчик удалён");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const placeLabel = (m: Meter) => {
@@ -215,7 +216,7 @@ function AddMeterDialog({
       setStartValue("");
       setContractId("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (
@@ -334,7 +335,7 @@ function AddReadingDialog({ meter, last }: { meter: Meter; last: MeterReading | 
       setOpen(false);
       setValue("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (

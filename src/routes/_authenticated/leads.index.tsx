@@ -38,6 +38,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { formatMoney, todayISO } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/leads/")({
   component: LeadsUnderConstruction,
@@ -322,7 +323,7 @@ function LeadCard({ lead }: { lead: Lead }) {
         toast.success("Этап пройден");
       }
     },
-    onError: (e: Error) => toast.error(e.message || "Не удалось"),
+    onError: (e: Error) => toast.error(humanError(e, "Не удалось")),
   });
 
   function handlePass() {
@@ -343,16 +344,16 @@ function LeadCard({ lead }: { lead: Lead }) {
       <Card className="p-3 space-y-2">
         <div className="font-medium text-sm break-words">{lead.full_name}</div>
         <div className="flex flex-wrap gap-1">
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             {SOURCE_LABELS[lead.source]}
           </Badge>
           {lead.budget != null && (
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-xs">
               {formatMoney(lead.budget, lead.property?.currency ?? "RUB")}
             </Badge>
           )}
           {lead.desired_area != null && (
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-xs">
               {lead.desired_area} м²
             </Badge>
           )}
@@ -467,7 +468,7 @@ function FailDialog({
       onOpenChange(false);
       setReason("");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   return (
@@ -667,7 +668,7 @@ function LeadFormDialog({
       reset();
       onOpenChange(false);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   return (
@@ -784,7 +785,7 @@ function ArchiveList({ leads }: { leads: Lead[] }) {
       qc.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Лид восстановлен");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   if (leads.length === 0) {
@@ -805,13 +806,13 @@ function ArchiveList({ leads }: { leads: Lead[] }) {
           <div className="min-w-0 flex-1 space-y-1">
             <div className="font-medium text-sm break-words">{l.full_name}</div>
             <div className="flex flex-wrap gap-1">
-              <Badge variant={l.status === "won" ? "default" : "secondary"} className="text-[10px]">
+              <Badge variant={l.status === "won" ? "default" : "secondary"} className="text-xs">
                 {l.status === "won" ? "Выигран" : "Отказ"}
               </Badge>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-xs">
                 {SOURCE_LABELS[l.source]}
               </Badge>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-xs">
                 {STAGES.find((s) => s.key === l.stage)?.short}
               </Badge>
             </div>

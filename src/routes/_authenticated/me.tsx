@@ -85,12 +85,12 @@ function TenantLayout() {
     <div className="space-y-4">
       <Card className="p-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase text-muted-foreground">Кабинет арендатора</div>
+          <div className="text-xs uppercase text-muted-foreground">Кабинет арендатора</div>
           <div className="font-semibold truncate">{tenant?.name ?? "…"}</div>
           {ctx.source === "real" && ctx.tenants.length > 1 && (
             <button
               type="button"
-              className="text-[10px] underline text-muted-foreground"
+              className="text-xs underline text-muted-foreground"
               onClick={() => ctx.select("")}
             >
               Сменить арендатора

@@ -100,6 +100,21 @@ api.example.com {
 }
 ```
 
+## 8. Realtime (websocket: уведомления, чат, канбан)
+
+Realtime живёт в `docker-compose.prod.yml` (контейнер `realtime-dev.realtime`) и требует двух вещей, которых нет «из коробки»:
+
+1. **Маршрут в Kong.** В `supabase/volumes/kong.yml` должен быть сервис `realtime-v1` с путём `/realtime/v1/` (есть в репозитории). Без него браузер получает `404` на `wss://api.<домен>/realtime/v1/websocket`, а приложение молча переподключается каждые 1–2 с. После правки файла: `docker compose restart kong`.
+2. **Схема `realtime` в базе.** Миграции Realtime создают таблицы внутри уже существующей схемы и падают с `schema "realtime" does not exist`, если её нет (в официальном образе её создаёт init-скрипт; при восстановлении из бэкапа схемы `public/auth/storage` она тоже не возвращается):
+
+   ```bash
+   docker exec leaseplease-db-1 psql -U postgres -d postgres -c \
+     "CREATE SCHEMA IF NOT EXISTS realtime; GRANT USAGE ON SCHEMA realtime TO postgres, anon, authenticated, service_role, supabase_admin;"
+   docker compose restart realtime
+   ```
+
+Проверка: снаружи `curl -s -o /dev/null -w '%{http_code}' https://api.<домен>/realtime/v1/websocket` → `401` (маршрут есть, нужен apikey), а не `404`; в логах `docker logs realtime-dev.realtime` нет `PoolingReplicationError`/`MigrationsFailedToRun`; в консоли браузера нет ошибок `WebSocket connection … failed`. Таблицы `public.notifications`, `chat_messages`, `tasks` должны входить в публикацию `supabase_realtime`.
+
 ## Email-уведомления (транзакционные письма)
 
 Два независимых канала:

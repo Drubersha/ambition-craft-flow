@@ -23,7 +23,6 @@ import {
   Upload,
   Loader2,
 } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FolderPicker } from "@/components/folder-picker";
 import { PlanUploader } from "@/components/plan-uploader";
@@ -47,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { humanError } from "@/lib/human-error";
 
 export { FoldersPage as FoldersView };
 
@@ -72,7 +72,7 @@ function PlanFileControls({
       await onChange(next);
       toast.success("План загружен");
     } catch (e: any) {
-      toast.error(e.message ?? "Ошибка загрузки");
+      toast.error(humanError(e, "Ошибка загрузки"));
     } finally {
       setBusy(false);
     }
@@ -86,7 +86,7 @@ function PlanFileControls({
       await onChange({ path: null, mime: null });
       toast.success("План удалён");
     } catch (e: any) {
-      toast.error(e.message ?? "Ошибка удаления");
+      toast.error(humanError(e, "Ошибка удаления"));
     } finally {
       setBusy(false);
     }
@@ -176,7 +176,7 @@ function FoldersPage() {
       if (d.parent_id) setExpanded((s) => new Set(s).add(d.parent_id!));
       toast.success("Папка создана");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const update = useMutation({
@@ -187,7 +187,7 @@ function FoldersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["folders"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const del = useMutation({
@@ -214,7 +214,7 @@ function FoldersPage() {
       setSelectedId(null);
       toast.success("Папка удалена");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const toggle = (id: string) =>
@@ -227,16 +227,16 @@ function FoldersPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Папки"
-        description="Группируйте объекты и храните планы территории"
-        action={
-          <NewFolderButton
-            onCreate={(name) => create.mutate({ name, parent_id: null })}
-            label="Новая папка"
-          />
-        }
-      />
+      {/* Заголовок страницы — у родителя («Объекты»), здесь только действие вкладки. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Папки группируют объекты по зданиям и территориям и хранят планы с разметкой.
+        </p>
+        <NewFolderButton
+          onCreate={(name) => create.mutate({ name, parent_id: null })}
+          label="Новая папка"
+        />
+      </div>
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-4">
         <Card className="p-2 max-h-[80vh] overflow-y-auto">
@@ -308,12 +308,22 @@ function TreeView({
         const hasChildren = n.children.length > 0;
         return (
           <li key={n.id}>
+            {/* role/tabIndex/onKeyDown: строка выбирается и с клавиатуры (WCAG 2.1.1). */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-pressed={selectedId === n.id}
               className={cn(
                 "flex items-center gap-1 rounded px-1 py-1.5 text-sm cursor-pointer min-h-9",
                 selectedId === n.id ? "bg-primary/10 text-primary" : "hover:bg-muted",
               )}
               onClick={() => onSelect(n.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(n.id);
+                }
+              }}
             >
               <button
                 type="button"
@@ -506,7 +516,8 @@ function FolderDetail({
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold">Объекты в папке ({props.length})</h3>
           <Button asChild size="sm" variant="outline">
-            <Link to="/properties/new">
+            {/* Папка подставится в форму нового объекта. */}
+            <Link to="/properties/new" search={{ folder: folder.id }}>
               <Plus className="h-4 w-4 mr-1" /> Добавить
             </Link>
           </Button>
@@ -586,7 +597,7 @@ function FolderMapMarkup({
       toast.success("Разметка сохранена");
       setEdit({ mode: "view" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const del = useMutation({
@@ -602,7 +613,7 @@ function FolderMapMarkup({
       qc.invalidateQueries({ queryKey: ["folder-markings", folder.id] });
       toast.success("Удалено");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const startDraw = (tool: MarkingShape) => {
@@ -679,7 +690,7 @@ function FolderMapMarkup({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {ahchView ? (
           <>
             <span

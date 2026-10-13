@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/tenants/new")({
   component: NewTenant,
@@ -45,7 +46,7 @@ function NewTenant() {
       toast.success("Арендатор добавлен");
       navigate({ to: "/tenants/$id", params: { id: d.id } });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
   return (
     <div className="space-y-4">

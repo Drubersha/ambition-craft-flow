@@ -16,6 +16,7 @@ import {
   formatMoney,
 } from "@/lib/format";
 import { contractDisplayLabel, type Meter, type MeterReading } from "@/lib/meters";
+import { humanError } from "@/lib/human-error";
 
 /** Вкладка «Компенсация»: список закрытых периодов + мастер распределения. */
 export function PeriodsTab({
@@ -58,7 +59,7 @@ export function PeriodsTab({
       qc.invalidateQueries({ queryKey: ["utility-periods"] });
       toast.success("Период удалён");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const visible = (periods ?? []).filter((p: any) => !folderId || p.folder_id === folderId);

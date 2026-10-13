@@ -9,7 +9,6 @@ import {
   Wallet,
   Receipt,
   Menu,
-  Kanban,
   MessageSquare,
   KanbanSquare,
   User as UserIcon,
@@ -137,10 +136,10 @@ function AccountSettingsButton() {
   );
 }
 
+// «Воронка» (/leads) пока в разработке — из меню убрана, маршрут остаётся.
 const OWNER_NAV = [
   { to: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
   { to: "/ai", label: "Помощник", icon: Sparkles },
-  { to: "/leads", label: "Воронка", icon: Kanban },
   { to: "/properties", label: "Объекты", icon: Building2 },
   { to: "/tenants", label: "Арендаторы", icon: Users },
   { to: "/contracts", label: "Договоры", icon: FileText },
@@ -234,7 +233,7 @@ function NavList({
         <>
           <div
             className={cn(
-              "px-3 text-[10px] uppercase tracking-wide text-muted-foreground",
+              "px-3 text-xs uppercase tracking-wide text-muted-foreground",
               items.length > 0 && "mt-3",
             )}
           >
@@ -292,7 +291,7 @@ function IdentitySwitcher() {
     <div className="space-y-2 px-3 py-2 border-b bg-muted/30">
       {isDemo && (
         <>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
             Демо: войти как
           </div>
           <Select
@@ -336,7 +335,7 @@ function IdentitySwitcher() {
       )}
       {showManagerPicker && (
         <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
             Активный арендодатель
           </div>
           <Select value={mctx.selectedOwnerId} onValueChange={(v) => mctx.setSelectedOwnerId(v)}>
@@ -453,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={role === "tenant" ? "/me" : "/dashboard"}
           />
           <div className="ml-auto">
-            <NotificationsBell />
+            <NotificationsBell subscribe />
           </div>
         </div>
         <IdentitySwitcher />
@@ -492,15 +491,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </SheetContent>
           </Sheet>
+          {/* На телефоне — только знак: словесный логотип и e-mail не помещались
+              в одну строку и накладывались друг на друга при 375 px. */}
           <div className="flex items-center gap-2 min-w-0">
             <BrandLogo
-              variant="lockup"
+              variant="mark"
               size="sm"
               clickable
               to={role === "tenant" ? "/me" : "/dashboard"}
             />
           </div>
-          <div className="ml-auto flex items-center gap-2 min-w-0">
+          <div className="ml-auto flex items-center gap-1 min-w-0">
             {role !== "tenant" && (
               <Button variant="ghost" size="icon" asChild aria-label="Спросить помощника">
                 <Link to="/ai">
@@ -509,10 +510,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             )}
             {canSwitchRole && <RoleToggle />}
-            <div className="flex flex-col items-end leading-tight min-w-0">
-              {email && <span className="text-xs font-medium truncate max-w-[40vw]">{email}</span>}
+            <div className="hidden sm:flex flex-col items-end leading-tight min-w-0">
+              {email && <span className="text-xs font-medium truncate max-w-[30vw]">{email}</span>}
               {!canSwitchRole && (
-                <span className="text-[10px] text-muted-foreground">{ROLE_LABELS[role]}</span>
+                <span className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
               )}
             </div>
             <AccountSettingsButton />

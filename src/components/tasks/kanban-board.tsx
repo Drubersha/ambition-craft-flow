@@ -20,6 +20,17 @@ import { TaskCard, type Task } from "./task-card";
 import { updateTaskStatus, deleteTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { humanError } from "@/lib/human-error";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const COLUMNS: { id: Task["status"]; label: string }[] = [
   { id: "accepted", label: "Принято" },
@@ -151,10 +162,21 @@ export function KanbanBoard({ tenantFilter }: { tenantFilter: string | "all" }) 
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Удалить задачу?")) return;
-    await del({ data: { id } });
-    qc.invalidateQueries({ queryKey: ["tasks"] });
+  // Подтверждение — тем же AlertDialog, что и везде, а не браузерным confirm().
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  function handleDelete(id: string) {
+    setPendingDelete(id);
+  }
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    try {
+      await del({ data: { id: pendingDelete } });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (e) {
+      toast.error(humanError(e, "Не удалось удалить задачу"));
+    } finally {
+      setPendingDelete(null);
+    }
   }
 
   async function archiveDone() {
@@ -228,6 +250,29 @@ export function KanbanBoard({ tenantFilter }: { tenantFilter: string | "all" }) 
           />
         ) : null}
       </DragOverlay>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Задача и её вложения будут удалены. Действие необратимо.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DndContext>
   );
 }

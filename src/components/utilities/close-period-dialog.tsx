@@ -36,6 +36,7 @@ import {
   type MeterReading,
 } from "@/lib/meters";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
+import { humanError } from "@/lib/human-error";
 
 /**
  * Мастер «Распределить расходы»: форма периода, предпросмотр распределения
@@ -128,7 +129,7 @@ export function ClosePeriodDialog({
       setOpen(false);
       setTotal("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const unit = METER_UNITS[service] ?? "";

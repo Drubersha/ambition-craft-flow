@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useDemoIdentity } from "@/lib/demo-identity";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { SuggestionsPanel } from "@/components/tasks/suggestions-panel";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/tasks/")({
   component: TasksPage,
@@ -120,7 +121,7 @@ function NewTaskDialog({ tenants }: { tenants: { id: string; name: string }[] })
       setPriority("normal");
       setTenantId("none");
     },
-    onError: (e: any) => toast.error(e.message ?? "Не удалось создать задачу"),
+    onError: (e: any) => toast.error(humanError(e, "Не удалось создать задачу")),
   });
 
   return (

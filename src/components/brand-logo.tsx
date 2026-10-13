@@ -4,6 +4,8 @@ import type { CSSProperties, ReactElement } from "react";
 
 export const BRAND_NAVY = "#0b2f3a";
 export const BRAND_TEAL = "#22b8a5";
+/** Бирюза для ТЕКСТА: #22b8a5 на светлом фоне даёт 2,3:1, этот оттенок — 5:1 (WCAG 1.4.3). */
+export const BRAND_TEAL_TEXT = "#13796c";
 export const BRAND_SLOGAN = "Making leasing easy.";
 
 export type BrandVariant = "mark" | "wordmark" | "lockup" | "lockupWithSlogan" | "slogan";
@@ -58,7 +60,7 @@ function Wordmark({ size }: { size: BrandSize }) {
   return (
     <span className={cn("font-bold tracking-tight leading-none", WORD_SIZE[size])}>
       <span style={{ color: BRAND_NAVY }}>Lease</span>
-      <span style={{ color: BRAND_TEAL }}>Please</span>
+      <span style={{ color: BRAND_TEAL_TEXT }}>Please</span>
     </span>
   );
 }
@@ -70,7 +72,7 @@ function Slogan({ size }: { size: BrandSize }) {
       style={{ color: BRAND_NAVY }}
     >
       {BRAND_SLOGAN.toUpperCase().replace(/\.$/, "")}
-      <span aria-hidden style={{ color: BRAND_TEAL, marginLeft: 6 }}>
+      <span aria-hidden style={{ color: BRAND_TEAL_TEXT, marginLeft: 6 }}>
         ♥
       </span>
     </span>

@@ -20,6 +20,7 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatNum } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 
 type LinkRow = {
   id: string;
@@ -133,7 +134,7 @@ export function ContractObjectsEditor({
       if (error) throw error;
     },
     onSuccess: invalidate,
-    onError: (e: any) => toast.error(e?.message ?? "Не удалось сохранить площадь"),
+    onError: (e: any) => toast.error(humanError(e, "Не удалось сохранить площадь")),
   });
 
   const delMut = useMutation({
@@ -142,7 +143,7 @@ export function ContractObjectsEditor({
       if (error) throw error;
     },
     onSuccess: invalidate,
-    onError: (e: any) => toast.error(e?.message ?? "Не удалось удалить"),
+    onError: (e: any) => toast.error(humanError(e, "Не удалось удалить")),
   });
 
   const linkedSum = (links ?? []).reduce((s, l) => s + Number(l.area), 0);

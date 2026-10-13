@@ -4,7 +4,7 @@
  * Вынесено из UI, чтобы диалог отвечал только за форму и предпросмотр.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { METER_TYPE_LABELS, METER_UNITS, formatDate } from "@/lib/format";
+import { METER_TYPE_LABELS, METER_UNITS, formatDate, toISO } from "@/lib/format";
 import { getPeriodFor } from "@/lib/budget";
 import type { AllocationResult } from "@/lib/utilities";
 
@@ -68,7 +68,7 @@ async function createChargeWithAllocation(
       contract_id: a.contractId,
       period_start: p.periodStart,
       period_end: p.periodEnd,
-      due_date: due.toISOString().slice(0, 10),
+      due_date: toISO(due),
       total: a.amount,
       notes: `Коммунальные услуги: ${serviceLabel}`,
     })

@@ -11,6 +11,8 @@ import {
   computeContourIncomes,
   computeContourRates,
   contourOfType,
+  excludeAmendments,
+  isAmendment,
   type Charge,
   type Contract,
   type FilteredDashboardData,
@@ -660,5 +662,15 @@ describe("computeContourYear", () => {
       TODAY,
     );
     expect(series.get("Помещения")!.every((r) => r.occupancy === null)).toBe(true);
+  });
+});
+
+describe("excludeAmendments", () => {
+  it("drops rows with parent_contract_id and keeps the rest", () => {
+    const main = contract({ area: 45, rate: 950 });
+    const amendment = { ...contract({ area: 45, rate: 950 }), parent_contract_id: main.id };
+    expect(excludeAmendments([main, amendment]).map((c) => c.id)).toEqual([main.id]);
+    expect(isAmendment(amendment)).toBe(true);
+    expect(isAmendment(main)).toBe(false);
   });
 });

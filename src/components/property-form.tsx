@@ -183,7 +183,11 @@ export function PropertyForm({
         <FolderPicker value={v.folder_id} onChange={(id) => set("folder_id", id)} />
       </Field>
       {!hideSubmit && (
-        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={submitting}
+          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+        >
           {submitting ? "Сохранение..." : "Сохранить"}
         </Button>
       )}

@@ -56,13 +56,14 @@ function AiChatPage() {
   useEffect(() => {
     if (!history || historyLoadedRef.current) return;
     historyLoadedRef.current = true;
-    setMessages(
-      history.map((m) =>
-        m.role === "user"
-          ? { role: "user", text: m.text }
-          : { role: "assistant", text: m.text, links: m.links ?? [], facts: m.facts },
-      ),
+    const loaded: Message[] = history.map((m) =>
+      m.role === "user"
+        ? { role: "user", text: m.text }
+        : { role: "assistant", text: m.text, links: m.links ?? [], facts: m.facts },
     );
+    // Вопрос из строки в шапке (?q=) отправляется раньше, чем приходит история;
+    // раньше история затирала его, и в ленте оставался только ответ.
+    setMessages((local) => [...loaded, ...local]);
   }, [history]);
 
   const clearMutation = useMutation({
@@ -153,7 +154,7 @@ function AiChatPage() {
               Загружаю переписку…
             </div>
           )}
-          {!historyLoading && messages.length === 0 && (
+          {!historyLoading && messages.length === 0 && !mutation.isPending && (
             <div className="text-sm text-muted-foreground space-y-3 py-6">
               <p>Спросите о долгах, доходах, договорах или занятости. Например:</p>
               <div className="flex flex-wrap gap-2">
@@ -182,13 +183,13 @@ function AiChatPage() {
                 <div className="max-w-[85%] space-y-2">
                   <div className="rounded-lg bg-muted px-3 py-2 text-sm break-words">{m.text}</div>
                   {m.degraded && (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-xs">
                       Ответ по данным без модели
                     </Badge>
                   )}
                   {/* Цифры считает код: показываем их отдельно, чтобы ответ модели можно было проверить. */}
                   {m.facts && m.facts !== m.text && (
-                    <details className="text-[11px] text-muted-foreground">
+                    <details className="text-xs text-muted-foreground">
                       <summary className="cursor-pointer select-none hover:text-foreground">
                         Данные, по которым составлен ответ
                       </summary>
@@ -199,7 +200,7 @@ function AiChatPage() {
                   )}
                   {m.links.length > 0 && (
                     <div className="space-y-1">
-                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
                         Источники
                       </div>
                       <div className="flex flex-col gap-1">
@@ -215,9 +216,9 @@ function AiChatPage() {
           )}
 
           {mutation.isPending && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Считаю по данным…
+              Считаю по данным — обычно 20–40 секунд…
             </div>
           )}
           <div ref={bottomRef} />

@@ -23,6 +23,8 @@ function MyContracts() {
           "id, number, status, start_date, end_date, rate, currency, payment_period, area, property:properties(name, address)",
         )
         .eq("tenant_id", tenantId!)
+        // Допсоглашения — история условий, не отдельные договоры.
+        .is("parent_contract_id", null)
         .order("start_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
