@@ -1,15 +1,29 @@
 /**
  * Фильтр списка по папке: состояние (вкл/выкл + выбранная папка), правило
- * соответствия и общий UI-блок «пикер + Сбросить». Пункт «без папки»
- * кодируется folderId === null при включённом фильтре.
+ * соответствия и общий UI-блок. Пункт «без папки» кодируется folderId === null
+ * при включённом фильтре.
  *
  * У списков разная семантика вложенности — договоры фильтруются с учётом
  * вложенных папок, объекты по точному совпадению — поэтому она задаётся
  * флагом includeDescendants, а не зашита внутрь.
+ *
+ * В селекте три состояния с разными подписями: «Все папки» (фильтр выключен),
+ * «— Без папки —» (только записи без папки) и конкретная папка. Раньше выключенный
+ * фильтр показывал «Без папки», как и реальный пункт, — их было не отличить.
  */
-import { useMemo, useState } from "react";
-import { FolderPicker } from "@/components/folder-picker";
-import { useFolders, descendantIds } from "@/lib/folders";
+import { useMemo } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useFolders, buildTree, flatten, descendantIds } from "@/lib/folders";
+import { useState } from "react";
+
+const ALL = "__all__";
+const NONE = "__none__";
 
 export function useFolderFilter({ includeDescendants }: { includeDescendants: boolean }) {
   const [folderId, setFolderId] = useState<string | null>(null);
@@ -52,24 +66,32 @@ export function FolderFilterBar({
   filter: ReturnType<typeof useFolderFilter>;
   placeholder: string;
 }) {
+  const list = useMemo(() => flatten(buildTree(filter.folders)), [filter.folders]);
+  const value = filter.enabled ? (filter.folderId ?? NONE) : ALL;
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <div className="w-full sm:max-w-xs">
-        <FolderPicker
-          value={filter.enabled ? filter.folderId : null}
-          onChange={filter.setFolder}
-          placeholder={placeholder}
-        />
-      </div>
-      {filter.enabled && (
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground underline"
-          onClick={filter.reset}
-        >
-          Сбросить
-        </button>
-      )}
+    <div className="w-full sm:max-w-xs">
+      <Select
+        value={value}
+        onValueChange={(v) => {
+          if (v === ALL) filter.reset();
+          else if (v === NONE) filter.setFolder(null);
+          else filter.setFolder(v);
+        }}
+      >
+        <SelectTrigger aria-label={placeholder}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>Все папки</SelectItem>
+          <SelectItem value={NONE}>— Без папки —</SelectItem>
+          {list.map((n) => (
+            <SelectItem key={n.id} value={n.id}>
+              {"  ".repeat(n.depth)}
+              {n.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

@@ -83,12 +83,20 @@ export function PropertiesTable({
     return arr;
   }, [rows, sortKey, sortDir]);
 
-  const Th = ({ k, children, num }: any) => (
+  // Заголовок — настоящая кнопка: сортировка доступна с клавиатуры, а aria-sort
+  // сообщает скринридеру текущий порядок (WCAG 2.1.1, 4.1.2).
+  const Th = ({ k, children, num }: { k: string; children: React.ReactNode; num?: boolean }) => (
     <th
-      onClick={() => onSort(k)}
-      className={`text-${num ? "right" : "left"} font-medium text-xs uppercase tracking-wide text-muted-foreground p-2 cursor-pointer select-none`}
+      aria-sort={sortKey === k ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+      className={`${num ? "text-right" : "text-left"} font-medium text-xs uppercase tracking-wide text-muted-foreground p-0`}
     >
-      {children} {sortKey === k ? (sortDir === "asc" ? "↑" : "↓") : ""}
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`w-full min-h-9 px-2 ${num ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground rounded-sm`}
+      >
+        {children} {sortKey === k ? (sortDir === "asc" ? "↑" : "↓") : ""}
+      </button>
     </th>
   );
 

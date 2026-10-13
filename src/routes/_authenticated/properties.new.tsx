@@ -6,14 +6,23 @@ import { toast } from "sonner";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
+import { humanError } from "@/lib/human-error";
+import { z } from "zod";
+
+const search = z.object({
+  /** Папка, из которой нажали «Добавить»: подставляется в форму. */
+  folder: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/properties/new")({
+  validateSearch: search,
   component: NewProperty,
 });
 
 function NewProperty() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { folder } = Route.useSearch();
   const { ownerId, isLoading: ownerLoading } = useEffectiveOwnerId();
   const mut = useMutation({
     mutationFn: async (v: PropertyFormValues) => {
@@ -46,7 +55,7 @@ function NewProperty() {
       toast.success("Объект создан");
       navigate({ to: "/properties/$id", params: { id: data.id } });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(humanError(e, "Не удалось создать объект")),
   });
 
   return (
@@ -54,6 +63,7 @@ function NewProperty() {
       <h1 className="text-xl sm:text-2xl font-bold">Новый объект</h1>
       <PropertyForm
         formId="property-new-form"
+        initial={folder ? { folder_id: folder } : undefined}
         onSubmit={(v) => mut.mutate(v)}
         submitting={mut.isPending}
       />

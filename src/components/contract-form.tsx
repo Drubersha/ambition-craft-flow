@@ -95,6 +95,9 @@ export const PAYMENT_TIMING_LABELS: Record<string, string> = {
   arrears: "Постоплата — до N числа следующего месяца",
 };
 
+/** Валюты, которые предлагает форма; ранее поле было свободным текстом. */
+const CURRENCIES = ["RUB", "USD", "EUR", "KZT", "BYN"];
+
 /** Подписи полей площади и цены по единице измерения. */
 export const UNIT_LABELS: Record<string, { area: string; rate: string; name: string }> = {
   sqm: { area: "Площадь, м²", rate: "Цена за м² *", name: "Квадратные метры" },
@@ -287,6 +290,38 @@ export function ContractForm({
           </Select>
         </F>
       </div>
+      {/* Тип и статус влияют на дашборд и начисления — стоят сразу после сторон,
+          а не в самом низу формы. */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        <F label="Тип договора">
+          <Select value={v.kind} onValueChange={(x) => set("kind", x)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CONTRACT_KIND_LABELS).map(([k, l]) => (
+                <SelectItem key={k} value={k}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </F>
+        <F label="Статус">
+          <Select value={v.status} onValueChange={(x) => set("status", x)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CONTRACT_STATUS_LABELS).map(([k, l]) => (
+                <SelectItem key={k} value={k}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </F>
+      </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <F label={isAmendment ? "Номер допсоглашения" : "Номер договора"}>
           <Input
@@ -328,8 +363,6 @@ export function ContractForm({
             </SelectContent>
           </Select>
         </F>
-      </div>
-      <div className="grid sm:grid-cols-3 gap-3">
         <F label={(UNIT_LABELS[v.unit] ?? UNIT_LABELS.sqm).area}>
           <Input
             type="number"
@@ -357,14 +390,25 @@ export function ContractForm({
             <p className="text-xs text-destructive">Цена не может быть отрицательной.</p>
           )}
         </F>
-        <F label="Валюта">
-          <Input
-            value={v.currency}
-            onChange={(e) => set("currency", e.target.value.toUpperCase())}
-          />
-        </F>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <F label="Валюта">
+          <Select value={v.currency || "RUB"} onValueChange={(x) => set("currency", x)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+              {v.currency && !CURRENCIES.includes(v.currency) && (
+                <SelectItem value={v.currency}>{v.currency}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </F>
         <F label="Периодичность">
           <Select value={v.payment_period} onValueChange={(x) => set("payment_period", x)}>
             <SelectTrigger>
@@ -607,36 +651,6 @@ export function ContractForm({
           </F>
         </div>
       </details>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <F label="Статус">
-          <Select value={v.status} onValueChange={(x) => set("status", x)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CONTRACT_STATUS_LABELS).map(([k, l]) => (
-                <SelectItem key={k} value={k}>
-                  {l}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </F>
-        <F label="Тип договора">
-          <Select value={v.kind} onValueChange={(x) => set("kind", x)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CONTRACT_KIND_LABELS).map(([k, l]) => (
-                <SelectItem key={k} value={k}>
-                  {l}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </F>
-      </div>
       <MeterDraftRows
         drafts={v.meters}
         onChange={(m) => set("meters", m)}
@@ -653,8 +667,13 @@ export function ContractForm({
       <F label="Заметки">
         <Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
       </F>
+      {/* При внешней панели действий (formId) на телефоне кнопка в форме дублировала бы её. */}
       {!hideSubmit && (
-        <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={submitting}
+          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+        >
           {submitting ? "Сохранение..." : "Сохранить"}
         </Button>
       )}

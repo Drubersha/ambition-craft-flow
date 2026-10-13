@@ -3,7 +3,7 @@
 # NOTE: the kong service renders this file at startup by substituting ONLY the
 # ${SUPABASE_ANON_KEY} / ${SUPABASE_SERVICE_KEY} placeholders (sed, no eval) —
 # see the kong entrypoint in docker-compose.yml.
-_format_version: '2.1'
+_format_version: "2.1"
 _transform: true
 
 consumers:
@@ -59,3 +59,25 @@ services:
           - /storage/v1/
     plugins:
       - name: cors
+
+  # Realtime (websocket): без этого маршрута браузер получал 404 на
+  # /realtime/v1/websocket, и уведомления, чат и канбан не обновлялись.
+  # Контейнер зовётся realtime-dev.realtime (см. docker-compose.prod.yml).
+  - name: realtime-v1
+    url: http://realtime-dev.realtime:4000/socket/
+    routes:
+      - name: realtime-v1-route
+        strip_path: true
+        paths:
+          - /realtime/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon

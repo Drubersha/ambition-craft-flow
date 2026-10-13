@@ -1,12 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Plus, Users, Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TENANT_KIND_LABELS } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 
@@ -14,30 +22,55 @@ export const Route = createFileRoute("/_authenticated/tenants/")({
   component: TenantsList,
 });
 
+type Row = {
+  id: string;
+  name: string;
+  kind: string;
+  inn: string | null;
+  phone: string | null;
+  email: string | null;
+  contacts: { phone: string | null; email: string | null; sort_order: number }[] | null;
+};
+
+/** Телефон арендатора: из карточки, иначе — у основного контактного лица. */
+function tenantPhone(t: Row): string {
+  if (t.phone) return t.phone;
+  const first = [...(t.contacts ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0];
+  return first?.phone ?? "";
+}
+
 function TenantsList() {
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["tenants"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tenants")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select(
+          "id, name, kind, inn, phone, email, contacts:tenant_contacts(phone, email, sort_order)",
+        )
+        .order("name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as Row[];
     },
   });
 
-  const filtered = (data ?? []).filter((t) => {
-    if (!q) return true;
-    const s = q.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(s) ||
-      (t.inn ?? "").toLowerCase().includes(s) ||
-      (t.phone ?? "").toLowerCase().includes(s) ||
-      (t.email ?? "").toLowerCase().includes(s)
-    );
-  });
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (data ?? [])
+      .map((t) => ({ ...t, phoneText: tenantPhone(t) }))
+      .filter((t) => {
+        if (!s) return true;
+        return (
+          t.name.toLowerCase().includes(s) ||
+          (t.inn ?? "").toLowerCase().includes(s) ||
+          t.phoneText.toLowerCase().includes(s) ||
+          (t.email ?? "").toLowerCase().includes(s)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  }, [data, q]);
 
   return (
     <div className="space-y-4">
@@ -66,7 +99,7 @@ function TenantsList() {
       </div>
       {isLoading ? (
         <div>Загрузка...</div>
-      ) : filtered.length === 0 ? (
+      ) : (data ?? []).length === 0 ? (
         <Card className="p-12 text-center">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold">Арендаторов нет</h3>
@@ -77,24 +110,65 @@ function TenantsList() {
             </Link>
           </Button>
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">Ничего не найдено.</Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((t) => (
-            <Link key={t.id} to="/tenants/$id" params={{ id: t.id }}>
-              <Card className="p-4 hover:border-primary transition-colors h-full">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-medium truncate">{t.name}</div>
-                  <Badge variant="secondary">{TENANT_KIND_LABELS[t.kind]}</Badge>
-                </div>
-                <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
-                  {t.inn && <div>ИНН: {t.inn}</div>}
-                  {t.phone && <div>{t.phone}</div>}
-                  {t.email && <div className="truncate">{t.email}</div>}
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <Card className="p-0 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Название</TableHead>
+                <TableHead className="w-40">ИНН</TableHead>
+                <TableHead className="w-44">Телефон</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((t) => (
+                <TableRow
+                  key={t.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate({ to: "/tenants/$id", params: { id: t.id } })}
+                >
+                  <TableCell className="min-w-0">
+                    <Link
+                      to="/tenants/$id"
+                      params={{ id: t.id }}
+                      className="font-medium hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {t.name}
+                    </Link>
+                    {t.kind !== "company" && (
+                      <Badge variant="secondary" className="ml-2 align-middle">
+                        {TENANT_KIND_LABELS[t.kind]}
+                      </Badge>
+                    )}
+                    {/* На узком экране ИНН и телефон переносятся под название. */}
+                    <div className="sm:hidden text-xs text-muted-foreground mt-0.5">
+                      {[t.inn && `ИНН ${t.inn}`, t.phoneText].filter(Boolean).join(" · ") || "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">
+                    {t.inn || "—"}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell tabular-nums">
+                    {t.phoneText ? (
+                      <a
+                        href={`tel:${t.phoneText.replace(/[^\d+]/g, "")}`}
+                        className="hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t.phoneText}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   );

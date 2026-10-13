@@ -34,6 +34,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ConfirmButton } from "@/components/confirm-button";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   component: UsersPage,
@@ -60,7 +61,7 @@ function UsersPage() {
       toast.success("Аккаунт удалён");
       refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
   const linkTenantMut = useMutation({
     mutationFn: (vars: { memberUserId: string; ownerUserId: string }) =>
@@ -69,7 +70,7 @@ function UsersPage() {
       toast.success("Привязано как арендатор");
       refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(humanError(e)),
   });
 
   if (rolesQ.isLoading) return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>;
@@ -197,7 +198,7 @@ function CreateUserDialog({
       setFullName("");
       setRole("owner");
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(humanError(e, "Не удалось выполнить"));
     } finally {
       setPending(false);
     }

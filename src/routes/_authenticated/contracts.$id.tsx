@@ -19,9 +19,11 @@ import {
   formatNum,
   computeDepositWithArea,
   chargeTotalForPeriod,
+  defaultChargePeriod,
   monthsInRange,
   todayISO,
 } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -177,7 +179,7 @@ function EditContract() {
           : "Сохранено",
       );
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const delMeter = useMutation({
@@ -190,7 +192,7 @@ function EditContract() {
       qc.invalidateQueries({ queryKey: ["meters"] });
       toast.success("Счётчик удалён");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const del = useMutation({
@@ -203,7 +205,7 @@ function EditContract() {
       toast.success("Удалено");
       navigate({ to: "/contracts" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   if (isLoading || !data) return <div>Загрузка...</div>;
@@ -235,11 +237,15 @@ function EditContract() {
   const overpayment = Math.round((totalPaid - totalCharged) * 100) / 100;
   const depositPercent = livePct;
   const hasDeposit = inputsValid && depositPercent > 0;
+  // Если в договоре отмечена дата внесения депозита — он внесён, и эвристика
+  // «переплата ≥ депозит» не нужна: иначе блок краснел у каждого арендатора
+  // с неоплаченным текущим месяцем.
+  const depositPaidAt = ((data as any).deposit_paid_at as string | null) ?? null;
   const overpayColor = !hasDeposit
     ? "text-foreground"
-    : overpayment >= depositAmount
-      ? "text-green-600 dark:text-green-500"
-      : "text-red-600 dark:text-red-500";
+    : depositPaidAt || overpayment >= depositAmount
+      ? "text-success"
+      : "text-destructive";
 
   return (
     <div className="space-y-6">
@@ -487,18 +493,18 @@ function EditContract() {
           </div>
           <div>
             <div className="text-muted-foreground text-xs">
-              Переплата (всего оплачено − начислено)
+              {depositPaidAt ? "Внесён" : "Переплата (всего оплачено − начислено)"}
             </div>
             <div className={`font-semibold ${overpayColor}`}>
-              {formatMoney(overpayment, data.currency)}
+              {depositPaidAt ? formatDate(depositPaidAt) : formatMoney(overpayment, data.currency)}
             </div>
           </div>
         </div>
-        {hasDeposit && (
+        {hasDeposit && !depositPaidAt && (
           <p className={`text-xs mt-2 ${overpayColor}`}>
             {overpayment >= depositAmount
               ? `Обеспечительный платёж покрыт (переплата ≥ ${formatMoney(depositAmount, data.currency)}).`
-              : `Переплата меньше обеспечительного платежа. Не хватает: ${formatMoney(Math.max(0, depositAmount - overpayment), data.currency)}.`}
+              : `Дата внесения не указана, а переплата меньше обеспечительного платежа. Не хватает: ${formatMoney(Math.max(0, depositAmount - overpayment), data.currency)}. Если депозит внесён — укажите дату в условиях договора.`}
           </p>
         )}
       </MobileCollapsible>
@@ -560,17 +566,19 @@ function EditContract() {
       </MobileCollapsible>
 
       <MobileActionBar>
+        {/* Удаление — маленькой иконкой, чтобы не промахнуться мимо «Сохранить». */}
         <ConfirmButton
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
+          variant="outline"
+          size="icon"
+          className="min-h-11 min-w-11 text-destructive border-destructive/40"
+          aria-label="Удалить договор"
           destructive
           title="Удалить договор?"
           description="Договор и связанные начисления будут удалены. Действие необратимо."
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4" />
         </ConfirmButton>
         <Button
           type="submit"
@@ -600,19 +608,16 @@ function NewChargeDialog({
   period: string;
 }) {
   const [open, setOpen] = useState(false);
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const lastDay = (() => {
-    let monthsAhead = 1;
-    if (period === "quarterly") monthsAhead = 3;
-    if (period === "yearly") monthsAhead = 12;
-    return new Date(today.getFullYear(), today.getMonth() + monthsAhead, 0)
-      .toISOString()
-      .slice(0, 10);
-  })();
+  // Локальные даты (см. defaultChargePeriod): через toISOString() диалог
+  // открывался с периодом 30.09–30.10 и суммой за два месяца.
+  const {
+    start: firstDay,
+    end: lastDay,
+    due: defaultDue,
+  } = defaultChargePeriod(new Date(), period);
   const [periodStart, setPeriodStart] = useState(firstDay);
   const [periodEnd, setPeriodEnd] = useState(lastDay);
-  const [dueDate, setDueDate] = useState(lastDay);
+  const [dueDate, setDueDate] = useState(defaultDue);
   const [total, setTotal] = useState(
     String(chargeTotalForPeriod(rate, period, firstDay, lastDay, area)),
   );
@@ -661,7 +666,7 @@ function NewChargeDialog({
       toast.success("Начисление создано");
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
   return (
     <Dialog open={open} onOpenChange={setOpen}>

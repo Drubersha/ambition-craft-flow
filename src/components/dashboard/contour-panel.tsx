@@ -38,7 +38,7 @@ function Stat({
 }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+      <div className="text-xs text-muted-foreground truncate">{label}</div>
       <div className={`text-sm font-semibold break-words ${toneClass(tone)}`}>{value}</div>
     </div>
   );
@@ -55,7 +55,7 @@ function MiniChart({
 }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] text-muted-foreground mb-1">{title}</div>
+      <div className="text-xs text-muted-foreground mb-1">{title}</div>
       <div style={{ width: "100%", height: 150 }}>
         {empty ? (
           <div className="h-full flex items-center justify-center">

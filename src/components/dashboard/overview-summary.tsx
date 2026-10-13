@@ -22,12 +22,16 @@ export function OverviewSummary({
   periodLabel: string;
   showHints: boolean;
 }) {
+  // Одна цифра долга на всю страницу: та же, что «Общий долг» в разделе
+  // дебиторки (сальдо по договорам). Раньше плитка показывала долг без текущего
+  // месяца, а секция ниже — с ним, и на одном экране жили 346 750 и 527 500.
+  const debtTotal = kpi.aging.total + kpi.currentMonthUnpaid;
   const debtSub = [
     ...(kpi.aging.overdue > 0.005
       ? [{ label: "Просрочено", text: formatMoney(kpi.aging.overdue) }]
       : []),
     ...(kpi.currentMonthUnpaid > 0.005
-      ? [{ label: "Не оплачено за тек. месяц", text: formatMoney(kpi.currentMonthUnpaid) }]
+      ? [{ label: "Текущий месяц (срок не наступил)", text: formatMoney(kpi.currentMonthUnpaid) }]
       : []),
   ];
 
@@ -61,13 +65,13 @@ export function OverviewSummary({
       />
       <Kpi
         icon={AlertTriangle}
-        label="Дебиторка: всего"
-        value={formatMoney(kpi.aging.total)}
+        label="Долг всего"
+        value={formatMoney(debtTotal)}
         tone={kpi.aging.overdue > 0 ? "danger" : "ok"}
         sub={<ContourBreakdown items={debtSub} />}
         hint={
           showHints
-            ? "Неоплаченная дебиторка прошлых периодов (без начислений текущего месяца — они идут отдельной строкой). По контурам разложена в панелях ниже."
+            ? "Всё, что начислено и не оплачено, включая текущий месяц. Ниже — сколько из этого просрочено и сколько ещё не подошло к сроку. Та же цифра — «Общий долг» в разделе дебиторки."
             : undefined
         }
       />

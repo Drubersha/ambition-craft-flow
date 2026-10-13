@@ -20,6 +20,7 @@ import {
   computeContourDebt,
   computeContourYear,
   computeKpi,
+  excludeAmendments,
   filterDashboardData,
   getPeriodRange,
   periodLabel,
@@ -71,7 +72,7 @@ function Dashboard() {
         supabase
           .from("contracts")
           .select(
-            "id,number,status,kind,start_date,end_date,rate,area,payment_period,currency,property_id,tenant_id,tenant:tenants(id,name),property:properties(id,name,type,area_total)",
+            "id,number,status,kind,start_date,end_date,rate,area,payment_period,currency,property_id,tenant_id,parent_contract_id,tenant:tenants(id,name),property:properties(id,name,type,area_total)",
           ),
         supabase
           .from("charges")
@@ -86,7 +87,9 @@ function Dashboard() {
       if (cl.error) throw cl.error;
       return {
         properties: (pr.data ?? []) as Property[],
-        contracts: (co.data ?? []) as unknown as Contract[],
+        // Допсоглашения удваивали площадь, доход и «истекающие»: основной
+        // договор уже хранит действующие условия.
+        contracts: excludeAmendments((co.data ?? []) as unknown as Contract[]),
         charges: (ch.data ?? []) as Charge[],
         payments: (py.data ?? []) as Payment[],
         contractLinks: (cl.data ?? []) as ContractLink[],
@@ -246,9 +249,11 @@ function Dashboard() {
               onChange={setSelectedStatuses}
             />
 
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
-              Сбросить все
-            </Button>
+            {activeChips.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                Сбросить все
+              </Button>
+            )}
           </div>
           {activeChips.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -273,9 +278,11 @@ function Dashboard() {
       <Section
         title="Общее"
         right={
-          <label className="flex items-center gap-2 text-xs font-normal normal-case tracking-normal text-muted-foreground cursor-pointer">
+          // На тач-экранах наведения нет — переключатель там только мешает.
+          <label className="hidden md:flex min-h-11 items-center gap-2 text-xs font-normal normal-case tracking-normal text-muted-foreground cursor-pointer">
             <input
               type="checkbox"
+              className="h-4 w-4 accent-primary"
               checked={showKpiHints}
               onChange={(e) => setShowKpiHints(e.target.checked)}
             />
@@ -316,7 +323,8 @@ function Dashboard() {
       </Section>
 
       {/* Подробные разделы — под катом, монтируются при раскрытии */}
-      <CollapsibleSection title="Оперативно: текущий месяц">
+      {/* «Что делать сегодня» — открыто по умолчанию, остальное под катом. */}
+      <CollapsibleSection title="Оперативно: текущий месяц" defaultOpen>
         <CurrentMonthOps
           charges={filtered.charges}
           contracts={filtered.contracts}

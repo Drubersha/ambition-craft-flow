@@ -52,7 +52,8 @@ export function CollapsibleSection({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+        // min-h-11: цель нажатия была 16 px высотой (WCAG 2.5.8 требует ≥ 24).
+        className="flex min-h-11 -my-2 items-center gap-1.5 rounded-md text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
         {title}
@@ -80,7 +81,7 @@ export function Kpi({
   const card = (
     <Card className={hint ? "cursor-help" : undefined}>
       <CardContent className="p-2.5">
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Icon className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{label}</span>
         </div>
@@ -119,7 +120,7 @@ export function ContourBreakdown({
   return (
     <div className={`mt-1 space-y-0.5 ${className ?? ""}`}>
       {items.map((i) => (
-        <div key={i.label} className="text-[11px] text-muted-foreground">
+        <div key={i.label} className="text-xs text-muted-foreground">
           {i.label}: {i.text}
         </div>
       ))}

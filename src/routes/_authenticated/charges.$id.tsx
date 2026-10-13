@@ -5,29 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChargeStatusBadge } from "@/components/status-badges";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import { useState } from "react";
-import { formatDate, formatMoney, todayISO } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 import { toast } from "sonner";
 import { MobileCollapsible } from "@/components/mobile-collapsible";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
+import { AddPaymentDialog, EditPaymentButton } from "@/components/add-payment-dialog";
+import { EditChargeDialog } from "@/components/edit-charge-dialog";
 
 export const Route = createFileRoute("/_authenticated/charges/$id")({
   component: ChargeDetail,
@@ -45,7 +32,7 @@ function ChargeDetail() {
       const { data, error } = await supabase
         .from("charges")
         .select(
-          "*, contract:contracts(number, currency, tenant:tenants(id,name), property:properties(id,name))",
+          "*, contract:contracts(id, number, currency, tenant:tenants(id,name), property:properties(id,name))",
         )
         .eq("id", id)
         .single();
@@ -74,10 +61,11 @@ function ChargeDetail() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["charges"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-raw"] });
       toast.success("Удалено");
       navigate({ to: "/charges" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(humanError(e, "Не удалось удалить начисление")),
   });
 
   const delPayment = useMutation({
@@ -88,8 +76,12 @@ function ChargeDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["charge", id] });
       qc.invalidateQueries({ queryKey: ["charge-payments", id] });
+      qc.invalidateQueries({ queryKey: ["charges"] });
+      qc.invalidateQueries({ queryKey: ["payments"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-raw"] });
+      toast.success("Платёж удалён");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(humanError(e, "Не удалось удалить платёж")),
   });
 
   if (!charge) return <div>Загрузка...</div>;
@@ -107,9 +99,18 @@ function ChargeDetail() {
     );
   });
 
+  const paymentDialog = (trigger?: React.ReactNode) => (
+    <AddPaymentDialog
+      chargeId={id}
+      suggested={Math.max(0, remaining)}
+      currency={currency}
+      trigger={trigger}
+    />
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/charges">
             <ArrowLeft className="h-4 w-4 mr-1" /> К списку
@@ -129,12 +130,44 @@ function ChargeDetail() {
           <span className="hidden sm:inline">Удалить</span>
         </ConfirmButton>
       </div>
-      <h1 className="text-xl sm:text-2xl font-bold">Начисление</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">
+        Начисление{charge.contract?.tenant?.name ? ` · ${charge.contract.tenant.name}` : ""}
+      </h1>
 
-      <MobileCollapsible title="Сводка">
+      <MobileCollapsible
+        title="Сводка"
+        action={
+          <EditChargeDialog
+            charge={{
+              id: charge.id,
+              period_start: charge.period_start,
+              period_end: charge.period_end,
+              due_date: charge.due_date,
+              total: charge.total,
+              paid_total: charge.paid_total,
+            }}
+            currency={currency}
+          />
+        }
+      >
         <div className="space-y-1 text-sm">
           <Row label="Арендатор" value={charge.contract?.tenant?.name} />
-          <Row label="Договор" value={`№ ${charge.contract?.number}`} />
+          <Row
+            label="Договор"
+            value={
+              charge.contract?.id ? (
+                <Link
+                  to="/contracts/$id"
+                  params={{ id: charge.contract.id }}
+                  className="underline underline-offset-2"
+                >
+                  № {charge.contract?.number || "б/н"}
+                </Link>
+              ) : (
+                `№ ${charge.contract?.number ?? "б/н"}`
+              )
+            }
+          />
           <Row label="Объект" value={charge.contract?.property?.name} />
           <Row
             label="Период"
@@ -151,14 +184,11 @@ function ChargeDetail() {
         </div>
       </MobileCollapsible>
 
-      <MobileCollapsible
-        title="Платежи"
-        action={
-          <AddPaymentDialog chargeId={id} suggested={Math.max(0, remaining)} currency={currency} />
-        }
-      >
+      <MobileCollapsible title="Платежи" action={paymentDialog()}>
         {!payments || payments.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Платежей ещё нет.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Платежей ещё нет. Нажмите «Платёж», чтобы отметить оплату.
+          </p>
         ) : (
           <div className="space-y-2">
             {payments.length > 3 && (
@@ -181,7 +211,7 @@ function ChargeDetail() {
               <p className="text-sm text-muted-foreground text-center py-3">Ничего не найдено.</p>
             ) : (
               filteredPayments.map((p: any) => (
-                <Card key={p.id} className="p-3 flex items-start justify-between gap-3">
+                <Card key={p.id} className="p-3 flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium">{formatMoney(p.amount, currency)}</div>
                     <div className="text-xs text-muted-foreground break-words">
@@ -190,19 +220,22 @@ function ChargeDetail() {
                       {p.comment ? ` · ${p.comment}` : ""}
                     </div>
                   </div>
-                  <ConfirmButton
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Удалить платёж"
-                    className="shrink-0 min-h-11 min-w-11"
-                    destructive
-                    title="Удалить платёж?"
-                    description={`Платёж на ${formatMoney(p.amount, currency)} от ${formatDate(p.paid_at)}.`}
-                    confirmText="Удалить"
-                    onConfirm={() => delPayment.mutate(p.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </ConfirmButton>
+                  <div className="flex items-center shrink-0">
+                    <EditPaymentButton chargeId={id} currency={currency} payment={p} />
+                    <ConfirmButton
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Удалить платёж"
+                      className="min-h-11 min-w-11"
+                      destructive
+                      title="Удалить платёж?"
+                      description={`Платёж на ${formatMoney(p.amount, currency)} от ${formatDate(p.paid_at)}.`}
+                      confirmText="Удалить"
+                      onConfirm={() => delPayment.mutate(p.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmButton>
+                  </div>
                 </Card>
               ))
             )}
@@ -212,23 +245,37 @@ function ChargeDetail() {
 
       <MobileActionBar>
         <ConfirmButton
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
+          variant="outline"
+          size="icon"
+          className="min-h-11 min-w-11 text-destructive border-destructive/40"
+          aria-label="Удалить начисление"
           destructive
           title="Удалить начисление?"
           description="Начисление и связанные платежи будут удалены."
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить начисление
+          <Trash2 className="h-4 w-4" />
         </ConfirmButton>
+        {paymentDialog(
+          <Button size="lg" className="flex-1 min-h-11">
+            <Plus className="h-4 w-4 mr-1" /> Отметить оплату
+          </Button>,
+        )}
       </MobileActionBar>
     </div>
   );
 }
 
-function Row({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
+function Row({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: React.ReactNode;
+  highlight?: boolean;
+}) {
   return (
     <div className="flex justify-between gap-3">
       <span className="text-muted-foreground shrink-0">{label}</span>
@@ -240,101 +287,5 @@ function Row({ label, value, highlight }: { label: string; value: any; highlight
         {value ?? "—"}
       </span>
     </div>
-  );
-}
-
-function AddPaymentDialog({
-  chargeId,
-  suggested,
-  currency,
-}: {
-  chargeId: string;
-  suggested: number;
-  currency: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(suggested));
-  const [paidAt, setPaidAt] = useState(todayISO());
-  const [method, setMethod] = useState("Наличные");
-  const [comment, setComment] = useState("");
-  const qc = useQueryClient();
-  const mut = useMutation({
-    mutationFn: async () => {
-      const amt = Number(amount);
-      if (!Number.isFinite(amt) || amt <= 0) throw new Error("Сумма должна быть больше нуля");
-      if (!paidAt) throw new Error("Укажите дату оплаты");
-      const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("payments").insert({
-        owner_id: u.user!.id,
-        charge_id: chargeId,
-        amount: amt,
-        paid_at: paidAt,
-        method: method || null,
-        comment: comment || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["charge", chargeId] });
-      qc.invalidateQueries({ queryKey: ["charge-payments", chargeId] });
-      qc.invalidateQueries({ queryKey: ["payments"] });
-      qc.invalidateQueries({ queryKey: ["charges"] });
-      toast.success("Платёж отмечен");
-      setOpen(false);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Платёж
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Отметить оплату</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Сумма, {currency}</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Дата</Label>
-            <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label>Способ оплаты</Label>
-            <Select value={method} onValueChange={setMethod}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Наличные">Наличные</SelectItem>
-                <SelectItem value="Банковский перевод">Банковский перевод</SelectItem>
-                <SelectItem value="Карта">Карта</SelectItem>
-                <SelectItem value="Другое">Другое</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Комментарий</Label>
-            <Input value={comment} onChange={(e) => setComment(e.target.value)} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
-            Сохранить
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

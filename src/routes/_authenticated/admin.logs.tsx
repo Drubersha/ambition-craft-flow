@@ -177,7 +177,7 @@ function LogsPage() {
                         {r.metadata && Object.keys(r.metadata).length > 0 && (
                           <details className="text-muted-foreground">
                             <summary className="cursor-pointer">детали</summary>
-                            <pre className="text-[10px] whitespace-pre-wrap">
+                            <pre className="text-xs whitespace-pre-wrap">
                               {JSON.stringify(r.metadata, null, 2)}
                             </pre>
                           </details>

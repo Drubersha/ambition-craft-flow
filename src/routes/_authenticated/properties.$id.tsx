@@ -10,6 +10,7 @@ import { MobileActionBar } from "@/components/mobile-action-bar";
 import { ConfirmButton } from "@/components/confirm-button";
 import { PlanUploader } from "@/components/plan-uploader";
 import { useFolders, folderBreadcrumb } from "@/lib/folders";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/properties/$id")({
   component: EditProperty,
@@ -55,7 +56,7 @@ function EditProperty() {
       qc.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Сохранено");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   const del = useMutation({
@@ -68,7 +69,7 @@ function EditProperty() {
       toast.success("Удалено");
       navigate({ to: "/properties" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   if (isLoading || !data) return <div>Загрузка...</div>;
@@ -138,16 +139,17 @@ function EditProperty() {
 
       <MobileActionBar>
         <ConfirmButton
-          variant="destructive"
-          size="lg"
-          className="flex-1 min-h-11"
+          variant="outline"
+          size="icon"
+          className="min-h-11 min-w-11 text-destructive border-destructive/40"
+          aria-label="Удалить объект"
           destructive
           title="Удалить объект?"
           description="Объект будет удалён вместе со связанными данными. Действие необратимо."
           confirmText="Удалить"
           onConfirm={() => del.mutate()}
         >
-          <Trash2 className="h-4 w-4 mr-1" /> Удалить
+          <Trash2 className="h-4 w-4" />
         </ConfirmButton>
         <Button
           type="submit"

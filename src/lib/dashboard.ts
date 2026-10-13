@@ -29,9 +29,27 @@ export type Contract = {
   currency: string;
   property_id: string;
   tenant_id: string;
+  /** Заполнено у допсоглашений: это документ-история, а не второй договор. */
+  parent_contract_id?: string | null;
   tenant: { id: string; name: string } | null;
   property: { id: string; name: string; type: string; area_total: number } | null;
 };
+
+/** Допсоглашение — строка contracts с родителем; в расчётах площадей, доходов и сроков не участвует. */
+export function isAmendment(c: { parent_contract_id?: string | null }): boolean {
+  return Boolean(c.parent_contract_id);
+}
+
+/**
+ * Убирает допсоглашения из выборки договоров. Основной договор уже хранит
+ * действующие условия, поэтому допник в расчётах удваивал площадь, доход,
+ * «истекающие» и число договоров арендатора.
+ */
+export function excludeAmendments<T extends { parent_contract_id?: string | null }>(
+  contracts: T[],
+): T[] {
+  return contracts.filter((c) => !isAmendment(c));
+}
 
 export type Charge = {
   id: string;

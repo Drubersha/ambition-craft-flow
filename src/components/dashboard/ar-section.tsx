@@ -124,9 +124,18 @@ export function ArSection({
     { bucket: ">90", value: debt.aging["90+"] },
   ];
 
+  // Платёж → начисление → договор: без арендатора строка «09.10 · 300 000 ₽»
+  // ни о чём не говорит.
+  const chargeById = useMemo(() => new Map(charges.map((c) => [c.id, c])), [charges]);
+  const contractById = useMemo(() => new Map(contracts.map((c) => [c.id, c])), [contracts]);
   const recentPayments = [...payments]
     .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
-    .slice(0, 10);
+    .slice(0, 10)
+    .map((p) => {
+      const ch = chargeById.get(p.charge_id);
+      const ct = ch ? contractById.get(ch.contract_id) : undefined;
+      return { ...p, tenant: ct?.tenant?.name ?? "—", number: ct?.number ?? "" };
+    });
 
   // При периоде от двух месяцев — помесячная собираемость.
   // Оба столбца строятся по ОДНИМ И ТЕМ ЖЕ начислениям месяца: иначе в
@@ -311,10 +320,22 @@ export function ArSection({
           ) : (
             <ul className="divide-y">
               {recentPayments.map((p) => (
-                <li key={p.id} className="py-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{formatDate(p.paid_at)}</span>
-                  <span className="font-medium tabular-nums">{formatMoney(p.amount)}</span>
-                  <span className="text-xs text-muted-foreground">{p.method || "—"}</span>
+                <li key={p.id} className="py-2 flex items-center gap-3 text-sm">
+                  <span className="text-muted-foreground tabular-nums shrink-0 w-20">
+                    {formatDate(p.paid_at)}
+                  </span>
+                  <Link
+                    to="/charges/$id"
+                    params={{ id: p.charge_id }}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    {p.tenant}
+                    {p.number && <span className="text-muted-foreground"> · № {p.number}</span>}
+                  </Link>
+                  <span className="font-medium tabular-nums shrink-0">{formatMoney(p.amount)}</span>
+                  <span className="hidden sm:inline text-xs text-muted-foreground shrink-0 w-32 text-right truncate">
+                    {p.method || "—"}
+                  </span>
                 </li>
               ))}
             </ul>

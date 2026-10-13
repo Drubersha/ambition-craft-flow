@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useTenantContext } from "@/lib/tenant-context";
 import { METER_TYPE_LABELS, METER_UNITS, formatDate } from "@/lib/format";
 import { insertMeterReading, meterLastValue } from "@/lib/meters";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/me/meters")({
   component: MyMeters,
@@ -115,7 +116,7 @@ function MeterCard({
       toast.success("Показание передано");
       setValue("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (

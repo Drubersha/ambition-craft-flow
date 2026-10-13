@@ -307,6 +307,7 @@ async function expiringContracts(ctx: Ctx, args: { days?: number; tenant?: strin
     )
     .in("owner_id", ctx.ownerIds)
     .eq("status", "active")
+    .is("parent_contract_id", null)
     .not("end_date", "is", null)
     .gte("end_date", todayISO())
     .lte("end_date", iso(limitDate))
@@ -349,7 +350,8 @@ async function portfolioOverview(ctx: Ctx) {
     .from("contracts")
     .select("id, area, rate, payment_period, status, kind, property:properties(id,type)")
     .in("owner_id", ctx.ownerIds)
-    .eq("status", "active");
+    .eq("status", "active")
+    .is("parent_contract_id", null);
 
   const contour = (t?: string | null) =>
     t === "land"
@@ -404,7 +406,8 @@ async function tenantOverview(ctx: Ctx, args: { tenant?: string }) {
       "id, number, area, rate, payment_period, status, kind, tenant_id, property:properties(id,name,type)",
     )
     .in("owner_id", ctx.ownerIds)
-    .in("tenant_id", ids);
+    .in("tenant_id", ids)
+    .is("parent_contract_id", null);
 
   const active = (contracts ?? []).filter((c: any) => c.status === "active");
   if (active.length === 0) {

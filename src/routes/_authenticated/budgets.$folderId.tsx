@@ -49,6 +49,7 @@ import {
   type BudgetPeriodLimit,
 } from "@/lib/budget";
 import { formatMoney, formatDate, todayISO } from "@/lib/format";
+import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/budgets/$folderId")({
   component: BudgetDetail,
@@ -186,7 +187,7 @@ function BudgetDetail() {
         <span>· обновляется {plan.reset_day} числа</span>
         {!isCurrentPeriod && (
           <>
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-xs">
               <History className="h-3 w-3 mr-1" />
               Прошлый период
             </Badge>
@@ -253,8 +254,10 @@ function BudgetDetail() {
                   const hasOverride = overrides.has(cat.id);
                   const remain = limit - spent;
                   const pct = limit > 0 ? (spent / limit) * 100 : 0;
+                  // Ровно 100 % — лимит исчерпан, но не превышен.
                   const warn = pct >= plan.warning_percent && pct < 100;
-                  const over = pct >= 100 && limit > 0;
+                  const atLimit = limit > 0 && pct >= 100 && pct <= 100.0001;
+                  const over = limit > 0 && pct > 100.0001;
                   return (
                     <TableRow key={cat.id}>
                       <TableCell className="font-medium">{cat.name}</TableCell>
@@ -279,13 +282,18 @@ function BudgetDetail() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs w-10">{pct.toFixed(0)}%</span>
                           {over && (
-                            <Badge variant="destructive" className="text-[10px]">
+                            <Badge variant="destructive" className="text-xs">
                               <AlertTriangle className="h-3 w-3 mr-1" />
                               Перерасход
                             </Badge>
                           )}
+                          {atLimit && (
+                            <Badge variant="secondary" className="text-xs">
+                              Лимит исчерпан
+                            </Badge>
+                          )}
                           {warn && (
-                            <Badge className="bg-amber-500 hover:bg-amber-500 text-[10px]">
+                            <Badge className="bg-amber-500 hover:bg-amber-500 text-xs">
                               Близко
                             </Badge>
                           )}
@@ -492,7 +500,7 @@ function SettingsDialog({
       qc.invalidateQueries({ queryKey: ["budgets-index"] });
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (
@@ -680,7 +688,7 @@ function PeriodLimitsDialog({
       qc.invalidateQueries({ queryKey: ["budget-detail", folderId] });
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (
@@ -781,7 +789,7 @@ function AddExpenseDialog({
       setAmount("");
       setNote("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(humanError(e)),
   });
 
   return (

@@ -1,6 +1,26 @@
+# Боевой Caddyfile (копия файла с сервера, /root/leaseplease/Caddyfile).
+# Деплой этот файл не трогает: после правки скопировать на сервер и
+#   docker exec leaseplease-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#
+# Заголовки безопасности — только безвредные: HSTS (сайт и так только по HTTPS),
+# запрет встраивания в чужие фреймы, запрет угадывания типов, умеренный Referrer.
+# Полный Content-Security-Policy намеренно не задаём: приложение грузит
+# инлайн-скрипты TanStack Start и ходит на api.leaseplease.ru по websocket.
+(security_headers) {
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    -Server
+  }
+}
+
 leaseplease.ru {
+  import security_headers
   reverse_proxy app:3000
 }
 api.leaseplease.ru {
+  import security_headers
   reverse_proxy kong:8000
 }

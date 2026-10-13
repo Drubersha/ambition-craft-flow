@@ -73,7 +73,7 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
         <div className="flex items-center gap-2 text-muted-foreground">
           <Sparkles className="h-4 w-4" />
           <h2 className="font-semibold text-sm">Предложения ИИ</h2>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             функция в разработке
           </Badge>
         </div>
@@ -86,7 +86,7 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-primary" />
         <h2 className="font-semibold text-sm">Предложения ИИ ({suggestions.length})</h2>
-        <Badge variant="secondary" className="text-[10px]">
+        <Badge variant="secondary" className="text-xs">
           функция в разработке
         </Badge>
       </div>
@@ -99,7 +99,7 @@ export function SuggestionsPanel({ tenantFilter }: { tenantFilter: string | "all
                 <span className="font-medium text-sm">{s.title}</span>
                 <Badge
                   variant={s.priority === "high" ? "destructive" : "secondary"}
-                  className="text-[10px]"
+                  className="text-xs"
                 >
                   {s.priority === "high" ? "высокий" : s.priority === "low" ? "низкий" : "обычный"}
                 </Badge>

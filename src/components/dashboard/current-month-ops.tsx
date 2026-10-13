@@ -150,7 +150,7 @@ export function CurrentMonthOps({
         sub={
           <div className="mt-1 space-y-1">
             {stats.collection !== null && <Progress value={stats.collection} className="h-1.5" />}
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {formatMoney(stats.paid)} из {formatMoney(stats.billed)}
             </div>
           </div>
@@ -170,7 +170,7 @@ export function CurrentMonthOps({
         tone={stats.overdueSum > 0 ? "danger" : "ok"}
         sub={
           stats.overdueCount > 0 ? (
-            <div className="text-[11px] text-muted-foreground mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {stats.overdueCount} начислений(я)
             </div>
           ) : undefined
@@ -182,7 +182,7 @@ export function CurrentMonthOps({
         value={metersNoReading === null ? "…" : metersNoReading}
         tone={metersNoReading ? "warn" : "ok"}
         sub={
-          <Link to="/utilities" className="text-[11px] underline text-muted-foreground">
+          <Link to="/utilities" className="text-xs underline text-muted-foreground">
             Открыть коммуналку
           </Link>
         }
@@ -198,7 +198,7 @@ export function CurrentMonthOps({
         label="Потенциал свободных площадей"
         value={formatMoney(stats.vacantIncome)}
         sub={
-          <div className="text-[11px] text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1">
             {formatNum(stats.vacantArea)} м² свободно × базовая ставка, в месяц
           </div>
         }

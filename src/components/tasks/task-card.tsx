@@ -48,6 +48,7 @@ export function TaskCard({
         <button
           {...attributes}
           {...listeners}
+          aria-label="Перетащить задачу"
           className="cursor-grab touch-none text-muted-foreground hover:text-foreground mt-0.5"
         >
           <GripVertical className="h-4 w-4" />
@@ -58,21 +59,22 @@ export function TaskCard({
             <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{task.description}</p>
           )}
         </div>
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onDelete}>
-          <Trash2 className="h-3 w-3" />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          aria-label="Удалить задачу"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
       {task.photo_paths.length > 0 && <Thumb path={task.photo_paths[0]} />}
       <div className="flex items-center justify-between gap-1 flex-wrap">
-        <Badge
-          variant={task.priority === "high" ? "destructive" : "secondary"}
-          className="text-[10px]"
-        >
+        <Badge variant={task.priority === "high" ? "destructive" : "secondary"} className="text-xs">
           {task.priority === "high" ? "высокий" : task.priority === "low" ? "низкий" : "обычный"}
         </Badge>
-        {tenantName && (
-          <span className="text-[10px] text-muted-foreground truncate">{tenantName}</span>
-        )}
+        {tenantName && <span className="text-xs text-muted-foreground truncate">{tenantName}</span>}
       </div>
     </div>
   );
