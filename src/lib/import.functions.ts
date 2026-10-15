@@ -8,8 +8,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  */
 
 /** JSON без unknown: серверные функции TanStack требуют сериализуемых типов. */
-export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
 export type JsonObject = { [key: string]: JsonValue };
 
 export type ImportTokenRow = {
