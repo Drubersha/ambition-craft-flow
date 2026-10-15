@@ -1,0 +1,391 @@
+{
+  "format_version": "1.0",
+  "source": {
+    "system": "1С:Бухгалтерия предприятия 3.0",
+    "database": "ХБ",
+    "organization": {
+      "name": "ИП Марченко Э. В.",
+      "inn": "165500000000"
+    },
+    "exported_at": "2026-10-15T03:00:00+03:00"
+  },
+  "period": {
+    "from": "2026-04-15",
+    "to": "2026-10-15"
+  },
+  "mode": "window",
+  "counterparties": [
+    {
+      "id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "code": "000000123",
+      "kind": "company",
+      "name": "ООО «Вектор-Трейд»",
+      "full_name": "Общество с ограниченной ответственностью «Вектор-Трейд»",
+      "country": "RU",
+      "inn": "1655123456",
+      "kpp": "165501001",
+      "ogrn": "1161690012345",
+      "foreign_tax_id": null,
+      "legal_address": "420111, Казань, ул. Декабристов, 1, оф. 5",
+      "actual_address": "Казань, ул. Тестовая, 7, оф. 101",
+      "postal_address": null,
+      "bank": {
+        "name": "АО «Ак Барс Банк»",
+        "bik": "049205805",
+        "account": "40702810000000000001",
+        "corr_account": "30101810000000000805"
+      },
+      "signatory": {
+        "name": "Иванов Пётр Сергеевич",
+        "position": "Генеральный директор",
+        "basis": "Устав"
+      },
+      "contacts": [
+        {
+          "name": "Иванов Пётр Сергеевич",
+          "phone": "+7 917 000-00-01",
+          "email": "vector@example.com"
+        },
+        {
+          "name": "Бухгалтерия — Ольга",
+          "phone": "+7 917 000-00-11",
+          "email": "buh.vector@example.com"
+        }
+      ],
+      "is_active": true,
+      "updated_at": "2026-09-30T18:12:05+03:00"
+    },
+    {
+      "id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a02",
+      "code": "000000124",
+      "kind": "entrepreneur",
+      "name": "ИП Сафина Гульнара Рашитовна",
+      "full_name": "Индивидуальный предприниматель Сафина Гульнара Рашитовна",
+      "country": "RU",
+      "inn": "165512345678",
+      "kpp": null,
+      "ogrn": "316169000012345",
+      "foreign_tax_id": null,
+      "legal_address": null,
+      "actual_address": null,
+      "postal_address": null,
+      "bank": null,
+      "signatory": null,
+      "contacts": [
+        {
+          "name": "Сафина Гульнара Рашитовна",
+          "phone": "+7 917 000-00-02",
+          "email": "safina@example.com"
+        }
+      ],
+      "is_active": true,
+      "updated_at": "2026-03-15T10:00:00+03:00"
+    },
+    {
+      "id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a03",
+      "code": "000000125",
+      "kind": "foreign",
+      "name": "Almaty Trade LLP",
+      "full_name": "Товарищество с ограниченной ответственностью «Almaty Trade»",
+      "country": "KZ",
+      "inn": null,
+      "kpp": null,
+      "ogrn": null,
+      "foreign_tax_id": "BIN 123456789012",
+      "legal_address": "Казахстан, Алматы, пр. Абая, 10",
+      "actual_address": null,
+      "postal_address": null,
+      "bank": {
+        "name": "АО «Народный Банк Казахстана»",
+        "bik": "HSBKKZKX",
+        "account": "KZ123456789012345678",
+        "corr_account": null
+      },
+      "signatory": {
+        "name": "Ахметов Самат Ерланович",
+        "position": "Директор",
+        "basis": "Устав"
+      },
+      "contacts": [
+        {
+          "name": "Ахметов Самат Ерланович",
+          "phone": "+7 701 000-00-03",
+          "email": "office@almaty-trade.kz"
+        }
+      ],
+      "is_active": true,
+      "updated_at": "2026-08-01T09:30:00+03:00"
+    }
+  ],
+  "properties": [
+    {
+      "id": "0b7d5e6c-1a01-4c1e-9a2f-6f1c2a3e8b01",
+      "name": "Офис 101",
+      "address": "Казань, ул. Тестовая, 7",
+      "cadastral_no": "16:50:000000:1001",
+      "type": "office",
+      "unit": "sqm",
+      "area_total": 45,
+      "area_usable": 42,
+      "floor": "1",
+      "room_no": "101",
+      "own_use": false,
+      "updated_at": "2026-01-10T12:00:00+03:00"
+    },
+    {
+      "id": "0b7d5e6c-1a02-4c1e-9a2f-6f1c2a3e8b02",
+      "name": "Машиноместа",
+      "address": "Казань, ул. Тестовая, 7, паркинг",
+      "cadastral_no": null,
+      "type": "parking",
+      "unit": "space",
+      "area_total": 20,
+      "area_usable": null,
+      "floor": null,
+      "room_no": null,
+      "own_use": false,
+      "updated_at": "2026-01-10T12:00:00+03:00"
+    }
+  ],
+  "contracts": [
+    {
+      "id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "number": "А-101/2026",
+      "date": "2025-12-25",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "property_id": "0b7d5e6c-1a01-4c1e-9a2f-6f1c2a3e8b01",
+      "kind": "rent",
+      "status": "active",
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "handover_date": "2026-01-01",
+      "unit": "sqm",
+      "area": 45,
+      "rate": 950,
+      "rate_period": "monthly",
+      "currency": "RUB",
+      "vat_rate": 20,
+      "vat_included": true,
+      "payment_day": 10,
+      "payment_timing": "current",
+      "variable_part": {
+        "enabled": true,
+        "payment_day": 15,
+        "note": "электроэнергия, вода по счётчикам"
+      },
+      "deposit": {
+        "percent": 100,
+        "amount": 42750,
+        "paid_at": "2026-01-10",
+        "status": "paid"
+      },
+      "penalty_percent_per_day": 0.1,
+      "auto_renew": true,
+      "renew_months": 11,
+      "termination_notice_days": 30,
+      "updated_at": "2026-06-25T15:40:00+03:00"
+    },
+    {
+      "id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0004",
+      "number": "П-07/2026",
+      "date": "2026-05-28",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a03",
+      "property_id": "0b7d5e6c-1a02-4c1e-9a2f-6f1c2a3e8b02",
+      "kind": "rent",
+      "status": "active",
+      "start_date": "2026-06-01",
+      "end_date": null,
+      "handover_date": "2026-06-01",
+      "unit": "space",
+      "area": 2,
+      "rate": 4000,
+      "rate_period": "monthly",
+      "currency": "RUB",
+      "vat_rate": null,
+      "vat_included": true,
+      "payment_day": 1,
+      "payment_timing": "advance",
+      "variable_part": {
+        "enabled": false,
+        "payment_day": null,
+        "note": null
+      },
+      "deposit": {
+        "percent": null,
+        "amount": null,
+        "paid_at": null,
+        "status": "none"
+      },
+      "penalty_percent_per_day": null,
+      "auto_renew": true,
+      "renew_months": 1,
+      "termination_notice_days": 7,
+      "updated_at": "2026-05-28T11:00:00+03:00"
+    }
+  ],
+  "amendments": [
+    {
+      "id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0010",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "number": "ДС-1",
+      "date": "2026-06-25",
+      "effective_from": "2026-07-01",
+      "subject": "Индексация ставки до 950 ₽/м² с 01.07.2026",
+      "changes": {
+        "rate": 950,
+        "area": null,
+        "end_date": null,
+        "payment_day": null,
+        "vat_rate": null,
+        "other": null
+      },
+      "updated_at": "2026-06-25T15:40:00+03:00"
+    }
+  ],
+  "charges": [
+    {
+      "id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0901",
+      "doc_type": "realization",
+      "number": "ХБ-000412",
+      "date": "2026-09-30",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "kind": "rent",
+      "period_from": "2026-09-01",
+      "period_to": "2026-09-30",
+      "due_date": "2026-10-10",
+      "amount_without_vat": 35625,
+      "vat_amount": 7125,
+      "amount_total": 42750,
+      "currency": "RUB",
+      "description": "Аренда офиса 101 за сентябрь 2026",
+      "is_cancelled": false,
+      "updated_at": "2026-09-30T17:05:00+03:00"
+    },
+    {
+      "id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0902",
+      "doc_type": "realization",
+      "number": "ХБ-000418",
+      "date": "2026-09-30",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "kind": "utilities",
+      "period_from": "2026-09-01",
+      "period_to": "2026-09-30",
+      "due_date": "2026-10-15",
+      "amount_without_vat": 3250,
+      "vat_amount": 650,
+      "amount_total": 3900,
+      "currency": "RUB",
+      "description": "Возмещение коммунальных услуг за сентябрь 2026 (электро 392 кВт·ч)",
+      "is_cancelled": false,
+      "updated_at": "2026-10-02T10:20:00+03:00"
+    },
+    {
+      "id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0903",
+      "doc_type": "realization",
+      "number": "ХБ-000420",
+      "date": "2026-09-30",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0004",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a03",
+      "kind": "rent",
+      "period_from": "2026-09-01",
+      "period_to": "2026-09-30",
+      "due_date": "2026-09-01",
+      "amount_without_vat": 8000,
+      "vat_amount": 0,
+      "amount_total": 8000,
+      "currency": "RUB",
+      "description": "Аренда 2 машиномест за сентябрь 2026",
+      "is_cancelled": false,
+      "updated_at": "2026-09-30T17:05:00+03:00"
+    }
+  ],
+  "payments": [
+    {
+      "id": "8b4d6f1c-0b7d-4c1e-9a2f-5e6c1a010801",
+      "doc_type": "bank_in",
+      "number": "188",
+      "date": "2026-10-06",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "amount": 20000,
+      "currency": "RUB",
+      "purpose": "Оплата по договору А-101/2026 за сентябрь 2026, в т.ч. НДС 20%",
+      "allocations": [
+        {
+          "charge_id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0901",
+          "amount": 20000
+        }
+      ],
+      "offset": null,
+      "is_cancelled": false,
+      "updated_at": "2026-10-06T14:00:00+03:00"
+    },
+    {
+      "id": "8b4d6f1c-0b7d-4c1e-9a2f-5e6c1a010802",
+      "doc_type": "offset",
+      "number": "7",
+      "date": "2026-10-09",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "amount": 22750,
+      "currency": "RUB",
+      "purpose": "Зачёт взаимных требований по акту № 7 от 09.10.2026",
+      "allocations": [
+        {
+          "charge_id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0901",
+          "amount": 22750
+        }
+      ],
+      "offset": {
+        "basis_doc_id": "8b4d6f1c-0b7d-4c1e-9a2f-5e6c1a010802",
+        "basis_doc_number": "Акт зачёта № 7",
+        "basis_doc_date": "2026-10-09",
+        "counter_doc_id": "7d5e6c1a-9a2f-4c1e-8b4d-0b7d6f1c0301",
+        "counter_doc_number": "Акт выполненных работ № 15",
+        "counter_doc_date": "2026-09-30",
+        "description": "Ремонт кровли над офисом 205, выполнен арендатором",
+        "expense_category": "Текущий ремонт"
+      },
+      "is_cancelled": false,
+      "updated_at": "2026-10-09T16:30:00+03:00"
+    },
+    {
+      "id": "8b4d6f1c-0b7d-4c1e-9a2f-5e6c1a010803",
+      "doc_type": "cash_in",
+      "number": "ПКО-31",
+      "date": "2026-09-02",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0004",
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a03",
+      "amount": 8000,
+      "currency": "RUB",
+      "purpose": "Аренда машиномест за сентябрь",
+      "allocations": [
+        {
+          "charge_id": "5e6c1a01-0b7d-4c1e-9a2f-8b4d6f1c0903",
+          "amount": 8000
+        }
+      ],
+      "offset": null,
+      "is_cancelled": false,
+      "updated_at": "2026-09-02T12:10:00+03:00"
+    }
+  ],
+  "balances": [
+    {
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a01",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0001",
+      "as_of": "2026-10-15",
+      "debit": 3900,
+      "credit": 0
+    },
+    {
+      "counterparty_id": "6f1c2a3e-8b4d-4c1e-9a2f-0b7d5e6c1a03",
+      "contract_id": "9a2f0b7d-5e6c-4c1e-8b4d-6f1c2a3e0004",
+      "as_of": "2026-10-15",
+      "debit": 0,
+      "credit": 0
+    }
+  ]
+}

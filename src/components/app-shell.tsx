@@ -22,6 +22,7 @@ import {
   Settings,
   Gauge,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,7 @@ const OWNER_NAV = [
   { to: "/budgets", label: "Бюджет", icon: PiggyBank },
   { to: "/tasks", label: "Задачи", icon: KanbanSquare },
   { to: "/chats", label: "Чаты", icon: MessageSquare },
+  { to: "/import", label: "Импорт из 1С", icon: Download },
   { to: "/users", label: "Пользователи", icon: ShieldCheck },
   { to: "/faq", label: "FAQ и помощь", icon: HelpCircle },
 ] as const;

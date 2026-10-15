@@ -17,6 +17,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedFaqRouteImport } from './routes/_authenticated/faq'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
@@ -48,6 +49,7 @@ import { Route as AuthenticatedTenantsIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedTenantsIdRouteImport } from './routes/_authenticated/tenants.$id'
 import { Route as AuthenticatedTenantsNewRouteImport } from './routes/_authenticated/tenants.new'
 import { Route as AuthenticatedUtilitiesIndexRouteImport } from './routes/_authenticated/utilities.index'
+import { Route as Api1cImportRouteImport } from './routes/api.1c.import'
 import { Route as AuthenticatedAdminUserUserIdRouteImport } from './routes/_authenticated/admin.user.$userId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -87,6 +89,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedFaqRoute = AuthenticatedFaqRouteImport.update({
   id: '/faq',
   path: '/faq',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
@@ -258,6 +265,11 @@ const AuthenticatedUtilitiesIndexRoute =
     path: '/utilities/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const Api1cImportRoute = Api1cImportRouteImport.update({
+  id: '/api/1c/import',
+  path: '/api/1c/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminUserUserIdRoute =
   AuthenticatedAdminUserUserIdRouteImport.update({
     id: '/admin/user/$userId',
@@ -273,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AuthenticatedAiRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/import': typeof AuthenticatedImportRoute
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -293,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/api/1c/import': typeof Api1cImportRoute
   '/budgets/': typeof AuthenticatedBudgetsIndexRoute
   '/charges/': typeof AuthenticatedChargesIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
@@ -314,6 +328,7 @@ export interface FileRoutesByTo {
   '/ai': typeof AuthenticatedAiRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/import': typeof AuthenticatedImportRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/api/notify-email': typeof ApiNotifyEmailRoute
@@ -333,6 +348,7 @@ export interface FileRoutesByTo {
   '/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/api/1c/import': typeof Api1cImportRoute
   '/budgets': typeof AuthenticatedBudgetsIndexRoute
   '/charges': typeof AuthenticatedChargesIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
@@ -356,6 +372,7 @@ export interface FileRoutesById {
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/faq': typeof AuthenticatedFaqRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
@@ -376,6 +393,7 @@ export interface FileRoutesById {
   '/_authenticated/properties/new': typeof AuthenticatedPropertiesNewRoute
   '/_authenticated/tenants/$id': typeof AuthenticatedTenantsIdRoute
   '/_authenticated/tenants/new': typeof AuthenticatedTenantsNewRoute
+  '/api/1c/import': typeof Api1cImportRoute
   '/_authenticated/budgets/': typeof AuthenticatedBudgetsIndexRoute
   '/_authenticated/charges/': typeof AuthenticatedChargesIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
@@ -399,6 +417,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/dashboard'
     | '/faq'
+    | '/import'
     | '/me'
     | '/settings'
     | '/users'
@@ -419,6 +438,7 @@ export interface FileRouteTypes {
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/api/1c/import'
     | '/budgets/'
     | '/charges/'
     | '/chats/'
@@ -440,6 +460,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/dashboard'
     | '/faq'
+    | '/import'
     | '/settings'
     | '/users'
     | '/api/notify-email'
@@ -459,6 +480,7 @@ export interface FileRouteTypes {
     | '/properties/new'
     | '/tenants/$id'
     | '/tenants/new'
+    | '/api/1c/import'
     | '/budgets'
     | '/charges'
     | '/chats'
@@ -481,6 +503,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai'
     | '/_authenticated/dashboard'
     | '/_authenticated/faq'
+    | '/_authenticated/import'
     | '/_authenticated/me'
     | '/_authenticated/settings'
     | '/_authenticated/users'
@@ -501,6 +524,7 @@ export interface FileRouteTypes {
     | '/_authenticated/properties/new'
     | '/_authenticated/tenants/$id'
     | '/_authenticated/tenants/new'
+    | '/api/1c/import'
     | '/_authenticated/budgets/'
     | '/_authenticated/charges/'
     | '/_authenticated/chats/'
@@ -522,6 +546,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiNotifyEmailRoute: typeof ApiNotifyEmailRoute
+  Api1cImportRoute: typeof Api1cImportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -580,6 +605,13 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof AuthenticatedFaqRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/me': {
@@ -799,6 +831,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUtilitiesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/1c/import': {
+      id: '/api/1c/import'
+      path: '/api/1c/import'
+      fullPath: '/api/1c/import'
+      preLoaderRoute: typeof Api1cImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/user/$userId': {
       id: '/_authenticated/admin/user/$userId'
       path: '/admin/user/$userId'
@@ -837,6 +876,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFaqRoute: typeof AuthenticatedFaqRoute
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
@@ -867,6 +907,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFaqRoute: AuthenticatedFaqRoute,
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
@@ -903,6 +944,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiNotifyEmailRoute: ApiNotifyEmailRoute,
+  Api1cImportRoute: Api1cImportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

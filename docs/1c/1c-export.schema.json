@@ -1,0 +1,307 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://leaseplease.ru/schemas/1c-export-1.0.json",
+  "title": "Обмен 1С → LeasePlease, формат 1.0",
+  "description": "Один файл = один ежедневный пакет: справочники целиком + документы за окно period.from..period.to. Идентификаторы — GUID объектов 1С (УникальныйИдентификатор), они же ключи повторной загрузки.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "source", "period", "mode", "counterparties", "contracts", "charges", "payments"],
+  "properties": {
+    "format_version": { "const": "1.0" },
+    "source": {
+      "type": "object",
+      "required": ["system", "exported_at"],
+      "properties": {
+        "system": { "type": "string", "description": "Конфигурация и версия 1С" },
+        "database": { "type": "string" },
+        "organization": {
+          "type": "object",
+          "properties": { "name": { "type": "string" }, "inn": { "type": "string" } }
+        },
+        "exported_at": { "$ref": "#/definitions/datetime" }
+      }
+    },
+    "period": {
+      "type": "object",
+      "required": ["from", "to"],
+      "description": "Окно документов (начисления, оплаты, сальдо). Документы вне окна в приёмнике не трогаются.",
+      "properties": { "from": { "$ref": "#/definitions/date" }, "to": { "$ref": "#/definitions/date" } }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["window", "full"],
+      "description": "window — обычный ежедневный пакет; full — полный снимок (документы вне окна тоже приводятся к файлу)."
+    },
+    "counterparties": { "type": "array", "items": { "$ref": "#/definitions/counterparty" } },
+    "properties": { "type": "array", "items": { "$ref": "#/definitions/property" } },
+    "contracts": { "type": "array", "items": { "$ref": "#/definitions/contract" } },
+    "amendments": { "type": "array", "items": { "$ref": "#/definitions/amendment" } },
+    "charges": { "type": "array", "items": { "$ref": "#/definitions/charge" } },
+    "payments": { "type": "array", "items": { "$ref": "#/definitions/payment" } },
+    "balances": { "type": "array", "items": { "$ref": "#/definitions/balance" } }
+  },
+  "definitions": {
+    "guid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "GUID объекта 1С (Ссылка.УникальныйИдентификатор()), 36 символов"
+    },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "ГГГГ-ММ-ДД, без времени" },
+    "datetime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}:\\d{2}|Z)$",
+      "description": "ISO 8601 с часовым поясом, например 2026-10-15T03:00:00+03:00"
+    },
+    "money": { "type": "number", "multipleOf": 0.01, "description": "Число, точка — разделитель, до 2 знаков; без пробелов и символа валюты" },
+    "nullableMoney": { "oneOf": [{ "$ref": "#/definitions/money" }, { "type": "null" }] },
+    "nullableString": { "type": ["string", "null"] },
+    "nullableDate": { "oneOf": [{ "$ref": "#/definitions/date" }, { "type": "null" }] },
+    "nullableDatetime": { "oneOf": [{ "$ref": "#/definitions/datetime" }, { "type": "null" }] },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "default": "RUB" },
+
+    "counterparty": {
+      "type": "object",
+      "required": ["id", "kind", "name", "country", "is_active"],
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "code": { "$ref": "#/definitions/nullableString", "description": "Код справочника 1С" },
+        "kind": { "type": "string", "enum": ["company", "entrepreneur", "person", "foreign"] },
+        "name": { "type": "string", "minLength": 1 },
+        "full_name": { "$ref": "#/definitions/nullableString" },
+        "country": { "type": "string", "pattern": "^[A-Z]{2}$", "description": "ISO 3166-1 alpha-2: RU, KZ, BY…" },
+        "inn": { "$ref": "#/definitions/nullableString", "description": "Обязателен для российских юрлиц и ИП; для иностранных — null" },
+        "kpp": { "$ref": "#/definitions/nullableString" },
+        "ogrn": { "$ref": "#/definitions/nullableString" },
+        "foreign_tax_id": { "$ref": "#/definitions/nullableString", "description": "Налоговый/регистрационный номер иностранного контрагента (BIN, TIN, рег. номер) — вместо ИНН" },
+        "legal_address": { "$ref": "#/definitions/nullableString" },
+        "actual_address": { "$ref": "#/definitions/nullableString" },
+        "postal_address": { "$ref": "#/definitions/nullableString" },
+        "bank": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "name": { "$ref": "#/definitions/nullableString" },
+                "bik": { "$ref": "#/definitions/nullableString", "description": "БИК или SWIFT для иностранных банков" },
+                "account": { "$ref": "#/definitions/nullableString", "description": "Расчётный счёт или IBAN" },
+                "corr_account": { "$ref": "#/definitions/nullableString" }
+              }
+            }
+          ]
+        },
+        "signatory": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "name": { "$ref": "#/definitions/nullableString" },
+                "position": { "$ref": "#/definitions/nullableString" },
+                "basis": { "$ref": "#/definitions/nullableString" }
+              }
+            }
+          ]
+        },
+        "contacts": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "phone": { "$ref": "#/definitions/nullableString" },
+              "email": { "$ref": "#/definitions/nullableString" }
+            }
+          }
+        },
+        "is_active": { "type": "boolean" },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["company", "entrepreneur"] } } },
+          "then": { "properties": { "inn": { "type": "string", "pattern": "^\\d{10}$|^\\d{12}$" } } }
+        }
+      ]
+    },
+
+    "property": {
+      "type": "object",
+      "required": ["id", "name", "address", "type", "unit", "area_total"],
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "name": { "type": "string", "minLength": 1 },
+        "address": { "type": "string", "minLength": 1 },
+        "cadastral_no": { "$ref": "#/definitions/nullableString" },
+        "type": { "type": "string", "enum": ["office", "warehouse", "retail", "production", "coworking", "land", "parking", "other"] },
+        "unit": { "type": "string", "enum": ["sqm", "space", "lot"], "description": "sqm — м², space — машиноместа, lot — лоты" },
+        "area_total": { "type": "number", "minimum": 0, "description": "м² или количество мест/лотов" },
+        "area_usable": { "type": ["number", "null"], "minimum": 0 },
+        "floor": { "$ref": "#/definitions/nullableString" },
+        "room_no": { "$ref": "#/definitions/nullableString" },
+        "own_use": { "type": "boolean", "description": "Используется под собственные нужды (АХЧ)" },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      }
+    },
+
+    "contract": {
+      "type": "object",
+      "required": ["id", "number", "date", "counterparty_id", "kind", "status", "start_date", "unit", "rate", "rate_period", "currency"],
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "number": { "type": "string" },
+        "date": { "$ref": "#/definitions/date", "description": "Дата подписания" },
+        "counterparty_id": { "$ref": "#/definitions/guid" },
+        "property_id": { "oneOf": [{ "$ref": "#/definitions/guid" }, { "type": "null" }], "description": "null, если в 1С объекты не ведутся — сопоставим вручную по номеру" },
+        "kind": { "type": "string", "enum": ["rent", "own_use"] },
+        "status": { "type": "string", "enum": ["draft", "active", "finished", "terminated"] },
+        "start_date": { "$ref": "#/definitions/date" },
+        "end_date": { "$ref": "#/definitions/nullableDate", "description": "null — бессрочный" },
+        "handover_date": { "$ref": "#/definitions/nullableDate" },
+        "unit": { "type": "string", "enum": ["sqm", "space", "lot"] },
+        "area": { "type": ["number", "null"], "minimum": 0 },
+        "rate": { "$ref": "#/definitions/money", "description": "Ставка за единицу за период rate_period: ₽/м²/мес, ₽/место/мес, ₽/м²/квартал…" },
+        "rate_period": { "type": "string", "enum": ["monthly", "quarterly", "yearly", "one_time"] },
+        "currency": { "$ref": "#/definitions/currency" },
+        "vat_rate": { "type": ["number", "null"], "description": "20, 10, 0 или null (без НДС)" },
+        "vat_included": { "type": "boolean", "description": "true — ставка указана с НДС (в том числе), false — НДС сверх" },
+        "payment_day": { "type": ["integer", "null"], "minimum": 1, "maximum": 31 },
+        "payment_timing": { "type": ["string", "null"], "enum": ["advance", "current", "arrears", null], "description": "advance — предоплата до N числа предыдущего месяца; current — до N числа расчётного; arrears — до N числа следующего" },
+        "variable_part": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "payment_day": { "type": ["integer", "null"] },
+            "note": { "$ref": "#/definitions/nullableString" }
+          }
+        },
+        "deposit": {
+          "type": "object",
+          "properties": {
+            "percent": { "type": ["number", "null"] },
+            "amount": { "$ref": "#/definitions/nullableMoney" },
+            "paid_at": { "$ref": "#/definitions/nullableDate" },
+            "status": { "type": "string", "enum": ["none", "paid", "offset", "returned"] }
+          }
+        },
+        "penalty_percent_per_day": { "type": ["number", "null"] },
+        "auto_renew": { "type": "boolean" },
+        "renew_months": { "type": ["integer", "null"] },
+        "termination_notice_days": { "type": ["integer", "null"] },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      }
+    },
+
+    "amendment": {
+      "type": "object",
+      "required": ["id", "contract_id", "number", "date", "effective_from"],
+      "description": "Допсоглашение — отдельный документ со ссылкой на договор. В changes — только то, что меняется (остальное null).",
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "contract_id": { "$ref": "#/definitions/guid" },
+        "number": { "type": "string" },
+        "date": { "$ref": "#/definitions/date" },
+        "effective_from": { "$ref": "#/definitions/date" },
+        "subject": { "$ref": "#/definitions/nullableString" },
+        "changes": {
+          "type": "object",
+          "properties": {
+            "rate": { "$ref": "#/definitions/nullableMoney" },
+            "area": { "type": ["number", "null"] },
+            "end_date": { "$ref": "#/definitions/nullableDate" },
+            "payment_day": { "type": ["integer", "null"] },
+            "vat_rate": { "type": ["number", "null"] },
+            "other": { "$ref": "#/definitions/nullableString", "description": "Текстом: смена реквизитов, объекта и т. п." }
+          }
+        },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      }
+    },
+
+    "charge": {
+      "type": "object",
+      "required": ["id", "doc_type", "number", "date", "contract_id", "counterparty_id", "kind", "period_from", "period_to", "amount_without_vat", "vat_amount", "amount_total", "currency", "is_cancelled"],
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "doc_type": { "type": "string", "enum": ["realization", "act", "invoice", "adjustment"], "description": "realization — «Реализация (акт, накладная)»; adjustment — корректировка реализации (сумма может быть отрицательной)" },
+        "number": { "type": "string" },
+        "date": { "$ref": "#/definitions/date" },
+        "contract_id": { "$ref": "#/definitions/guid" },
+        "counterparty_id": { "$ref": "#/definitions/guid" },
+        "kind": { "type": "string", "enum": ["rent", "utilities", "other"] },
+        "period_from": { "$ref": "#/definitions/date" },
+        "period_to": { "$ref": "#/definitions/date" },
+        "due_date": { "$ref": "#/definitions/nullableDate", "description": "Срок оплаты по документу или условиям договора" },
+        "amount_without_vat": { "$ref": "#/definitions/money" },
+        "vat_amount": { "$ref": "#/definitions/money" },
+        "amount_total": { "$ref": "#/definitions/money" },
+        "currency": { "$ref": "#/definitions/currency" },
+        "description": { "$ref": "#/definitions/nullableString" },
+        "is_cancelled": { "type": "boolean", "description": "true — документ помечен на удаление / непроведён: в приёмнике аннулируется" },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      }
+    },
+
+    "payment": {
+      "type": "object",
+      "required": ["id", "doc_type", "number", "date", "counterparty_id", "amount", "currency", "allocations", "is_cancelled"],
+      "properties": {
+        "id": { "$ref": "#/definitions/guid" },
+        "doc_type": { "type": "string", "enum": ["bank_in", "cash_in", "offset", "return", "adjustment"], "description": "bank_in — поступление на р/с; cash_in — ПКО; offset — зачёт взаимных требований; return — возврат арендатору (сумма отрицательная); adjustment — корректировка долга" },
+        "number": { "type": "string" },
+        "date": { "$ref": "#/definitions/date" },
+        "contract_id": { "oneOf": [{ "$ref": "#/definitions/guid" }, { "type": "null" }] },
+        "counterparty_id": { "$ref": "#/definitions/guid" },
+        "amount": { "$ref": "#/definitions/money" },
+        "currency": { "$ref": "#/definitions/currency" },
+        "purpose": { "$ref": "#/definitions/nullableString", "description": "Назначение платежа" },
+        "allocations": {
+          "type": "array",
+          "description": "Какие начисления закрывает платёж (разнесение из 1С). Пустой массив — приёмник разнесёт сам по FIFO внутри договора.",
+          "items": {
+            "type": "object",
+            "required": ["charge_id", "amount"],
+            "properties": { "charge_id": { "$ref": "#/definitions/guid" }, "amount": { "$ref": "#/definitions/money" } }
+          }
+        },
+        "offset": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "description": "Только для doc_type = offset",
+              "required": ["basis_doc_number", "basis_doc_date", "description"],
+              "properties": {
+                "basis_doc_id": { "oneOf": [{ "$ref": "#/definitions/guid" }, { "type": "null" }] },
+                "basis_doc_number": { "type": "string", "description": "Акт зачёта взаимных требований" },
+                "basis_doc_date": { "$ref": "#/definitions/date" },
+                "counter_doc_id": { "oneOf": [{ "$ref": "#/definitions/guid" }, { "type": "null" }], "description": "Документ встречного обязательства (поступление услуг от арендатора)" },
+                "counter_doc_number": { "$ref": "#/definitions/nullableString" },
+                "counter_doc_date": { "$ref": "#/definitions/nullableDate" },
+                "description": { "type": "string", "description": "Чем оплачено: услуга, работы, материалы" },
+                "expense_category": { "$ref": "#/definitions/nullableString", "description": "Статья расходов для бюджета (Текущий ремонт, Охрана…)" }
+              }
+            }
+          ]
+        },
+        "is_cancelled": { "type": "boolean" },
+        "updated_at": { "$ref": "#/definitions/nullableDatetime" }
+      }
+    },
+
+    "balance": {
+      "type": "object",
+      "required": ["counterparty_id", "as_of", "debit", "credit"],
+      "description": "Сальдо по счёту 62 на дату — для автоматической сверки; на данные приёмника не влияет",
+      "properties": {
+        "counterparty_id": { "$ref": "#/definitions/guid" },
+        "contract_id": { "oneOf": [{ "$ref": "#/definitions/guid" }, { "type": "null" }] },
+        "as_of": { "$ref": "#/definitions/date" },
+        "debit": { "$ref": "#/definitions/money", "description": "Долг арендатора перед нами" },
+        "credit": { "$ref": "#/definitions/money", "description": "Наш долг / аванс арендатора" }
+      }
+    }
+  }
+}

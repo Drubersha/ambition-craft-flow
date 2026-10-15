@@ -1,0 +1,152 @@
+{
+  "format_version": "1.0",
+  "source": {
+    "system": "",
+    "database": "",
+    "organization": { "name": "", "inn": "" },
+    "exported_at": ""
+  },
+  "period": { "from": "", "to": "" },
+  "mode": "window",
+
+  "counterparties": [
+    {
+      "id": "",
+      "code": "",
+      "kind": "",
+      "name": "",
+      "full_name": "",
+      "country": "RU",
+      "inn": null,
+      "kpp": null,
+      "ogrn": null,
+      "foreign_tax_id": null,
+      "legal_address": null,
+      "actual_address": null,
+      "postal_address": null,
+      "bank": { "name": "", "bik": "", "account": "", "corr_account": null },
+      "signatory": { "name": "", "position": "", "basis": "" },
+      "contacts": [{ "name": "", "phone": null, "email": null }],
+      "is_active": true,
+      "updated_at": null
+    }
+  ],
+
+  "properties": [
+    {
+      "id": "",
+      "name": "",
+      "address": "",
+      "cadastral_no": null,
+      "type": "",
+      "unit": "sqm",
+      "area_total": 0,
+      "area_usable": null,
+      "floor": null,
+      "room_no": null,
+      "own_use": false,
+      "updated_at": null
+    }
+  ],
+
+  "contracts": [
+    {
+      "id": "",
+      "number": "",
+      "date": "",
+      "counterparty_id": "",
+      "property_id": null,
+      "kind": "rent",
+      "status": "",
+      "start_date": "",
+      "end_date": null,
+      "handover_date": null,
+      "unit": "sqm",
+      "area": null,
+      "rate": 0,
+      "rate_period": "monthly",
+      "currency": "RUB",
+      "vat_rate": null,
+      "vat_included": true,
+      "payment_day": null,
+      "payment_timing": null,
+      "variable_part": { "enabled": false, "payment_day": null, "note": null },
+      "deposit": { "percent": null, "amount": null, "paid_at": null, "status": "none" },
+      "penalty_percent_per_day": null,
+      "auto_renew": false,
+      "renew_months": null,
+      "termination_notice_days": null,
+      "updated_at": null
+    }
+  ],
+
+  "amendments": [
+    {
+      "id": "",
+      "contract_id": "",
+      "number": "",
+      "date": "",
+      "effective_from": "",
+      "subject": null,
+      "changes": {
+        "rate": null,
+        "area": null,
+        "end_date": null,
+        "payment_day": null,
+        "vat_rate": null,
+        "other": null
+      },
+      "updated_at": null
+    }
+  ],
+
+  "charges": [
+    {
+      "id": "",
+      "doc_type": "realization",
+      "number": "",
+      "date": "",
+      "contract_id": "",
+      "counterparty_id": "",
+      "kind": "rent",
+      "period_from": "",
+      "period_to": "",
+      "due_date": null,
+      "amount_without_vat": 0,
+      "vat_amount": 0,
+      "amount_total": 0,
+      "currency": "RUB",
+      "description": null,
+      "is_cancelled": false,
+      "updated_at": null
+    }
+  ],
+
+  "payments": [
+    {
+      "id": "",
+      "doc_type": "bank_in",
+      "number": "",
+      "date": "",
+      "contract_id": null,
+      "counterparty_id": "",
+      "amount": 0,
+      "currency": "RUB",
+      "purpose": null,
+      "allocations": [{ "charge_id": "", "amount": 0 }],
+      "offset": null,
+      "is_cancelled": false,
+      "updated_at": null
+    }
+  ],
+
+  "balances": [
+    {
+      "counterparty_id": "",
+      "contract_id": null,
+      "as_of": "",
+      "debit": 0,
+      "credit": 0
+    }
+  ]
+}
