@@ -147,6 +147,20 @@ function textOrNull(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/** JSON с отсортированными ключами: jsonb из базы хранит ключи в своём порядке. */
+function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    const body = Object.keys(o)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(o[k])}`)
+      .join(",");
+    return `{${body}}`;
+  }
+  return JSON.stringify(v);
+}
+
 function sameValue(a: unknown, b: unknown): boolean {
   const an = a === "" ? null : a;
   const bn = b === "" ? null : b;
@@ -159,7 +173,7 @@ function sameValue(a: unknown, b: unknown): boolean {
   }
   if (typeof an === "boolean" || typeof bn === "boolean") return Boolean(an) === Boolean(bn);
   if (typeof an === "object" || typeof bn === "object")
-    return JSON.stringify(an) === JSON.stringify(bn);
+    return canonicalJson(an) === canonicalJson(bn);
   return String(an) === String(bn);
 }
 
@@ -799,6 +813,12 @@ function planPayments(ctx: Ctx) {
       );
       // upsertRow ищет по external_id без индекса — уточняем вручную для i>0.
       if (op.action === "create") op.row.allocation_index = i;
+      if (op.action === "link") {
+        // Ручной платёж уже сидит в paid_total своего начисления — не считать его дважды.
+        const linked = existing.payments.find((r) => r.id === op.id);
+        const ls = linked ? ctx.chargeState.get(String(linked.charge_id)) : undefined;
+        if (linked && ls) ls.paid = Math.round((ls.paid - Number(linked.amount)) * 100) / 100;
+      }
       const st = ctx.chargeState.get(part.chargeId);
       if (st) st.paid = Math.round((st.paid + part.amount) * 100) / 100;
       ctx.plan.touchedChargeIds.push(part.chargeId);
