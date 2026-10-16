@@ -11,7 +11,9 @@
  */
 import {
   CONTRACT_STATUS_LABELS,
+  LEASE_UNIT_LABELS,
   PAYMENT_PERIOD_LABELS,
+  PAYMENT_TIMING_LABELS,
   formatDate,
   formatMoney,
   formatNum,
@@ -21,19 +23,6 @@ import {
 type Kind = "money" | "number" | "date" | "bool" | "text" | "period" | "status" | "timing" | "unit";
 
 type FieldSpec = { key: string; label: string; kind: Kind };
-
-/** К какому месяцу относится день оплаты — те же подписи, что в форме. */
-const TIMING_LABELS: Record<string, string> = {
-  advance: "предоплата (до N числа предыдущего месяца)",
-  current: "в расчётном месяце (до N числа)",
-  arrears: "постоплата (до N числа следующего месяца)",
-};
-
-const UNIT_NAMES: Record<string, string> = {
-  sqm: "квадратные метры",
-  space: "машиноместа",
-  lot: "лоты",
-};
 
 /**
  * Поля, изменение которых имеет смысл фиксировать допсоглашением.
@@ -78,6 +67,9 @@ export type TermChange = {
 /** «Не заполнено» — единый вид для null, undefined и пустой строки. */
 const EMPTY = "—";
 
+/** Подписи справочников начинаются с заглавной; в строке «было → стало» нужна строчная. */
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
 function display(value: unknown, kind: Kind, currency: string, names: PropertyNames): string {
   if (value === null || value === undefined || value === "") return EMPTY;
   switch (kind) {
@@ -94,9 +86,9 @@ function display(value: unknown, kind: Kind, currency: string, names: PropertyNa
     case "status":
       return CONTRACT_STATUS_LABELS[String(value)] ?? String(value);
     case "timing":
-      return TIMING_LABELS[String(value)] ?? String(value);
+      return lowerFirst(PAYMENT_TIMING_LABELS[String(value)] ?? String(value));
     case "unit":
-      return UNIT_NAMES[String(value)] ?? String(value);
+      return lowerFirst(LEASE_UNIT_LABELS[String(value)]?.name ?? String(value));
     default:
       return names[String(value)] ?? String(value);
   }
