@@ -58,6 +58,12 @@ function statusBadge(b: ImportBatchRow) {
     );
   if (b.status === "rejected") return <Badge variant="destructive">отклонён</Badge>;
   if (b.status === "failed") return <Badge variant="destructive">сбой записи</Badge>;
+  if (b.status === "needs_confirmation")
+    return (
+      <Badge variant="outline" className="border-warning text-warning">
+        не записан: неполный файл?
+      </Badge>
+    );
   return <Badge variant="outline">{b.status}</Badge>;
 }
 
@@ -288,6 +294,11 @@ function HowToCard() {
           </a>
           . Окно документов — 6 месяцев; справочники — целиком; ключ — GUID 1С.
         </div>
+        <div className="text-muted-foreground">
+          Защита от неполного файла: если в файле нет больше 10 (или больше 20 %) ранее загруженных
+          документов окна, приёмник ответит 409 и ничего не запишет. После проверки такой файл
+          отправляют повторно с <code className="text-xs">?confirm_voids=1</code>.
+        </div>
       </CardContent>
     </Card>
   );
@@ -317,9 +328,58 @@ function BatchDetails({ batch }: { batch: ImportBatchRow }) {
         }[]
       | undefined) ?? [];
   const counts = (report.counts as Counts | undefined) ?? null;
+  const coverage =
+    (report.coverage as
+      | {
+          month: string;
+          charges: number;
+          charges_total: number;
+          payments: number;
+          payments_total: number;
+        }[]
+      | undefined) ?? [];
+  const guard = (report.void_guard ?? null) as {
+    triggered: boolean;
+    absent: number;
+    imported_in_window: number;
+    limit_abs: number;
+    limit_ratio: number;
+    preview: {
+      table: string;
+      external_id: string | null;
+      number: string | null;
+      date: string | null;
+      amount: number;
+    }[];
+  } | null;
+  const guardNote = batch.dry_run
+    ? "При записи такой файл будет отклонён."
+    : batch.status === "needs_confirmation"
+      ? "Ничего не записано. Если документы действительно удалены в 1С, отправьте тот же файл повторно с ?confirm_voids=1."
+      : "Записано с подтверждением (?confirm_voids=1).";
   return (
     <div className="space-y-3 text-sm">
-      {batch.error && <div className="text-destructive">Ошибка: {batch.error}</div>}
+      {batch.error && batch.status !== "needs_confirmation" && (
+        <div className="text-destructive">Ошибка: {batch.error}</div>
+      )}
+      {guard?.triggered && (
+        <div className="rounded-md border border-warning/60 bg-warning/10 p-3">
+          <div className="font-medium mb-1">Похоже на неполную выгрузку</div>
+          <p className="text-xs">
+            В файле нет {guard.absent} из {guard.imported_in_window} ранее загруженных документов
+            окна (порог {guard.limit_abs} шт. или {Math.round(guard.limit_ratio * 100)} %).{" "}
+            {guardNote}
+          </p>
+          <ul className="mt-2 space-y-0.5 text-xs font-mono max-h-40 overflow-y-auto">
+            {guard.preview.map((v, i) => (
+              <li key={i}>
+                {v.table} · {v.number ?? v.external_id ?? "—"} · {v.date ?? "—"} ·{" "}
+                {v.amount.toLocaleString("ru-RU")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {counts && (
         <Table>
           <TableHeader>
@@ -347,6 +407,40 @@ function BatchDetails({ batch }: { batch: ImportBatchRow }) {
             ))}
           </TableBody>
         </Table>
+      )}
+      {coverage.length > 0 && (
+        <div>
+          <div className="font-medium mb-1">Документы по месяцам окна</div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Месяц</TableHead>
+                <TableHead className="text-right">Начислений</TableHead>
+                <TableHead className="text-right">Сумма</TableHead>
+                <TableHead className="text-right">Оплат</TableHead>
+                <TableHead className="text-right">Сумма</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {coverage.map((m) => (
+                <TableRow
+                  key={m.month}
+                  className={m.charges === 0 && m.payments === 0 ? "text-muted-foreground" : ""}
+                >
+                  <TableCell className="whitespace-nowrap">{m.month}</TableCell>
+                  <TableCell className="text-right tabular-nums">{m.charges}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {m.charges_total.toLocaleString("ru-RU")}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{m.payments}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {m.payments_total.toLocaleString("ru-RU")}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
       {errors.length > 0 && (
         <div>

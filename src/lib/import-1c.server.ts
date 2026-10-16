@@ -288,6 +288,8 @@ export async function runImport(opts: {
   fileSize: number;
   fileHash: string;
   dryRun: boolean;
+  /** ?confirm_voids=1 — записать, даже если защита от неполного файла сработала. */
+  confirmVoids: boolean;
 }): Promise<RunResult> {
   const { sb, ownerId } = opts;
   const started = Date.now();
@@ -345,6 +347,7 @@ export async function runImport(opts: {
 
   const plan = buildPlan(ownerId, file, existing);
   const report = planReport(plan);
+  const guard = plan.voidGuard;
   if (opts.dryRun) {
     await finish("ok", { ...meta, report });
     return {
@@ -355,6 +358,20 @@ export async function runImport(opts: {
         dry_run: true,
         received_at: new Date(started).toISOString(),
         period: file.period,
+        needs_confirmation: guard.triggered,
+        ...report,
+      },
+    };
+  }
+  if (guard.triggered && !opts.confirmVoids) {
+    await finish("needs_confirmation", { ...meta, error: "too_many_voids", report });
+    return {
+      status: 409,
+      body: {
+        batch_id: batchId,
+        ok: false,
+        reason: "too_many_voids",
+        hint: `В файле нет ${guard.absent} из ${guard.imported_in_window} ранее загруженных документов окна ${file.period.from} — ${file.period.to}. Ничего не записано. Проверьте полноту выгрузки (coverage по месяцам в отчёте); если документы действительно удалены в 1С — отправьте тот же файл повторно с ?confirm_voids=1.`,
         ...report,
       },
     };

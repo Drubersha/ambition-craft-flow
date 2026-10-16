@@ -51,12 +51,52 @@ export type VoidOp = {
   id: string;
   externalId: string | null;
   row: Row;
+  /** absent — документа нет в файле; cancelled — пришёл с is_cancelled; reallocated — лишняя строка разнесения. */
+  reason: "absent" | "cancelled" | "reallocated";
 };
+
+/** Сколько документов файла пришлось на месяц окна — для проверки полноты выгрузки. */
+export type CoverageMonth = {
+  month: string;
+  charges: number;
+  charges_total: number;
+  payments: number;
+  payments_total: number;
+};
+
+/**
+ * Защита от неполного файла: если в файле «пропало» слишком много ранее
+ * загруженных документов окна, это почти наверняка выгрузка за один день
+ * или с неверным `period`, а не массовое удаление в 1С. Запись без
+ * подтверждения отклоняется.
+ */
+export type VoidGuard = {
+  triggered: boolean;
+  /** Документы окна, которых нет в файле (без явных is_cancelled и перераскладок). */
+  absent: number;
+  imported_in_window: number;
+  limit_abs: number;
+  limit_ratio: number;
+  preview: {
+    table: "charges" | "payments";
+    external_id: string | null;
+    number: string | null;
+    date: string | null;
+    amount: number;
+  }[];
+};
+
+export const VOID_LIMIT_ABS = 10;
+export const VOID_LIMIT_RATIO = 0.2;
+/** Короче этого окно считается подозрительным для ежедневного файла (6 месяцев ≈ 182 дня). */
+export const WINDOW_MIN_DAYS = 150;
 
 export type Plan = {
   ops: Op[];
   contactsReplace: { tenantId: string; contacts: Row[] }[];
   voids: VoidOp[];
+  coverage: CoverageMonth[];
+  voidGuard: VoidGuard;
   skipped: Issue[];
   warnings: Issue[];
   balanceMismatches: {
@@ -580,7 +620,13 @@ function planCharges(ctx: Ctx) {
     if (ch.is_cancelled) {
       const ex = existing.charges.find((r) => r.external_id === ch.id);
       if (ex)
-        ctx.plan.voids.push({ table: "charges", id: String(ex.id), externalId: ch.id, row: ex });
+        ctx.plan.voids.push({
+          table: "charges",
+          id: String(ex.id),
+          externalId: ch.id,
+          row: ex,
+          reason: "cancelled",
+        });
       continue;
     }
     const contract =
@@ -621,6 +667,7 @@ function planCharges(ctx: Ctx) {
       id: String(r.id),
       externalId: String(r.external_id),
       row: r,
+      reason: "absent",
     });
     ctx.chargeState.delete(String(r.id));
   }
@@ -676,7 +723,13 @@ function planPayments(ctx: Ctx) {
     const oldRows = oldByExt.get(p.id) ?? [];
     if (p.is_cancelled) {
       for (const old of oldRows) {
-        ctx.plan.voids.push({ table: "payments", id: String(old.id), externalId: p.id, row: old });
+        ctx.plan.voids.push({
+          table: "payments",
+          id: String(old.id),
+          externalId: p.id,
+          row: old,
+          reason: "cancelled",
+        });
         const st = ctx.chargeState.get(String(old.charge_id));
         if (st) st.paid = Math.round((st.paid - Number(old.amount)) * 100) / 100;
         ctx.plan.touchedChargeIds.push(String(old.charge_id));
@@ -753,7 +806,13 @@ function planPayments(ctx: Ctx) {
     // Лишние строки разнесения (allocations стали короче) — аннулировать.
     for (const old of oldRows) {
       if (Number(old.allocation_index) >= parts.length) {
-        ctx.plan.voids.push({ table: "payments", id: String(old.id), externalId: p.id, row: old });
+        ctx.plan.voids.push({
+          table: "payments",
+          id: String(old.id),
+          externalId: p.id,
+          row: old,
+          reason: "reallocated",
+        });
         ctx.plan.touchedChargeIds.push(String(old.charge_id));
       }
     }
@@ -768,6 +827,7 @@ function planPayments(ctx: Ctx) {
       id: String(r.id),
       externalId: String(r.external_id),
       row: r,
+      reason: "absent",
     });
     const st = ctx.chargeState.get(String(r.charge_id));
     if (st) st.paid = Math.round((st.paid - Number(r.amount)) * 100) / 100;
@@ -817,11 +877,117 @@ function planBalances(ctx: Ctx) {
   }
 }
 
+/** Месяцы ГГГГ-ММ от from до to включительно. */
+function monthsBetween(from: string, to: string): string[] {
+  const out: string[] = [];
+  let [y, m] = from.slice(0, 7).split("-").map(Number);
+  const end = to.slice(0, 7);
+  for (let i = 0; i < 240; i++) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    out.push(key);
+    if (key >= end) break;
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+
+/** Документы файла по месяцам окна: по этой таблице видно, полная ли выгрузка. */
+export function computeCoverage(file: ImportFile): CoverageMonth[] {
+  const rows = new Map<string, CoverageMonth>();
+  for (const month of monthsBetween(file.period.from, file.period.to))
+    rows.set(month, { month, charges: 0, charges_total: 0, payments: 0, payments_total: 0 });
+  const bump = (date: string, kind: "charges" | "payments", amount: number) => {
+    const r = rows.get(date.slice(0, 7));
+    if (!r) return;
+    r[kind] += 1;
+    const total = kind === "charges" ? "charges_total" : "payments_total";
+    r[total] = Math.round((r[total] + amount) * 100) / 100;
+  };
+  for (const c of file.charges) if (!c.is_cancelled) bump(c.date, "charges", c.amount_total);
+  for (const p of file.payments) if (!p.is_cancelled) bump(p.date, "payments", p.amount);
+  return [...rows.values()];
+}
+
+function daysBetween(from: string, to: string): number {
+  const a = new Date(from + "T00:00:00Z").getTime();
+  const b = new Date(to + "T00:00:00Z").getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+/** Сработает, если «пропавших» документов больше VOID_LIMIT_ABS или больше VOID_LIMIT_RATIO от загруженных в окне. */
+export function voidGuard(plan: Plan, existing: Existing, file: ImportFile): VoidGuard {
+  const { from, to } = file.period;
+  const all = file.mode === "full";
+  const importedInWindow =
+    existing.charges.filter(
+      (r) => r.external_id && (all || inWindow(r.doc_date ?? r.period_end, from, to)),
+    ).length +
+    existing.payments.filter((r) => r.external_id && (all || inWindow(r.paid_at, from, to))).length;
+  const absentOps = plan.voids.filter((v) => v.reason === "absent");
+  const absent = absentOps.length;
+  const triggered =
+    absent > 0 && (absent >= VOID_LIMIT_ABS || absent >= importedInWindow * VOID_LIMIT_RATIO);
+  return {
+    triggered,
+    absent,
+    imported_in_window: importedInWindow,
+    limit_abs: VOID_LIMIT_ABS,
+    limit_ratio: VOID_LIMIT_RATIO,
+    preview: absentOps.slice(0, 50).map((v) => ({
+      table: v.table,
+      external_id: v.externalId,
+      number: textOrNull(v.row.doc_number),
+      date:
+        v.table === "charges"
+          ? textOrNull(v.row.doc_date ?? v.row.period_end)
+          : textOrNull(v.row.paid_at),
+      amount: Number(v.table === "charges" ? v.row.total : v.row.amount) || 0,
+    })),
+  };
+}
+
+function planCompleteness(ctx: Ctx) {
+  const { file, plan, existing } = ctx;
+  plan.coverage = computeCoverage(file);
+  const span = daysBetween(file.period.from, file.period.to);
+  if (file.mode === "window" && span < WINDOW_MIN_DAYS)
+    plan.warnings.push({
+      path: "period",
+      reason: `окно ${span} дн. короче согласованных 6 месяцев: аннулирование ограничено этим окном, документы вне него не тронуты`,
+    });
+  for (const m of plan.coverage)
+    if (m.charges === 0 && m.payments === 0)
+      plan.warnings.push({
+        path: "period",
+        reason: `за ${m.month} в файле нет ни начислений, ни оплат — проверьте полноту выгрузки`,
+      });
+  plan.voidGuard = voidGuard(plan, existing, file);
+  const g = plan.voidGuard;
+  if (g.triggered)
+    plan.warnings.push({
+      path: "period",
+      reason: `в файле нет ${g.absent} из ${g.imported_in_window} ранее загруженных документов окна (порог: ${g.limit_abs} шт. или ${Math.round(g.limit_ratio * 100)} %) — похоже на неполную выгрузку; запись без ?confirm_voids=1 будет отклонена`,
+    });
+}
+
 export function buildPlan(ownerId: string, file: ImportFile, existing: Existing): Plan {
   const plan: Plan = {
     ops: [],
     contactsReplace: [],
     voids: [],
+    coverage: [],
+    voidGuard: {
+      triggered: false,
+      absent: 0,
+      imported_in_window: 0,
+      limit_abs: VOID_LIMIT_ABS,
+      limit_ratio: VOID_LIMIT_RATIO,
+      preview: [],
+    },
     skipped: [],
     warnings: [],
     balanceMismatches: [],
@@ -862,6 +1028,7 @@ export function buildPlan(ownerId: string, file: ImportFile, existing: Existing)
   planCharges(ctx);
   planPayments(ctx);
   planBalances(ctx);
+  planCompleteness(ctx);
 
   for (const v of plan.voids) plan.counts[v.table].voided++;
   plan.touchedChargeIds = [...new Set(plan.touchedChargeIds)];
@@ -872,6 +1039,8 @@ export function buildPlan(ownerId: string, file: ImportFile, existing: Existing)
 export function planReport(plan: Plan) {
   return {
     counts: plan.counts,
+    coverage: plan.coverage,
+    void_guard: plan.voidGuard,
     skipped: plan.skipped,
     warnings: plan.warnings,
     balance_mismatches: plan.balanceMismatches,

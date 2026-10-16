@@ -201,7 +201,9 @@ export const ImportFileSchema = z.object({
     organization: z.object({ name: z.string().optional(), inn: z.string().optional() }).optional(),
     exported_at: datetime,
   }),
-  period: z.object({ from: date, to: date }),
+  period: z
+    .object({ from: date, to: date })
+    .refine((p) => p.from <= p.to, { message: "period.from позже period.to", path: ["from"] }),
   mode: z.enum(["window", "full"]).default("window"),
   counterparties: z.array(CounterpartySchema),
   properties: z.array(PropertySchema).default([]),

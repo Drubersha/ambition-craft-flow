@@ -7,6 +7,8 @@ import { gunzipSync } from "node:zlib";
  * Приёмник ежедневного файла из 1С. Спецификация формата — docs/1c/.
  *   POST /api/1c/import            — принять и записать
  *   POST /api/1c/import?dry_run=1  — только проверить и вернуть отчёт
+ *   POST /api/1c/import?confirm_voids=1 — записать, даже если в файле нет многих
+ *                                      ранее загруженных документов окна (409 без флага)
  * Авторизация: Authorization: Bearer <токен из раздела «Импорт из 1С»>.
  * Тело: JSON (UTF-8), допускается Content-Encoding: gzip. Лимит 50 МБ.
  */
@@ -79,9 +81,10 @@ export const Route = createFileRoute("/api/1c/import")({
         }
 
         const url = new URL(request.url);
-        const dryRun = ["1", "true", "yes"].includes(
-          (url.searchParams.get("dry_run") || "").toLowerCase(),
-        );
+        const flag = (name: string) =>
+          ["1", "true", "yes"].includes((url.searchParams.get(name) || "").toLowerCase());
+        const dryRun = flag("dry_run");
+        const confirmVoids = flag("confirm_voids");
         const fileHash = createHash("sha256").update(bytes).digest("hex");
 
         try {
@@ -93,6 +96,7 @@ export const Route = createFileRoute("/api/1c/import")({
             fileSize: bytes.length,
             fileHash,
             dryRun,
+            confirmVoids,
           });
           return json(result.status, result.body);
         } catch (e) {

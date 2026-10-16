@@ -86,6 +86,12 @@ describe("1c schema", () => {
     const res = ImportFileSchema.safeParse(raw);
     expect(res.success).toBe(false);
   });
+  it("rejects period.from after period.to", () => {
+    const raw = JSON.parse(JSON.stringify(loadSample()));
+    raw.period = { from: "2026-10-15", to: "2026-04-15" };
+    const res = ImportFileSchema.safeParse(raw);
+    expect(res.success).toBe(false);
+  });
   it("finds dangling references", () => {
     const file = loadSample();
     const broken = {
@@ -299,6 +305,68 @@ describe("buildPlan on the sample", () => {
     expect(rows[0].row.amount).toBe(5000);
     const utilities = first.charges.find((c) => c.kind === "utilities");
     expect(rows[0].row.charge_id).toBe(utilities?.id);
+  });
+
+  it("reports coverage by month and warns about empty months", () => {
+    const file = loadSample();
+    const plan = buildPlan(OWNER, file, empty());
+    expect(plan.coverage.map((m) => m.month)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+    ]);
+    expect(plan.coverage.reduce((s, m) => s + m.charges, 0)).toBe(3);
+    expect(plan.coverage.reduce((s, m) => s + m.payments, 0)).toBe(3);
+    const emptyMonths = plan.coverage.filter((m) => m.charges === 0 && m.payments === 0);
+    expect(emptyMonths.map((m) => m.month)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+    ]);
+    expect(plan.warnings.filter((w) => w.reason.includes("нет ни начислений"))).toHaveLength(5);
+    expect(plan.warnings.some((w) => w.reason.includes("короче"))).toBe(false);
+    expect(plan.voidGuard.triggered).toBe(false);
+  });
+
+  it("blocks a file that lost most of the window's documents", () => {
+    const file = loadSample();
+    const first = materialize(buildPlan(OWNER, file, empty()), empty());
+    // Выгрузка «за вчера» с period на полгода: документов нет, period говорит «удалены».
+    const partial = { ...file, charges: [], payments: [] };
+    const plan = buildPlan(OWNER, partial, first);
+    expect(plan.voidGuard.absent).toBe(6);
+    expect(plan.voidGuard.imported_in_window).toBe(6);
+    expect(plan.voidGuard.triggered).toBe(true);
+    expect(plan.voidGuard.preview).toHaveLength(6);
+    expect(plan.warnings.some((w) => w.reason.includes("confirm_voids"))).toBe(true);
+  });
+
+  it("lets an explicit cancellation through and keeps a one-day window to its own documents", () => {
+    const file = loadSample();
+    const first = materialize(buildPlan(OWNER, file, empty()), empty());
+    // Явная отмена одного платежа — обычное дело, защита молчит.
+    const cancelled = {
+      ...file,
+      payments: file.payments.map((p, i) => (i === 2 ? { ...p, is_cancelled: true } : p)),
+    };
+    expect(buildPlan(OWNER, cancelled, first).voidGuard.triggered).toBe(false);
+    // Файл «за один день» с честным period: документы других дней не трогаем.
+    const oneDay = {
+      ...file,
+      period: { from: "2026-10-16", to: "2026-10-16" },
+      charges: [],
+      payments: [],
+    };
+    const plan = buildPlan(OWNER, oneDay, first);
+    expect(plan.voids).toEqual([]);
+    expect(plan.voidGuard.triggered).toBe(false);
+    expect(plan.warnings.some((w) => w.reason.includes("короче"))).toBe(true);
   });
 
   it("skips a new contract without a property and explains why", () => {
