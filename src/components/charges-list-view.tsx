@@ -262,11 +262,9 @@ function AutoChargesButton() {
   async function buildPlan() {
     setPlanning(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Не авторизован");
       const { data: contracts, error } = await supabase
         .from("contracts")
-        .select("id,start_date,end_date,rate,area,payment_period,kind,status")
+        .select("id,owner_id,start_date,end_date,rate,area,payment_period,kind,status")
         .eq("status", "active")
         .eq("kind", "rent")
         // Допсоглашение — не договор: иначе по нему создавались дубли начислений.
@@ -300,7 +298,9 @@ function AutoChargesButton() {
             Number(c.area || 0),
           );
           all.push({
-            owner_id: u.user.id,
+            // owner_id = владелец договора, как в NewChargeDialog/AddPaymentDialog: менеджер
+            // не должен создавать начисления под своим аккаунтом.
+            owner_id: c.owner_id,
             contract_id: c.id,
             period_start: s.period_start,
             period_end: s.period_end,

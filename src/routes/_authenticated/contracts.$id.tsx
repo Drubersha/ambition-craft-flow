@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
 import { ContractObjectsEditor } from "@/components/contract-objects-editor";
-import { contractRowFromForm } from "@/lib/contracts";
+import { contractFormFromRow, contractRowFromForm, DEPOSIT_PERCENT_MAX } from "@/lib/contracts";
 import { diffContractTerms } from "@/lib/amendments";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,6 @@ import {
   METER_UNITS,
   formatDate,
   formatMoney,
-  formatNum,
   computeDepositWithArea,
   chargeTotalForPeriod,
   defaultChargePeriod,
@@ -224,8 +223,8 @@ function EditContract() {
   const liveRate = live?.rate ?? (Number(data.rate) || 0);
   const liveArea = live?.area ?? (Number(data.area) || 0);
   const livePeriod = live?.period ?? data.payment_period;
-  const livePct = live?.depositPercent ?? (Number((data as any).deposit_percent) || 0);
-  const depositPctValid = !isNaN(livePct) && livePct >= 0 && livePct <= 1000;
+  const livePct = live?.depositPercent ?? (Number(data.deposit_percent) || 0);
+  const depositPctValid = !isNaN(livePct) && livePct >= 0 && livePct <= DEPOSIT_PERCENT_MAX;
   const rateValid = !isNaN(liveRate) && liveRate >= 0;
   const areaValid = !isNaN(liveArea) && liveArea >= 0;
   const inputsValid = depositPctValid && rateValid && areaValid;
@@ -240,7 +239,7 @@ function EditContract() {
   // Если в договоре отмечена дата внесения депозита — он внесён, и эвристика
   // «переплата ≥ депозит» не нужна: иначе блок краснел у каждого арендатора
   // с неоплаченным текущим месяцем.
-  const depositPaidAt = ((data as any).deposit_paid_at as string | null) ?? null;
+  const depositPaidAt = data.deposit_paid_at ?? null;
   const overpayColor = !hasDeposit
     ? "text-foreground"
     : depositPaidAt || overpayment >= depositAmount
@@ -288,54 +287,7 @@ function EditContract() {
       <MobileCollapsible title="Данные договора">
         <ContractForm
           formId="contract-form"
-          initial={{
-            tenant_id: data.tenant_id,
-            property_id: data.property_id,
-            number: data.number ?? "",
-            cadastral_no: data.cadastral_no ?? "",
-            area: data.area ? String(data.area) : "",
-            rate: String(data.rate),
-            currency: data.currency,
-            payment_period: data.payment_period,
-            start_date: data.start_date,
-            end_date: data.end_date ?? "",
-            status: data.status,
-            notes: data.notes ?? "",
-            kind: (data as any).kind ?? "rent",
-            termination_terms: (data as any).termination_terms ?? "",
-            deposit_percent:
-              (data as any).deposit_percent != null ? String((data as any).deposit_percent) : "",
-            unit: (data as any).unit ?? "sqm",
-            vat_rate: (data as any).vat_rate != null ? String((data as any).vat_rate) : "",
-            vat_included: (data as any).vat_included ?? true,
-            payment_day: (data as any).payment_day != null ? String((data as any).payment_day) : "",
-            payment_timing: (data as any).payment_timing ?? "",
-            has_variable_part: (data as any).has_variable_part ?? false,
-            variable_payment_day:
-              (data as any).variable_payment_day != null
-                ? String((data as any).variable_payment_day)
-                : "",
-            variable_part_note: (data as any).variable_part_note ?? "",
-            penalty_percent_per_day:
-              (data as any).penalty_percent_per_day != null
-                ? String((data as any).penalty_percent_per_day)
-                : "",
-            misuse_penalty_percent:
-              (data as any).misuse_penalty_percent != null
-                ? String((data as any).misuse_penalty_percent)
-                : "",
-            handover_date: (data as any).handover_date ?? "",
-            auto_renew: (data as any).auto_renew ?? false,
-            renew_months:
-              (data as any).renew_months != null ? String((data as any).renew_months) : "",
-            termination_notice_days:
-              (data as any).termination_notice_days != null
-                ? String((data as any).termination_notice_days)
-                : "",
-            deposit_paid_at: (data as any).deposit_paid_at ?? "",
-            ownership_basis: (data as any).ownership_basis ?? "",
-            jurisdiction: (data as any).jurisdiction ?? "",
-          }}
+          initial={contractFormFromRow(data)}
           onValuesChange={(v) =>
             setLive({
               rate: Number(v.rate) || 0,

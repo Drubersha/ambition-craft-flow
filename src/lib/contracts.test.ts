@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { contractRowFromForm, type ContractRowInput } from "./contracts";
+import type { Tables } from "@/integrations/supabase/types";
+import {
+  contractFormFromRow,
+  contractRowFromForm,
+  DEPOSIT_PERCENT_MAX,
+  type ContractRowInput,
+} from "./contracts";
 
 const base: ContractRowInput = {
   tenant_id: "t1",
@@ -61,5 +67,48 @@ describe("contractRowFromForm", () => {
   it("валюта по умолчанию — рубли", () => {
     expect(contractRowFromForm(base).currency).toBe("RUB");
     expect(contractRowFromForm({ ...base, currency: "USD" }).currency).toBe("USD");
+  });
+});
+
+describe("contractFormFromRow", () => {
+  const filled: ContractRowInput = {
+    ...base,
+    number: "А-101/2026",
+    deposit_percent: "50",
+    vat_rate: "20",
+    payment_day: "10",
+    payment_timing: "advance",
+    renew_months: "11",
+  };
+
+  it("строка → форма → строка без потерь", () => {
+    const row = contractRowFromForm(filled);
+    const form = contractFormFromRow(row as Partial<Tables<"contracts">>);
+    expect(form.rate).toBe("300");
+    expect(form.area).toBe("100");
+    expect(form.number).toBe("А-101/2026");
+    expect(form.deposit_percent).toBe("50");
+    expect(form.vat_rate).toBe("20");
+    expect(form.payment_day).toBe("10");
+    expect(form.payment_timing).toBe("advance");
+    expect(form.renew_months).toBe("11");
+    expect(form.end_date).toBe("");
+    expect(contractRowFromForm(form)).toEqual(row);
+  });
+
+  it("пустая строка даёт те же дефолты, что пустая форма", () => {
+    const form = contractFormFromRow({});
+    expect(form.currency).toBe("RUB");
+    expect(form.unit).toBe("sqm");
+    expect(form.payment_period).toBe("monthly");
+    expect(form.status).toBe("active");
+    expect(form.kind).toBe("rent");
+    expect(form.vat_included).toBe(true);
+    expect(form.auto_renew).toBe(false);
+    expect(form.number).toBe("");
+  });
+
+  it("предел процента депозита — одна константа", () => {
+    expect(DEPOSIT_PERCENT_MAX).toBe(1000);
   });
 });
