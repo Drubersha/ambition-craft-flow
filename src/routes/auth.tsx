@@ -24,6 +24,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { PasswordInput } from "@/components/password-input";
 import { humanError } from "@/lib/human-error";
 import { pickRoleAfterLogin } from "@/lib/login-role";
+import { PASSWORD_MIN } from "@/lib/account.functions";
 
 const DEMO_LABELS: Record<DemoKind, string> = {
   demo: "Демо режим 1",
@@ -31,8 +32,6 @@ const DEMO_LABELS: Record<DemoKind, string> = {
   moderator: "Модератор",
   developer: "Администратор",
 };
-
-const PASSWORD_MIN = 8;
 
 const searchSchema = z.object({
   /** `?demo=1` показывает блок демо-входов; клиентам на боевом домене он не нужен. */

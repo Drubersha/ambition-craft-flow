@@ -6,11 +6,21 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 72;
 
+/** Правила пароля по отдельности — для чек-листов в формах; сервер проверяет те же через passwordIssues. */
+export function passwordChecks(pw: string) {
+  return {
+    length: pw.length >= PASSWORD_MIN,
+    letter: /[a-zA-Zа-яА-ЯёЁ]/.test(pw),
+    digit: /\d/.test(pw),
+  };
+}
+
 export function passwordIssues(pw: string): string[] {
+  const c = passwordChecks(pw);
   const issues: string[] = [];
-  if (pw.length < PASSWORD_MIN) issues.push(`минимум ${PASSWORD_MIN} символов`);
-  if (!/[a-zA-Zа-яА-ЯёЁ]/.test(pw)) issues.push("хотя бы одна буква");
-  if (!/\d/.test(pw)) issues.push("хотя бы одна цифра");
+  if (!c.length) issues.push(`минимум ${PASSWORD_MIN} символов`);
+  if (!c.letter) issues.push("хотя бы одна буква");
+  if (!c.digit) issues.push("хотя бы одна цифра");
   return issues;
 }
 

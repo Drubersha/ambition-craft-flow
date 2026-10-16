@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatMoney, monthlyPayment, PAYMENT_PERIOD_LABELS } from "@/lib/format";
 import { humanError } from "@/lib/human-error";
+import { PASSWORD_MIN } from "@/lib/account.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/user/$userId")({
   component: UserOverviewPage,
@@ -257,7 +258,7 @@ function UserOverviewPage() {
                 !companionEmail ||
                 companionMut.isPending ||
                 (companionEmail.trim().toLowerCase() !== (data.email ?? "").toLowerCase() &&
-                  companionPassword.length < 8)
+                  companionPassword.length < PASSWORD_MIN)
               }
             >
               Создать
