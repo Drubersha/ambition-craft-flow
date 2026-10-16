@@ -365,20 +365,12 @@ function TreeView({
   );
 }
 
-function NewFolderButton({
-  onCreate,
-  label,
-  size = "sm",
-}: {
-  onCreate: (name: string) => void;
-  label: string;
-  size?: "sm" | "default";
-}) {
+function NewFolderButton({ onCreate, label }: { onCreate: (name: string) => void; label: string }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   if (!open) {
     return (
-      <Button size={size} onClick={() => setOpen(true)}>
+      <Button size="sm" onClick={() => setOpen(true)}>
         <FolderPlus className="h-4 w-4 sm:mr-1" />
         <span className="hidden sm:inline">{label}</span>
       </Button>

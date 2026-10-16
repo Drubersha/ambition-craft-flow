@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensureOwnerAccess } from "@/lib/manager-context.functions";
 import { allowedOwnerIds } from "@/lib/auth-roles.server";
 
 const AnalyzeInput = z.object({ messageId: z.string().uuid() });
@@ -15,143 +13,10 @@ const UpdateStatusInput = z.object({
 });
 const TaskIdInput = z.object({ id: z.string().uuid() });
 
-const TaskSchema = z.object({
-  is_task: z.boolean(),
-  title: z.string().max(120).default(""),
-  description: z.string().max(800).default(""),
-  priority: z.enum(["low", "normal", "high"]).default("normal"),
-});
-
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
-
-/**
- * ИИ-анализ сообщений чата отключён 22.07.2026: функция ещё в разработке.
- * Ручное создание задач из сообщений (createManualTaskFromMessage) работает.
- * Для включения обратно поставить false и вернуть автоанализ в chat-thread.
- */
-const CHAT_AI_DISABLED = true;
-
-export const analyzeMessage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => AnalyzeInput.parse(d))
-  .handler(async ({ data, context }) => {
-    if (CHAT_AI_DISABLED) return { ok: false, reason: "disabled" };
-    const sb = await admin();
-    const { data: msg, error } = await sb
-      .from("chat_messages")
-      .select("id, thread_id, body, sender_role, analyzed_at, owner_id")
-      .eq("id", data.messageId)
-      .maybeSingle();
-    if (error || !msg) return { ok: false, reason: "not_found" };
-    try {
-      await ensureOwnerAccess(context.supabase, context.userId, msg.owner_id as string);
-    } catch {
-      return { ok: false, reason: "forbidden" };
-    }
-    if (msg.analyzed_at) return { ok: false, reason: "already" };
-    if (msg.sender_role !== "tenant") {
-      await sb
-        .from("chat_messages")
-        .update({ analyzed_at: new Date().toISOString() })
-        .eq("id", msg.id);
-      return { ok: false, reason: "not_tenant" };
-    }
-
-    const { data: thread } = await sb
-      .from("chat_threads")
-      .select("id, tenant_id, owner_id")
-      .eq("id", msg.thread_id)
-      .maybeSingle();
-
-    const { data: atts } = await sb
-      .from("chat_attachments")
-      .select("storage_path, mime, file_name")
-      .eq("message_id", msg.id);
-    const photos = (atts ?? []).filter((a) => (a.mime ?? "").startsWith("image/"));
-
-    // Fetch image bytes server-side so any provider (incl. local ollama, which
-    // doesn't fetch remote URLs) can read them.
-    const imageDatas: Uint8Array[] = [];
-    for (const p of photos) {
-      const { data: signed } = await sb.storage
-        .from("chat-attachments")
-        .createSignedUrl(p.storage_path, 600);
-      if (!signed?.signedUrl) continue;
-      try {
-        const resp = await fetch(signed.signedUrl);
-        if (resp.ok) imageDatas.push(new Uint8Array(await resp.arrayBuffer()));
-      } catch (e) {
-        console.error("[analyzeMessage] image fetch failed", e);
-      }
-    }
-
-    // Recent context
-    const { data: recent } = await sb
-      .from("chat_messages")
-      .select("sender_role, body, created_at")
-      .eq("thread_id", msg.thread_id)
-      .order("created_at", { ascending: false })
-      .limit(6);
-    const ctx = (recent ?? [])
-      .reverse()
-      .map((m) => `[${m.sender_role}] ${m.body ?? "(вложение)"}`)
-      .join("\n");
-
-    const { createAiProvider, getAiModelName } = await import("./ai-gateway.server");
-    const gateway = createAiProvider();
-    if (!gateway) return { ok: false, reason: "no_key" };
-
-    const userContent: Array<
-      { type: "text"; text: string } | { type: "image"; image: Uint8Array }
-    > = [
-      {
-        type: "text",
-        text:
-          "Ты помощник управляющего арендой. Проанализируй последнее сообщение арендатора и фото к нему. " +
-          "Определи, описывает ли арендатор задачу/проблему/запрос, который нужно выполнить (поломка, заявка, просьба). " +
-          "Если да — сформулируй короткий title (до 80 символов) и description, выбери priority: low/normal/high. " +
-          "Если это просто общение/вопрос/благодарность — верни is_task=false.\n\n" +
-          `Контекст переписки:\n${ctx}\n\nПоследнее сообщение: ${msg.body ?? "(только вложение)"}`,
-      },
-      ...imageDatas.map((d) => ({ type: "image" as const, image: d })),
-    ];
-
-    let parsed: z.infer<typeof TaskSchema>;
-    try {
-      const res = await generateText({
-        model: gateway.chatModel(getAiModelName()),
-        experimental_output: Output.object({ schema: TaskSchema }),
-        messages: [{ role: "user", content: userContent as never }],
-      });
-      parsed = (res as { experimental_output: z.infer<typeof TaskSchema> }).experimental_output;
-    } catch (e) {
-      console.error("[analyzeMessage] AI error", e);
-      return { ok: false, reason: "ai_error", error: String(e) };
-    }
-
-    await sb
-      .from("chat_messages")
-      .update({ analyzed_at: new Date().toISOString() })
-      .eq("id", msg.id);
-
-    if (!parsed.is_task || !parsed.title) return { ok: true, created: false };
-
-    await sb.from("task_suggestions").insert({
-      owner_id: msg.owner_id,
-      tenant_id: thread?.tenant_id ?? null,
-      thread_id: msg.thread_id,
-      source_message_id: msg.id,
-      title: parsed.title.slice(0, 120),
-      description: parsed.description ?? null,
-      priority: parsed.priority,
-      photo_paths: photos.map((p) => p.storage_path),
-      model: getAiModelName(),
-    });
-    return { ok: true, created: true };
-  });
 
 export const acceptSuggestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

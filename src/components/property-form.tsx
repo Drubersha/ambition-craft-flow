@@ -34,13 +34,11 @@ export function PropertyForm({
   onSubmit,
   submitting,
   formId,
-  hideSubmit,
 }: {
   initial?: Partial<PropertyFormValues>;
   onSubmit: (v: PropertyFormValues) => void;
   submitting?: boolean;
   formId?: string;
-  hideSubmit?: boolean;
 }) {
   const [v, setV] = useState<PropertyFormValues>({
     name: initial?.name ?? "",
@@ -182,15 +180,13 @@ export function PropertyForm({
       <Field label="Папка">
         <FolderPicker value={v.folder_id} onChange={(id) => set("folder_id", id)} />
       </Field>
-      {!hideSubmit && (
-        <Button
-          type="submit"
-          disabled={submitting}
-          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
-        >
-          {submitting ? "Сохранение..." : "Сохранить"}
-        </Button>
-      )}
+      <Button
+        type="submit"
+        disabled={submitting}
+        className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+      >
+        {submitting ? "Сохранение..." : "Сохранить"}
+      </Button>
     </form>
   );
 }

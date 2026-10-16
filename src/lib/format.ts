@@ -176,10 +176,6 @@ export function monthlyFromRate(rate: number, period: string): number {
   }
 }
 
-export function computeDeposit(rate: number, period: string, percent: number): number {
-  return Math.round(monthlyFromRate(rate, period) * (percent || 0)) / 100;
-}
-
 /** Monthly payment = price per sqm (normalized to monthly) × area. */
 export function monthlyPayment(rate: number, period: string, area: number): number {
   return monthlyFromRate(rate, period) * (area || 0);
