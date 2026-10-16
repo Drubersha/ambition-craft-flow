@@ -1,5 +1,10 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { clearDemoSession, getDemoKind, isDemoSession, setActiveAccountKind } from "@/lib/demo-session";
+import {
+  clearDemoSession,
+  getDemoKind,
+  isDemoSession,
+  setActiveAccountKind,
+} from "@/lib/demo-session";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {

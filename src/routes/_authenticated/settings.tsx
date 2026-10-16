@@ -162,8 +162,7 @@ function SettingsPage() {
       active = false;
     };
   }, []);
-  const isDemo =
-    isDemoSession() || isDemoEmail(email);
+  const isDemo = isDemoSession() || isDemoEmail(email);
 
   return (
     <div className="space-y-4">
