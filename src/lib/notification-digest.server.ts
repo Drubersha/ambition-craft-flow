@@ -1,3 +1,4 @@
+import { isDemoEmail } from "@/lib/demo-session";
 // Digest delivery of in-app notifications by email.
 //
 // Instead of one email per notification (painful during mass data entry),
@@ -55,7 +56,7 @@ export function escapeHtml(s: string): string {
 function isDeliverable(email: string): boolean {
   const e = email.trim().toLowerCase();
   if (!e || !e.includes("@")) return false;
-  if (e.endsWith(".local")) return false;
+  if (isDemoEmail(e)) return false;
   return true;
 }
 

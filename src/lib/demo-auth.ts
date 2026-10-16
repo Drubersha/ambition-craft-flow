@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { startDemoSession } from "@/lib/demo-session";
 import {
   DEMO_ACCOUNTS,
   DEMO_OWNER_PASSWORDS,
@@ -21,10 +22,7 @@ export async function signInAsDemo(kind: DemoKind): Promise<void> {
       throw new Error(e?.message ?? "Привилегированный демо-вход недоступен в этом окружении");
     }
     if (typeof window !== "undefined") {
-      const role = kind === "developer" ? "developer" : "moderator";
-      localStorage.setItem("active_account_kind", "owner");
-      localStorage.setItem("demo.role", role);
-      localStorage.setItem("demo.kind", kind);
+      startDemoSession(kind, kind === "developer" ? "developer" : "moderator");
       window.location.assign(action_link);
     }
     return;
@@ -37,9 +35,7 @@ export async function signInAsDemo(kind: DemoKind): Promise<void> {
     );
   }
   if (typeof window !== "undefined") {
-    localStorage.setItem("active_account_kind", "owner");
-    localStorage.setItem("demo.role", "owner");
-    localStorage.setItem("demo.kind", kind);
+    startDemoSession(kind, "owner");
     window.location.assign("/dashboard");
   }
 }

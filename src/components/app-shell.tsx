@@ -1,4 +1,10 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import {
+  clearDemoSession,
+  getDemoKind,
+  isDemoSession,
+  setActiveAccountKind,
+} from "@/lib/demo-session";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -71,7 +77,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
     await logActivitySafe({ action: "logout" });
     await queryClient.cancelQueries();
     queryClient.clear();
-    if (typeof window !== "undefined" && localStorage.getItem("demo.kind") === "demo2") {
+    if (getDemoKind() === "demo2") {
       try {
         await resetDemo2Account();
       } catch {
@@ -79,11 +85,7 @@ function LogoutButton({ variant = "default" }: { variant?: "default" | "ghost" }
       }
     }
     await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("demo.role");
-      localStorage.removeItem("active_account_kind");
-      localStorage.removeItem("demo.kind");
-    }
+    clearDemoSession();
     navigate({ to: "/auth", replace: true });
     setLoading(false);
     setOpen(false);
@@ -272,9 +274,7 @@ function IdentitySwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Only demo logins (signInAsDemo sets `demo.kind`) get the role switcher.
   // Standard registered accounts never see it.
-  const [isDemo] = useState(
-    () => typeof window !== "undefined" && !!localStorage.getItem("demo.kind"),
-  );
+  const [isDemo] = useState(() => isDemoSession());
   const showManagerPicker = mctx.status === "ready" && role !== "tenant";
   const { data: tenants } = useQuery({
     queryKey: ["tenants-for-switcher"],
@@ -368,7 +368,7 @@ function RoleToggle() {
     if (next === role) return;
     setRole(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem("active_account_kind", next);
+      setActiveAccountKind(next);
       // Switching into the tenant cabinet of a real dual-role account must not
       // reuse a stale "view as tenant" selection — resolve by the user's own email.
       if (next === "tenant") {

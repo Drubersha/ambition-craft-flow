@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isDemoEmail, isDemoSession } from "@/lib/demo-session";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -161,9 +162,7 @@ function SettingsPage() {
       active = false;
     };
   }, []);
-  const isDemo =
-    (typeof window !== "undefined" && !!localStorage.getItem("demo.kind")) ||
-    (email ?? "").endsWith(".local");
+  const isDemo = isDemoSession() || isDemoEmail(email);
 
   return (
     <div className="space-y-4">
