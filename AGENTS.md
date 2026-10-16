@@ -79,3 +79,18 @@ KEEP_EMAILS="admin@rentflow.local,moderator@rentflow.local" ./scripts/reset-data
 ```
 
 `KEEP_EMAILS` (CSV, lowercase) defaults to the `*.rentflow.local` technical accounts — verify/edit it for the real environment. Kept accounts retain their `profiles` and `user_roles`. This is destructive; restore from the `prereset` backup if needed.
+
+## Качество кода и техдолг
+
+Политика из 14 пунктов (SRP/DRY/KISS/YAGNI, один источник правды, корень причины вместо заплаток,
+малые проверяемые PR, ревью дифа после реализации, явный отчёт о нерешённом долге) — в конституции
+проекта `../CLAUDE.md`, раздел «Качество кода и техдолг». Коротко для любого клона:
+
+- Один PR — одна тема. Проверять тем, что есть: `npx eslint` и `npx prettier --check` по своим файлам,
+  `npx tsc --noEmit`, `npx vitest run`, `npx vite build`. Не заявлять «проверки прошли», если они не запускались.
+- Справочники подписей и константы — `src/lib/format.ts`; мапперы «форма ↔ строка таблицы» —
+  `src/lib/contracts.ts`, `tenants.ts`, `properties.ts`; ключи демо-режима — `src/lib/demo-session.ts`;
+  правило пароля — `src/lib/account.functions.ts`. Не заводить локальные копии.
+- CI берёт prettier из `bun.lock` (3.8.x), локально может стоять новее: перед пушем
+  `npx -y prettier@3.8.3 --check <файлы>`, иначе lint падает только на CI.
+- Нерешённый долг по аудиту 16.10.2026 перечислен в конституции («Открытые задачи → Техдолг»).
