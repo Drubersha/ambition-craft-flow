@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
-import { tenantRowFromForm } from "@/lib/tenants";
+import { tenantContactRowFromForm, tenantRowFromForm } from "@/lib/tenants";
 import { toast } from "sonner";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,7 @@ function NewTenant() {
           v.contacts.map((c, i) => ({
             owner_id: ownerId,
             tenant_id: data.id,
-            full_name: c.full_name.trim(),
-            email: c.email.trim() || null,
-            phone: c.phone.trim() || null,
-            sort_order: i,
+            ...tenantContactRowFromForm(c, i),
           })),
         );
         if (cErr) throw cErr;

@@ -11,6 +11,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { PlanUploader } from "@/components/plan-uploader";
 import { useFolders, folderBreadcrumb } from "@/lib/folders";
 import { humanError } from "@/lib/human-error";
+import { propertyRowFromForm } from "@/lib/properties";
 
 export const Route = createFileRoute("/_authenticated/properties/$id")({
   component: EditProperty,
@@ -33,21 +34,7 @@ function EditProperty() {
     mutationFn: async (v: PropertyFormValues) => {
       const { error } = await supabase
         .from("properties")
-        .update({
-          name: v.name,
-          address: v.address,
-          type: v.type as any,
-          status: v.status as any,
-          cadastral_no: v.cadastral_no || null,
-          area_total: Number(v.area_total) || 0,
-          area_usable: v.area_usable ? Number(v.area_usable) : null,
-          floor: v.floor || null,
-          room_no: v.room_no || null,
-          base_rate: v.base_rate ? Number(v.base_rate) : null,
-          currency: v.currency || "RUB",
-          description: v.description || null,
-          folder_id: v.folder_id,
-        })
+        .update(propertyRowFromForm(v))
         .eq("id", id);
       if (error) throw error;
     },

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TenantForm, type TenantFormValues } from "@/components/tenant-form";
-import { tenantRowFromForm } from "@/lib/tenants";
+import { tenantContactRowFromForm, tenantRowFromForm } from "@/lib/tenants";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,12 +78,7 @@ function EditTenant() {
       }
       for (let i = 0; i < v.contacts.length; i++) {
         const c = v.contacts[i];
-        const row = {
-          full_name: c.full_name.trim(),
-          email: c.email.trim() || null,
-          phone: c.phone.trim() || null,
-          sort_order: i,
-        };
+        const row = tenantContactRowFromForm(c, i);
         if (c.id) {
           const { error: uErr } = await supabase.from("tenant_contacts").update(row).eq("id", c.id);
           if (uErr) throw uErr;
