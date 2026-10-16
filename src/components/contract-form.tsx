@@ -34,10 +34,12 @@ import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_KIND_LABELS,
   PAYMENT_PERIOD_LABELS,
+  computeDepositWithArea,
   formatMoney,
   monthlyPayment,
   todayISO,
 } from "@/lib/format";
+import { DEPOSIT_PERCENT_MAX } from "@/lib/contracts";
 import type { MeterDraft } from "@/lib/meters";
 
 export type { MeterDraft } from "@/lib/meters";
@@ -181,7 +183,8 @@ export function ContractForm({
   const areaInvalid = v.area !== "" && (isNaN(Number(v.area)) || Number(v.area) < 0);
   const rateInvalid = v.rate !== "" && (isNaN(Number(v.rate)) || Number(v.rate) < 0);
   const depositPctInvalid =
-    v.deposit_percent !== "" && (isNaN(depositPctNum) || depositPctNum < 0 || depositPctNum > 1000);
+    v.deposit_percent !== "" &&
+    (isNaN(depositPctNum) || depositPctNum < 0 || depositPctNum > DEPOSIT_PERCENT_MAX);
 
   const { data: tenants } = useQuery({
     queryKey: ["tenants-list"],
@@ -222,7 +225,7 @@ export function ContractForm({
   }
 
   const monthly = monthlyPayment(Number(v.rate) || 0, v.payment_period, Number(v.area) || 0);
-  const depositAmount = (monthly * (Number(v.deposit_percent) || 0)) / 100;
+  const depositAmount = computeDepositWithArea(rateNum, v.payment_period, areaNum, depositPctNum);
 
   const filledMeters = filledMeterDrafts(v.meters);
   const meterInvalid = hasInvalidMeterDraft(v.meters);
@@ -441,14 +444,16 @@ export function ContractForm({
             type="number"
             step="0.01"
             min="0"
-            max="1000"
+            max={DEPOSIT_PERCENT_MAX}
             value={v.deposit_percent}
             aria-invalid={depositPctInvalid || undefined}
             onChange={(e) => set("deposit_percent", e.target.value)}
             placeholder="например, 100"
           />
           {depositPctInvalid && (
-            <p className="text-xs text-destructive">Процент должен быть от 0 до 1000.</p>
+            <p className="text-xs text-destructive">
+              Процент должен быть от 0 до {DEPOSIT_PERCENT_MAX}.
+            </p>
           )}
         </F>
         <F label="Обеспечительный платёж (расчёт)">

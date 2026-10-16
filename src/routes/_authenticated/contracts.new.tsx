@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractForm, type ContractFormValues } from "@/components/contract-form";
-import { contractRowFromForm } from "@/lib/contracts";
+import { contractFormFromRow, contractRowFromForm } from "@/lib/contracts";
 import { diffContractTerms, termsToApply } from "@/lib/amendments";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -23,45 +23,6 @@ export const Route = createFileRoute("/_authenticated/contracts/new")({
   validateSearch: search,
   component: NewContract,
 });
-
-/** Значения формы, взятые из основного договора: допник меняет их точечно. */
-function formValuesFromContract(c: Record<string, any>): Partial<ContractFormValues> {
-  const str = (x: unknown) => (x === null || x === undefined ? "" : String(x));
-  return {
-    tenant_id: str(c.tenant_id),
-    property_id: str(c.property_id),
-    cadastral_no: str(c.cadastral_no),
-    area: str(c.area),
-    rate: str(c.rate),
-    currency: str(c.currency) || "RUB",
-    payment_period: str(c.payment_period) || "monthly",
-    start_date: str(c.start_date),
-    end_date: str(c.end_date),
-    status: str(c.status) || "active",
-    kind: str(c.kind) || "rent",
-    unit: str(c.unit) || "sqm",
-    termination_terms: str(c.termination_terms),
-    deposit_percent: str(c.deposit_percent),
-    vat_rate: str(c.vat_rate),
-    vat_included: c.vat_included ?? true,
-    payment_day: str(c.payment_day),
-    payment_timing: str(c.payment_timing),
-    has_variable_part: c.has_variable_part ?? false,
-    variable_payment_day: str(c.variable_payment_day),
-    variable_part_note: str(c.variable_part_note),
-    penalty_percent_per_day: str(c.penalty_percent_per_day),
-    misuse_penalty_percent: str(c.misuse_penalty_percent),
-    handover_date: str(c.handover_date),
-    auto_renew: c.auto_renew ?? false,
-    renew_months: str(c.renew_months),
-    termination_notice_days: str(c.termination_notice_days),
-    ownership_basis: str(c.ownership_basis),
-    jurisdiction: str(c.jurisdiction),
-    // Своё: номер, дата подписания и предмет заполняются заново.
-    number: "",
-    amendment_subject: "",
-  };
-}
 
 function NewContract() {
   const navigate = useNavigate();
@@ -160,7 +121,8 @@ function NewContract() {
   if (parentId && parentLoading) return <div className="p-6">Загрузка договора…</div>;
 
   const initial = parent
-    ? formValuesFromContract(parent)
+    ? // Допник берёт условия основного договора; номер, заметки и предмет заполняются заново.
+      { ...contractFormFromRow(parent), number: "", notes: "", amendment_subject: "" }
     : { tenant_id: sp.tenant ?? "", property_id: sp.property ?? "" };
 
   return (

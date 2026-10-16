@@ -4,7 +4,12 @@
  * («пусто → null», ставка/площадь числом, депозит от месячного платежа)
  * должны совпадать, иначе договор менял бы смысл при сохранении.
  */
+import type { ContractFormValues } from "@/components/contract-form";
+import type { Enums, Tables } from "@/integrations/supabase/types";
 import { computeDepositWithArea } from "./format";
+
+/** Верхняя граница процента депозита; совпадает с CHECK contracts_deposit_percent_range (20260708130000_money_checks.sql). */
+export const DEPOSIT_PERCENT_MAX = 1000;
 
 /** Поля формы, из которых собирается строка договора. */
 export type ContractRowInput = {
@@ -58,12 +63,12 @@ export function contractRowFromForm(v: ContractRowInput) {
     cadastral_no: v.cadastral_no || null,
     // Площадь может быть не заполнена (договор с фиксированной суммой).
     area: v.area ? Number(v.area) : null,
-    unit: (v.unit as any) || "sqm",
+    unit: (v.unit as Enums<"lease_unit">) || "sqm",
     rate,
     currency: v.currency || "RUB",
-    payment_period: v.payment_period as any,
-    status: v.status as any,
-    kind: v.kind as any,
+    payment_period: v.payment_period as Enums<"payment_period">,
+    status: v.status as Enums<"contract_status">,
+    kind: v.kind as Enums<"contract_kind">,
     start_date: v.start_date,
     end_date: v.end_date || null,
     notes: v.notes || null,
@@ -89,5 +94,51 @@ export function contractRowFromForm(v: ContractRowInput) {
     ownership_basis: textOrNull(v.ownership_basis),
     jurisdiction: textOrNull(v.jurisdiction),
     amendment_subject: textOrNull(v.amendment_subject),
+  };
+}
+
+/**
+ * Обратное преобразование: строка договора → значения формы (без счётчиков).
+ * Используется страницей договора и созданием допсоглашения; дефолты те же,
+ * что у пустой формы, чтобы «сохранить без правок» не менял договор.
+ */
+export function contractFormFromRow(
+  c: Partial<Tables<"contracts">>,
+): Omit<ContractFormValues, "meters"> {
+  const str = (x: unknown) => (x === null || x === undefined ? "" : String(x));
+  return {
+    tenant_id: str(c.tenant_id),
+    property_id: str(c.property_id),
+    number: str(c.number),
+    cadastral_no: str(c.cadastral_no),
+    area: str(c.area),
+    rate: str(c.rate),
+    currency: str(c.currency) || "RUB",
+    payment_period: str(c.payment_period) || "monthly",
+    start_date: str(c.start_date),
+    end_date: str(c.end_date),
+    status: str(c.status) || "active",
+    kind: str(c.kind) || "rent",
+    notes: str(c.notes),
+    termination_terms: str(c.termination_terms),
+    deposit_percent: str(c.deposit_percent),
+    unit: str(c.unit) || "sqm",
+    vat_rate: str(c.vat_rate),
+    vat_included: c.vat_included ?? true,
+    payment_day: str(c.payment_day),
+    payment_timing: str(c.payment_timing),
+    has_variable_part: c.has_variable_part ?? false,
+    variable_payment_day: str(c.variable_payment_day),
+    variable_part_note: str(c.variable_part_note),
+    penalty_percent_per_day: str(c.penalty_percent_per_day),
+    misuse_penalty_percent: str(c.misuse_penalty_percent),
+    handover_date: str(c.handover_date),
+    auto_renew: c.auto_renew ?? false,
+    renew_months: str(c.renew_months),
+    termination_notice_days: str(c.termination_notice_days),
+    deposit_paid_at: str(c.deposit_paid_at),
+    ownership_basis: str(c.ownership_basis),
+    jurisdiction: str(c.jurisdiction),
+    amendment_subject: str(c.amendment_subject),
   };
 }
