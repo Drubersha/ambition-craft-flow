@@ -15,7 +15,13 @@ import {
 } from "@/components/ui/table";
 import { Plus, Building2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, formatMoney, formatNum } from "@/lib/format";
+import {
+  PROPERTY_STATUS_LABELS,
+  PROPERTY_TYPE_LABELS,
+  formatMoney,
+  formatNum,
+  leaseUnitShort,
+} from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { FolderFilterBar, useFolderFilter } from "@/components/folder-filter";
 import { folderBreadcrumb } from "@/lib/folders";
@@ -59,8 +65,6 @@ function PropertiesPage() {
     </div>
   );
 }
-
-const UNIT_SHORT: Record<string, string> = { sqm: "м²", space: "мест", lot: "лотов" };
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   if (status === "free") return "destructive";
@@ -174,7 +178,7 @@ function PropertiesList() {
                         {PROPERTY_TYPE_LABELS[p.type]}
                       </TableCell>
                       <TableCell className="text-right tabular-nums whitespace-nowrap">
-                        {formatNum(Number(p.area_total))} {UNIT_SHORT[unit] ?? "м²"}
+                        {formatNum(Number(p.area_total))} {leaseUnitShort(unit)}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right tabular-nums whitespace-nowrap text-muted-foreground">
                         {p.base_rate ? formatMoney(p.base_rate, p.currency) : "—"}

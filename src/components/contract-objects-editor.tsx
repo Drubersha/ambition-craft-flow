@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatNum } from "@/lib/format";
+import { formatNum, leaseUnitShort } from "@/lib/format";
 import { humanError } from "@/lib/human-error";
 
 type LinkRow = {
@@ -73,7 +73,7 @@ export function ContractObjectsEditor({
   contractArea: number;
 }) {
   const qc = useQueryClient();
-  const unitLabel = unit === "space" ? "мест" : unit === "lot" ? "лотов" : "м²";
+  const unitLabel = leaseUnitShort(unit);
   const [newPropId, setNewPropId] = useState("");
   const [newArea, setNewArea] = useState("");
 

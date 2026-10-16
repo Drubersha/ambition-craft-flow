@@ -34,6 +34,8 @@ import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_KIND_LABELS,
   PAYMENT_PERIOD_LABELS,
+  PAYMENT_TIMING_LABELS,
+  LEASE_UNIT_LABELS,
   formatMoney,
   monthlyPayment,
   todayISO,
@@ -88,22 +90,8 @@ export type ContractFormValues = {
   meters: MeterDraft[];
 };
 
-/** К какому месяцу относится день оплаты фиксированной части. */
-export const PAYMENT_TIMING_LABELS: Record<string, string> = {
-  advance: "Предоплата — до N числа предыдущего месяца",
-  current: "В расчётном месяце — до N числа",
-  arrears: "Постоплата — до N числа следующего месяца",
-};
-
 /** Валюты, которые предлагает форма; ранее поле было свободным текстом. */
 const CURRENCIES = ["RUB", "USD", "EUR", "KZT", "BYN"];
-
-/** Подписи полей площади и цены по единице измерения. */
-export const UNIT_LABELS: Record<string, { area: string; rate: string; name: string }> = {
-  sqm: { area: "Площадь, м²", rate: "Цена за м² *", name: "Квадратные метры" },
-  space: { area: "Количество мест", rate: "Цена за место *", name: "Машиноместа" },
-  lot: { area: "Количество лотов", rate: "Цена за лот *", name: "Лоты" },
-};
 
 export function ContractForm({
   initial,
@@ -355,7 +343,7 @@ export function ContractForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(UNIT_LABELS).map(([key, u]) => (
+              {Object.entries(LEASE_UNIT_LABELS).map(([key, u]) => (
                 <SelectItem key={key} value={key}>
                   {u.name}
                 </SelectItem>
@@ -363,7 +351,7 @@ export function ContractForm({
             </SelectContent>
           </Select>
         </F>
-        <F label={(UNIT_LABELS[v.unit] ?? UNIT_LABELS.sqm).area}>
+        <F label={(LEASE_UNIT_LABELS[v.unit] ?? LEASE_UNIT_LABELS.sqm).area}>
           <Input
             type="number"
             step="0.01"
@@ -376,7 +364,7 @@ export function ContractForm({
             <p className="text-xs text-destructive">Площадь не может быть отрицательной.</p>
           )}
         </F>
-        <F label={(UNIT_LABELS[v.unit] ?? UNIT_LABELS.sqm).rate}>
+        <F label={(LEASE_UNIT_LABELS[v.unit] ?? LEASE_UNIT_LABELS.sqm).rate}>
           <Input
             type="number"
             step="0.01"

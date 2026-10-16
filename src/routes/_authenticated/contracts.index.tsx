@@ -16,7 +16,14 @@ import {
 import { ContractStatusBadge } from "@/components/status-badges";
 import { Plus, FileText, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { formatDate, formatMoney, formatNum, monthlyPayment } from "@/lib/format";
+import {
+  formatDate,
+  formatMoney,
+  formatNum,
+  monthlyPayment,
+  leaseUnitShort,
+  rateLabel,
+} from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { FolderFilterBar, useFolderFilter } from "@/components/folder-filter";
 import { excludeAmendments } from "@/lib/dashboard";
@@ -24,27 +31,6 @@ import { excludeAmendments } from "@/lib/dashboard";
 export const Route = createFileRoute("/_authenticated/contracts/")({
   component: ContractsList,
 });
-
-const UNIT_SHORT: Record<string, string> = { sqm: "м²", space: "место", lot: "лот" };
-const PERIOD_SHORT: Record<string, string> = {
-  monthly: "мес",
-  quarterly: "кв",
-  yearly: "год",
-  one_time: "разово",
-};
-
-/** «950 ₽/м²·мес» — ставка без единицы и периода не сравнима между договорами. */
-export function rateLabel(c: {
-  rate: number | string;
-  currency: string;
-  unit?: string | null;
-  payment_period: string;
-}): string {
-  const unit = UNIT_SHORT[c.unit ?? "sqm"] ?? "м²";
-  const per = PERIOD_SHORT[c.payment_period] ?? c.payment_period;
-  const money = formatMoney(c.rate, c.currency);
-  return c.payment_period === "one_time" ? `${money}/${unit}, ${per}` : `${money}/${unit}·${per}`;
-}
 
 function ContractsList() {
   const navigate = useNavigate();
@@ -276,7 +262,7 @@ function ContractsList() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right tabular-nums whitespace-nowrap">
                         {c.area != null
-                          ? `${formatNum(Number(c.area))} ${UNIT_SHORT[c.unit ?? "sqm"] ?? "м²"}`
+                          ? `${formatNum(Number(c.area))} ${leaseUnitShort(c.unit)}`
                           : "—"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-right tabular-nums whitespace-nowrap text-muted-foreground">

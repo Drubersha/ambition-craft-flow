@@ -76,7 +76,7 @@ describe("diffContractTerms", () => {
       unit: "space",
     });
     const by = Object.fromEntries(changes.map((c) => [c.key, c]));
-    expect(by.payment_timing.after).toContain("постоплата");
+    expect(by.payment_timing.after).toMatch(/постоплата/i);
     expect(by.status.after).toBe("Завершён");
     expect(by.unit.after).toBe("машиноместа");
   });

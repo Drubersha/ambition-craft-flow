@@ -8,6 +8,8 @@ import {
   toISO,
   todayISO,
   defaultChargePeriod,
+  leaseUnitShort,
+  rateLabel,
 } from "./format";
 
 describe("monthlyPayment", () => {
@@ -105,5 +107,23 @@ describe("local-date helpers (UTC+ timezones)", () => {
     expect(q).toEqual({ start: "2026-10-01", end: "2026-12-31", due: "2026-12-31" });
     const y = defaultChargePeriod(new Date(2026, 1, 5), "yearly");
     expect(y.end).toBe("2027-01-31");
+  });
+});
+
+describe("единицы аренды и подпись ставки", () => {
+  it("leaseUnitShort: множественная форма по умолчанию, единственная для ставки, м² для неизвестной", () => {
+    expect(leaseUnitShort("space")).toBe("мест");
+    expect(leaseUnitShort("space", "one")).toBe("место");
+    expect(leaseUnitShort("lot")).toBe("лотов");
+    expect(leaseUnitShort(null)).toBe("м²");
+    expect(leaseUnitShort("unknown")).toBe("м²");
+  });
+  it("rateLabel: единица и период в подписи, разовая ставка через запятую", () => {
+    expect(
+      rateLabel({ rate: 950, currency: "RUB", unit: "sqm", payment_period: "monthly" }),
+    ).toMatch(/950.*\/м²·мес$/);
+    expect(
+      rateLabel({ rate: 5000, currency: "RUB", unit: "space", payment_period: "one_time" }),
+    ).toMatch(/\/место, разово$/);
   });
 });

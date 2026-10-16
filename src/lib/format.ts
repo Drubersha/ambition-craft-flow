@@ -130,6 +130,67 @@ export const PAYMENT_PERIOD_LABELS: Record<string, string> = {
   one_time: "Разово",
 };
 
+/** Короткие подписи периода для ставки: «₽/м²·мес». */
+export const PAYMENT_PERIOD_SHORT: Record<string, string> = {
+  monthly: "мес",
+  quarterly: "кв",
+  yearly: "год",
+  one_time: "разово",
+};
+
+/** К какому месяцу относится день оплаты фиксированной части. */
+export const PAYMENT_TIMING_LABELS: Record<string, string> = {
+  advance: "Предоплата — до N числа предыдущего месяца",
+  current: "В расчётном месяце — до N числа",
+  arrears: "Постоплата — до N числа следующего месяца",
+};
+
+/**
+ * Единица аренды (lease_unit): название, короткие формы для «N мест» и
+ * «₽/место», подписи полей площади и цены. Единственный источник подписей.
+ */
+export const LEASE_UNIT_LABELS: Record<
+  string,
+  { name: string; one: string; many: string; area: string; rate: string }
+> = {
+  sqm: {
+    name: "Квадратные метры",
+    one: "м²",
+    many: "м²",
+    area: "Площадь, м²",
+    rate: "Цена за м² *",
+  },
+  space: {
+    name: "Машиноместа",
+    one: "место",
+    many: "мест",
+    area: "Количество мест",
+    rate: "Цена за место *",
+  },
+  lot: { name: "Лоты", one: "лот", many: "лотов", area: "Количество лотов", rate: "Цена за лот *" },
+};
+
+/** «мест» / «место»; неизвестная или пустая единица трактуется как м². */
+export function leaseUnitShort(
+  unit: string | null | undefined,
+  form: "one" | "many" = "many",
+): string {
+  return (LEASE_UNIT_LABELS[unit ?? "sqm"] ?? LEASE_UNIT_LABELS.sqm)[form];
+}
+
+/** «950 ₽/м²·мес» — ставка без единицы и периода не сравнима между договорами. */
+export function rateLabel(c: {
+  rate: number | string;
+  currency: string;
+  unit?: string | null;
+  payment_period: string;
+}): string {
+  const unit = leaseUnitShort(c.unit, "one");
+  const per = PAYMENT_PERIOD_SHORT[c.payment_period] ?? c.payment_period;
+  const money = formatMoney(c.rate, c.currency);
+  return c.payment_period === "one_time" ? `${money}/${unit}, ${per}` : `${money}/${unit}·${per}`;
+}
+
 export const METER_TYPE_LABELS: Record<string, string> = {
   electricity: "Электричество",
   water_cold: "Холодная вода",
