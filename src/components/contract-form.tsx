@@ -110,7 +110,6 @@ export function ContractForm({
   onSubmit,
   submitting,
   formId,
-  hideSubmit,
   onValuesChange,
   existingMetersCount = 0,
   isAmendment = false,
@@ -119,7 +118,6 @@ export function ContractForm({
   onSubmit: (v: ContractFormValues) => void;
   submitting?: boolean;
   formId?: string;
-  hideSubmit?: boolean;
   onValuesChange?: (v: ContractFormValues) => void;
   /** Сколько счётчиков уже привязано к договору (для страницы редактирования). */
   existingMetersCount?: number;
@@ -667,16 +665,13 @@ export function ContractForm({
       <F label="Заметки">
         <Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
       </F>
-      {/* При внешней панели действий (formId) на телефоне кнопка в форме дублировала бы её. */}
-      {!hideSubmit && (
-        <Button
-          type="submit"
-          disabled={submitting}
-          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
-        >
-          {submitting ? "Сохранение..." : "Сохранить"}
-        </Button>
-      )}
+      <Button
+        type="submit"
+        disabled={submitting}
+        className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+      >
+        {submitting ? "Сохранение..." : "Сохранить"}
+      </Button>
       <AlertDialog open={meterConfirmOpen} onOpenChange={setMeterConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

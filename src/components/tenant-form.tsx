@@ -47,22 +47,6 @@ export type TenantFormValues = {
   contacts: TenantContactDraft[];
 };
 
-/** Пустые значения реквизитов — общий дефолт для формы и вызывающих страниц. */
-export const EMPTY_TENANT_REQUISITES = {
-  kpp: "",
-  ogrn: "",
-  legal_address: "",
-  actual_address: "",
-  postal_address: "",
-  bank_name: "",
-  bank_account: "",
-  bank_bik: "",
-  bank_corr_account: "",
-  signatory_name: "",
-  signatory_position: "",
-  signatory_basis: "",
-};
-
 const emptyContact = (): TenantContactDraft => ({ full_name: "", email: "", phone: "" });
 
 function contactFilled(c: TenantContactDraft): boolean {
@@ -82,13 +66,11 @@ export function TenantForm({
   onSubmit,
   submitting,
   formId,
-  hideSubmit,
 }: {
   initial?: Partial<TenantFormValues>;
   onSubmit: (v: TenantFormValues) => void;
   submitting?: boolean;
   formId?: string;
-  hideSubmit?: boolean;
 }) {
   const [v, setV] = useState<Omit<TenantFormValues, "contacts">>({
     name: initial?.name ?? "",
@@ -299,15 +281,13 @@ export function TenantForm({
       <F label="Заметки">
         <Textarea rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
       </F>
-      {!hideSubmit && (
-        <Button
-          type="submit"
-          disabled={submitting}
-          className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
-        >
-          {submitting ? "Сохранение..." : "Сохранить"}
-        </Button>
-      )}
+      <Button
+        type="submit"
+        disabled={submitting}
+        className={formId ? "hidden md:inline-flex" : "w-full sm:w-auto"}
+      >
+        {submitting ? "Сохранение..." : "Сохранить"}
+      </Button>
     </form>
   );
 }

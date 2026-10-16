@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -14,14 +13,12 @@ export function PlanUploader({
   currentPath,
   currentMime,
   onChange,
-  disabled,
 }: {
   /** Directory prefix in bucket, e.g. "folder-plans/<id>" or "property-plans/<id>". */
   pathPrefix: string;
   currentPath: string | null;
   currentMime: string | null;
   onChange: (next: { path: string | null; mime: string | null }) => Promise<void> | void;
-  disabled?: boolean;
 }) {
   const url = useSignedUrl(PLAN_BUCKET, currentPath, 60 * 60);
   const [busy, setBusy] = useState(false);
@@ -83,14 +80,14 @@ export function PlanUploader({
                 type="file"
                 accept={PLAN_ACCEPT}
                 className="hidden"
-                disabled={disabled || busy}
+                disabled={busy}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) handleFile(f);
                   e.target.value = "";
                 }}
               />
-              <Button type="button" variant="outline" size="sm" disabled={disabled || busy} asChild>
+              <Button type="button" variant="outline" size="sm" disabled={busy} asChild>
                 <span>
                   <Upload className="h-4 w-4 mr-1" /> Заменить
                 </span>
@@ -104,7 +101,7 @@ export function PlanUploader({
               description="Файл будет удалён из хранилища."
               confirmText="Удалить"
               onConfirm={handleDelete}
-              disabled={disabled || busy}
+              disabled={busy}
             >
               <Trash2 className="h-4 w-4 mr-1" /> Удалить
             </ConfirmButton>
@@ -116,7 +113,7 @@ export function PlanUploader({
             type="file"
             accept={PLAN_ACCEPT}
             className="hidden"
-            disabled={disabled || busy}
+            disabled={busy}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) handleFile(f);
@@ -127,8 +124,6 @@ export function PlanUploader({
           <div>{busy ? "Обработка..." : "Загрузить план (PNG, JPG, WEBP, PDF)"}</div>
         </label>
       )}
-      {/* hidden input for click-anywhere not implemented; using label-based picker above */}
-      <Input type="hidden" />
     </div>
   );
 }

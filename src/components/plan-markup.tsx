@@ -22,13 +22,6 @@ export type ActiveContractLite = {
   tenantName?: string;
 };
 
-const PERIOD_LABEL: Record<ActiveContractLite["payment_period"], string> = {
-  monthly: "/мес",
-  quarterly: "/кв",
-  yearly: "/год",
-  one_time: " (разово)",
-};
-
 const DRAFT_COLOR = "hsl(142 71% 45%)";
 
 export type PlanColorMode = "occupancy" | "ahch";
@@ -52,7 +45,7 @@ function areaShare(
  *  - ahch: доля АХЧ задаёт непрозрачность красного (100% — плотный красный,
  *    около нуля — едва заметный), без АХЧ — почти прозрачный серый.
  */
-export function markingStyle(
+function markingStyle(
   mode: PlanColorMode,
   occupancyShare: number,
   ahchShare: number,
@@ -334,11 +327,6 @@ function Tooltip({
   const showOccupancy = contracts.length > 0 && !singleFull;
   const ahchArea = ahchContracts.reduce((sum, c) => sum + (c.area ?? 0), 0);
   const ahchPct = area > 0 ? Math.round((ahchArea / area) * 100) : 0;
-
-  const firstContract = contracts[0];
-  const conRate = firstContract?.rate || 0;
-  const conArea = firstContract?.area ?? area;
-  const conTotal = conRate * conArea;
 
   return (
     <div

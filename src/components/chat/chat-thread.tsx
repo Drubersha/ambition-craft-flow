@@ -8,7 +8,7 @@ import { Paperclip, Send, FileText, Download, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
-import { analyzeMessage, createManualTaskFromMessage } from "@/lib/tasks.functions";
+import { createManualTaskFromMessage } from "@/lib/tasks.functions";
 import { ensureChatThreadFn } from "@/lib/chat.functions";
 import { uploadSizeIssue } from "@/lib/upload-limits";
 import { useSignedUrl } from "@/lib/use-signed-url";
@@ -44,7 +44,6 @@ function timeLabel(iso: string) {
 
 export function ChatThread({ threadId, myRole, myLabel }: Props) {
   const qc = useQueryClient();
-  const analyze = useServerFn(analyzeMessage);
   const manualTask = useServerFn(createManualTaskFromMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");

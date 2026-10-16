@@ -46,14 +46,12 @@ export function AddPaymentDialog({
   currency,
   existing,
   trigger,
-  onSaved,
 }: {
   chargeId: string;
   suggested: number;
   currency: string;
   existing?: ExistingPayment;
   trigger?: ReactNode;
-  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -96,8 +94,6 @@ export function AddPaymentDialog({
         if (error) throw error;
         return;
       }
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Не авторизован");
       // owner_id платежа = владелец начисления (важно для менеджеров).
       const { data: ch, error: chErr } = await supabase
         .from("charges")
@@ -125,7 +121,6 @@ export function AddPaymentDialog({
       qc.invalidateQueries({ queryKey: ["dashboard-raw"] });
       toast.success(existing ? "Платёж изменён" : "Платёж отмечен");
       setOpen(false);
-      onSaved?.();
     },
     onError: (e) => toast.error(humanError(e, "Не удалось сохранить платёж")),
   });

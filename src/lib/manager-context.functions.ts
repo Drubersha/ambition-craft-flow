@@ -59,21 +59,10 @@ export const getMyManagerContext = createServerFn({ method: "GET" })
   });
 
 /**
- * Authorise that the caller can act on data scoped to `ownerId`.
- * Allowed when caller IS the owner, has `manager` link to that owner, or is
- * a moderator/developer admin. Throws otherwise.
- *
- * Use this in privileged (service-role) server functions before touching
- * data belonging to `ownerId` — RLS does not apply through `supabaseAdmin`.
+ * Проверка, что вызывающий может работать с данными владельца `ownerId`:
+ * сам владелец, его менеджер (user_links) или администратор. Иначе бросает.
+ * Для привилегированных server-функций (service-role), где RLS не действует.
  */
-export const assertOwnerAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { ownerId: string }) => input)
-  .handler(async ({ data, context }) => {
-    return await ensureOwnerAccess(context.supabase, context.userId, data.ownerId);
-  });
-
-/** Helper for in-process use from other server functions. */
 export async function ensureOwnerAccess(
   supabase: any,
   callerUserId: string,
