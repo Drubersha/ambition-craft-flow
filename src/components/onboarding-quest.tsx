@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isDemoSession } from "@/lib/demo-session";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -178,7 +179,7 @@ export function OnboardingQuest({ variant }: { variant: "owner" | "tenant" }) {
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [state, setState] = useState<QuestState>({});
   const [ready, setReady] = useState(false);
-  const isDemo = typeof window !== "undefined" && !!localStorage.getItem("demo.kind");
+  const isDemo = isDemoSession();
 
   useEffect(() => {
     let active = true;

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { DEMO_STORAGE, getActiveAccountKind, setActiveAccountKind } from "@/lib/demo-session";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useState } from "react";
@@ -271,12 +272,10 @@ function SignInForm({ onDone }: { onDone: () => void }) {
         .select("role")
         .eq("user_id", userId);
       const list = (roles ?? []).map((r: { role: string }) => r.role);
-      const stored =
-        typeof window !== "undefined" ? localStorage.getItem("active_account_kind") : null;
-      const kind = pickRoleAfterLogin(list, stored);
-      localStorage.setItem("active_account_kind", kind);
+      const kind = pickRoleAfterLogin(list, getActiveAccountKind());
+      setActiveAccountKind(kind);
       // Sync demo identity so the existing UI honors the choice.
-      localStorage.setItem("demo.role", kind);
+      localStorage.setItem(DEMO_STORAGE.role, kind);
       toast.success("Добро пожаловать");
       onDone();
     } catch (e) {

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { isDemoEmail } from "@/lib/demo-session";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -59,7 +60,7 @@ export const changePassword = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const email = ((context.claims as { email?: string })?.email ?? "").toString().toLowerCase();
     if (!email) throw new Error("У аккаунта нет email — смена пароля недоступна.");
-    if (email.endsWith(".local")) {
+    if (isDemoEmail(email)) {
       throw new Error("Пароль демо-аккаунта изменить нельзя.");
     }
     if (rateLimited(context.userId)) {

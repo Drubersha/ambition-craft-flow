@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { DEMO_STORAGE } from "@/lib/demo-session";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyRoles } from "@/lib/my-roles.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +19,8 @@ type Identity = {
 
 const Ctx = createContext<Identity | null>(null);
 
-const ROLE_KEY = "demo.role";
-const TENANT_KEY = "demo.tenantId";
+const ROLE_KEY = DEMO_STORAGE.role;
+const TENANT_KEY = DEMO_STORAGE.tenantId;
 
 // Roles that grant privileged UI (admin pages, moderator tools) MUST be
 // verified against the server. Owner/manager/tenant views are RLS-scoped, so
