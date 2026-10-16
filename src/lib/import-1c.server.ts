@@ -203,7 +203,16 @@ export async function applyPlan(
     while (i < plan.ops.length && plan.ops[i].table === table) group.push(plan.ops[i++]);
     const creates = group.filter((o) => o.action === "create");
     for (const part of chunks(creates, 200)) {
-      await must(`insert ${table}`, sb.from(table).insert(part.map((o) => o.row)));
+      // defaultToNull:false → Prefer: missing=default. Иначе при пакетной вставке
+      // PostgREST подставляет NULL в поля, которых нет у части строк (например,
+      // has_variable_part у допсоглашения), и ловит NOT NULL.
+      await must(
+        `insert ${table}`,
+        sb.from(table).insert(
+          part.map((o) => o.row),
+          { defaultToNull: false },
+        ),
+      );
       for (const o of part) hist(table, o.id, o.externalId, "create", null, o.row);
     }
     for (const o of group.filter((g) => g.action === "update" || g.action === "link")) {
@@ -218,7 +227,10 @@ export async function applyPlan(
           sb.from("tenant_contacts").delete().eq("tenant_id", c.tenantId),
         );
         if (c.contacts.length > 0)
-          await must("insert tenant_contacts", sb.from("tenant_contacts").insert(c.contacts));
+          await must(
+            "insert tenant_contacts",
+            sb.from("tenant_contacts").insert(c.contacts, { defaultToNull: false }),
+          );
         hist("tenant_contacts", c.tenantId, null, "update", null, { contacts: c.contacts });
       }
     }
@@ -265,7 +277,10 @@ export async function applyPlan(
   }
 
   for (const part of chunks(history, 500)) {
-    await must("insert import_history", sb.from("import_history").insert(part));
+    await must(
+      "insert import_history",
+      sb.from("import_history").insert(part, { defaultToNull: false }),
+    );
   }
 }
 
