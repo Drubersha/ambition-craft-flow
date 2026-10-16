@@ -7,6 +7,7 @@ import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 import { useEffectiveOwnerId } from "@/lib/manager-context";
 import { humanError } from "@/lib/human-error";
+import { propertyRowFromForm } from "@/lib/properties";
 import { z } from "zod";
 
 const search = z.object({
@@ -29,22 +30,7 @@ function NewProperty() {
       if (!ownerId) throw new Error("Не удалось определить арендодателя");
       const { data, error } = await supabase
         .from("properties")
-        .insert({
-          owner_id: ownerId,
-          name: v.name,
-          address: v.address,
-          type: v.type as any,
-          status: v.status as any,
-          cadastral_no: v.cadastral_no || null,
-          area_total: Number(v.area_total) || 0,
-          area_usable: v.area_usable ? Number(v.area_usable) : null,
-          floor: v.floor || null,
-          room_no: v.room_no || null,
-          base_rate: v.base_rate ? Number(v.base_rate) : null,
-          currency: v.currency || "RUB",
-          description: v.description || null,
-          folder_id: v.folder_id,
-        })
+        .insert({ owner_id: ownerId, ...propertyRowFromForm(v) })
         .select()
         .single();
       if (error) throw error;

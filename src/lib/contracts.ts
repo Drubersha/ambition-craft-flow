@@ -4,7 +4,7 @@
  * («пусто → null», ставка/площадь числом, депозит от месячного платежа)
  * должны совпадать, иначе договор менял бы смысл при сохранении.
  */
-import { computeDepositWithArea } from "./format";
+import { DEFAULT_CURRENCY, computeDepositWithArea, textOrNull } from "./format";
 
 /** Поля формы, из которых собирается строка договора. */
 export type ContractRowInput = {
@@ -46,7 +46,6 @@ export type ContractRowInput = {
 /** Пустое поле формы → NULL: «не заполнено» и «ноль» — разные вещи. */
 const numOrNull = (s: string | undefined) =>
   s === undefined || s.trim() === "" ? null : Number(s);
-const textOrNull = (s: string | undefined) => s?.trim() || null;
 
 export function contractRowFromForm(v: ContractRowInput) {
   const rate = Number(v.rate) || 0;
@@ -60,7 +59,7 @@ export function contractRowFromForm(v: ContractRowInput) {
     area: v.area ? Number(v.area) : null,
     unit: (v.unit as any) || "sqm",
     rate,
-    currency: v.currency || "RUB",
+    currency: v.currency || DEFAULT_CURRENCY,
     payment_period: v.payment_period as any,
     status: v.status as any,
     kind: v.kind as any,

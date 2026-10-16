@@ -1,4 +1,12 @@
-export function formatMoney(v: number | string | null | undefined, currency = "RUB") {
+/** Валюта по умолчанию для договоров, объектов и форматирования сумм. */
+export const DEFAULT_CURRENCY = "RUB";
+
+/** Пустое или пробельное поле формы → null: «не заполнено» в базе хранится как NULL, а не "". */
+export function textOrNull(s: string | null | undefined): string | null {
+  return s?.trim() || null;
+}
+
+export function formatMoney(v: number | string | null | undefined, currency = DEFAULT_CURRENCY) {
   const n = Number(v ?? 0);
   try {
     return new Intl.NumberFormat("ru-RU", {

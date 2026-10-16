@@ -262,6 +262,7 @@ function FoldersPage() {
         <div>
           {selected ? (
             <FolderDetail
+              key={selected.id}
               folder={selected}
               folders={folders}
               onRename={(name) => update.mutate({ id: selected.id, name })}
@@ -438,11 +439,8 @@ function FolderDetail({
   onDelete: () => void;
   onPlanChange: (p: { path: string | null; mime: string | null }) => Promise<void> | void;
 }) {
+  // key={folder.id} на вызове компонента сбрасывает это состояние при смене папки.
   const [name, setName] = useState(folder.name);
-  // Reset name when switching folder
-  if (name !== folder.name && document.activeElement?.tagName !== "INPUT") {
-    // noop — relies on React reconciliation; below useState init handles initial value per key
-  }
   const { data: props = [] } = useQuery({
     queryKey: ["folder-properties", folder.id],
     queryFn: async () => {
@@ -457,7 +455,7 @@ function FolderDetail({
   });
 
   return (
-    <div className="space-y-4" key={folder.id}>
+    <div className="space-y-4">
       <Card className="p-4 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <FolderIcon className="h-5 w-5 text-primary" />
