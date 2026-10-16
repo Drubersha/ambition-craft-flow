@@ -203,7 +203,16 @@ export async function applyPlan(
     while (i < plan.ops.length && plan.ops[i].table === table) group.push(plan.ops[i++]);
     const creates = group.filter((o) => o.action === "create");
     for (const part of chunks(creates, 200)) {
-      await must(`insert ${table}`, sb.from(table).insert(part.map((o) => o.row)));
+      // defaultToNull:false → Prefer: missing=default. Иначе при пакетной вставке
+      // PostgREST подставляет NULL в поля, которых нет у части строк (например,
+      // has_variable_part у допсоглашения), и ловит NOT NULL.
+      await must(
+        `insert ${table}`,
+        sb.from(table).insert(
+          part.map((o) => o.row),
+          { defaultToNull: false },
+        ),
+      );
       for (const o of part) hist(table, o.id, o.externalId, "create", null, o.row);
     }
     for (const o of group.filter((g) => g.action === "update" || g.action === "link")) {
@@ -218,7 +227,10 @@ export async function applyPlan(
           sb.from("tenant_contacts").delete().eq("tenant_id", c.tenantId),
         );
         if (c.contacts.length > 0)
-          await must("insert tenant_contacts", sb.from("tenant_contacts").insert(c.contacts));
+          await must(
+            "insert tenant_contacts",
+            sb.from("tenant_contacts").insert(c.contacts, { defaultToNull: false }),
+          );
         hist("tenant_contacts", c.tenantId, null, "update", null, { contacts: c.contacts });
       }
     }
@@ -265,7 +277,10 @@ export async function applyPlan(
   }
 
   for (const part of chunks(history, 500)) {
-    await must("insert import_history", sb.from("import_history").insert(part));
+    await must(
+      "insert import_history",
+      sb.from("import_history").insert(part, { defaultToNull: false }),
+    );
   }
 }
 
@@ -288,6 +303,8 @@ export async function runImport(opts: {
   fileSize: number;
   fileHash: string;
   dryRun: boolean;
+  /** ?confirm_voids=1 — записать, даже если защита от неполного файла сработала. */
+  confirmVoids: boolean;
 }): Promise<RunResult> {
   const { sb, ownerId } = opts;
   const started = Date.now();
@@ -345,6 +362,7 @@ export async function runImport(opts: {
 
   const plan = buildPlan(ownerId, file, existing);
   const report = planReport(plan);
+  const guard = plan.voidGuard;
   if (opts.dryRun) {
     await finish("ok", { ...meta, report });
     return {
@@ -355,6 +373,20 @@ export async function runImport(opts: {
         dry_run: true,
         received_at: new Date(started).toISOString(),
         period: file.period,
+        needs_confirmation: guard.triggered,
+        ...report,
+      },
+    };
+  }
+  if (guard.triggered && !opts.confirmVoids) {
+    await finish("needs_confirmation", { ...meta, error: "too_many_voids", report });
+    return {
+      status: 409,
+      body: {
+        batch_id: batchId,
+        ok: false,
+        reason: "too_many_voids",
+        hint: `В файле нет ${guard.absent} из ${guard.imported_in_window} ранее загруженных документов окна ${file.period.from} — ${file.period.to}. Ничего не записано. Проверьте полноту выгрузки (coverage по месяцам в отчёте); если документы действительно удалены в 1С — отправьте тот же файл повторно с ?confirm_voids=1.`,
         ...report,
       },
     };
