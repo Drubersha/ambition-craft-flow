@@ -16,6 +16,7 @@ import {
   type Contract,
   type Payment,
   type Property,
+  occupancyTone,
 } from "@/lib/dashboard";
 import { Kpi } from "./ui";
 
@@ -138,15 +139,7 @@ export function CurrentMonthOps({
         icon={Percent}
         label="Собираемость месяца"
         value={stats.collection === null ? "—" : `${stats.collection.toFixed(0)}%`}
-        tone={
-          stats.collection === null
-            ? undefined
-            : stats.collection >= 90
-              ? "ok"
-              : stats.collection >= 70
-                ? "warn"
-                : "danger"
-        }
+        tone={stats.collection === null ? undefined : occupancyTone(stats.collection)}
         sub={
           <div className="mt-1 space-y-1">
             {stats.collection !== null && <Progress value={stats.collection} className="h-1.5" />}

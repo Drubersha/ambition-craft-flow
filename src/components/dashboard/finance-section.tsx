@@ -21,6 +21,7 @@ import {
   monthlyFromRate,
 } from "@/lib/format";
 import type { Contract, Payment, Property } from "@/lib/dashboard";
+import { contourAreaUnit, contourOfType, contourRateUnit } from "@/lib/dashboard";
 import { EmptyText } from "./ui";
 import { BudgetExpenseStructure, BudgetPlanVsFact } from "./budget-cards";
 
@@ -84,7 +85,7 @@ export function FinanceSection({
       .map(([type, area]) => ({
         type: PROPERTY_TYPE_LABELS[type] || type,
         area,
-        unit: type === "parking" ? "мест" : "м²",
+        unit: contourAreaUnit(contourOfType(type)),
       }))
       .sort((a, b) => b.area - a.area);
   }, [properties]);
@@ -130,7 +131,7 @@ export function FinanceSection({
       .map(([type, v]) => ({
         type: PROPERTY_TYPE_LABELS[type] || type,
         rate: v.den > 0 ? v.num / v.den : 0,
-        unit: type === "parking" ? "₽/место/мес" : "₽/м²/мес",
+        unit: contourRateUnit(contourOfType(type)),
       }))
       .sort((a, b) => b.rate - a.rate);
   }, [contracts]);

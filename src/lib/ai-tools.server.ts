@@ -6,7 +6,8 @@
  * ссылка ведёт ровно на ту запись, из которой взято число.
  */
 import { z } from "zod";
-import { formatMoney, formatDate, monthlyPayment, todayISO } from "@/lib/format";
+import { formatMoney, formatDate, monthlyPayment, todayISO, toISO } from "@/lib/format";
+import { contourAreaUnit, contourOfType } from "@/lib/dashboard";
 import { resolvePeriod } from "@/lib/ai-intent";
 
 /** Ссылка на запись в программе, из которой взяты данные ответа. */
@@ -298,8 +299,6 @@ async function expiringContracts(ctx: Ctx, args: { days?: number; tenant?: strin
   const days = Math.min(Math.max(args.days ?? 90, 1), 365);
   const today = new Date();
   const limitDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const { data } = await ctx.sb
     .from("contracts")
     .select(
@@ -310,7 +309,7 @@ async function expiringContracts(ctx: Ctx, args: { days?: number; tenant?: strin
     .is("parent_contract_id", null)
     .not("end_date", "is", null)
     .gte("end_date", todayISO())
-    .lte("end_date", iso(limitDate))
+    .lte("end_date", toISO(limitDate))
     .order("end_date", { ascending: true });
   let rows = (data ?? []) as any[];
   const who = args.tenant ? ` у «${args.tenant}»` : "";
@@ -353,15 +352,8 @@ async function portfolioOverview(ctx: Ctx) {
     .eq("status", "active")
     .is("parent_contract_id", null);
 
-  const contour = (t?: string | null) =>
-    t === "land"
-      ? "Земля"
-      : t === "office"
-        ? "Офис"
-        : t === "parking"
-          ? "Машиноместа"
-          : "Помещения";
-  const unit = (c: string) => (c === "Машиноместа" ? "мест" : "м²");
+  const contour = contourOfType;
+  const unit = contourAreaUnit;
   const acc = new Map<string, { total: number; leased: number; ahch: number; monthly: number }>();
   const get = (k: string) => {
     const v = acc.get(k) ?? { total: 0, leased: 0, ahch: 0, monthly: 0 };
@@ -421,15 +413,15 @@ async function tenantOverview(ctx: Ctx, args: { tenant?: string }) {
     };
   }
 
-  const contour = (t?: string | null) =>
-    t === "land"
-      ? "земли"
-      : t === "office"
-        ? "офиса"
-        : t === "parking"
-          ? "машиномест"
-          : "помещений";
-  const unit = (t?: string | null) => (t === "parking" ? "мест" : "м²");
+  // Родительный падеж контура для текста ответа; правило «тип → контур» — в dashboard.ts.
+  const GENITIVE: Record<string, string> = {
+    Земля: "земли",
+    Офис: "офиса",
+    Машиноместа: "машиномест",
+    Помещения: "помещений",
+  };
+  const contour = (t?: string | null) => GENITIVE[contourOfType(t)];
+  const unit = (t?: string | null) => contourAreaUnit(contourOfType(t));
 
   // Ставку считаем по контурам: ₽/м² помещений и ₽/место парковки — разные величины.
   const byContour = new Map<string, { area: number; unit: string; money: number }>();

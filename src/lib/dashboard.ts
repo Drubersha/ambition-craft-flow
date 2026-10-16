@@ -2,7 +2,7 @@
  * Доменный слой дашборда: типы строк выборки, границы периода фильтра
  * и чистые расчёты (каскадная фильтрация, KPI портфеля). Без React и запросов.
  */
-import { daysUntil, monthlyFromRate, monthlyPayment } from "./format";
+import { daysUntil, monthKey, monthKeyOf, monthlyFromRate, monthlyPayment } from "./format";
 
 export type Period = "day" | "month" | "quarter" | "year" | "custom";
 
@@ -293,20 +293,27 @@ export type ContourIncome = {
  * поэтому маппинг строится по всем договорам, а не только по активным —
  * оплаты приходят и по завершённым.
  */
+/** Контур каждого договора и начисления — общий индекс для расчётов по контурам. */
+function contourIndex(filtered: FilteredDashboardData): {
+  byContract: Map<string, string>;
+  byCharge: Map<string, string>;
+} {
+  const byContract = new Map<string, string>();
+  for (const c of filtered.contracts) byContract.set(c.id, contourOfType(c.property?.type));
+  const byCharge = new Map<string, string>();
+  for (const ch of filtered.charges) {
+    const label = byContract.get(ch.contract_id);
+    if (label) byCharge.set(ch.id, label);
+  }
+  return { byContract, byCharge };
+}
+
 export function computeContourIncomes(
   filtered: FilteredDashboardData,
   periodStart: Date,
   periodEnd: Date,
 ): ContourIncome[] {
-  const contourByContract = new Map<string, string>();
-  for (const c of filtered.contracts) {
-    contourByContract.set(c.id, contourOfType(c.property?.type));
-  }
-  const contourByCharge = new Map<string, string>();
-  for (const ch of filtered.charges) {
-    const label = contourByContract.get(ch.contract_id);
-    if (label) contourByCharge.set(ch.id, label);
-  }
+  const { byContract: contourByContract, byCharge: contourByCharge } = contourIndex(filtered);
 
   const groups = new Map<string, { rentIncome: number; monthlyIncome: number }>();
   const bucket = (label: string) => {
@@ -411,7 +418,6 @@ export function computeKpi(
 
   // Площадь и занятость по контурам — метры офиса, земли и складов несопоставимы.
   const areas = computeContourAreas(filtered.properties, areaContracts, areaAhch);
-  const premises = areas.find((a) => a.label === "Помещения");
   // Долю АХЧ считаем внутри его контура: делить метры складов на сумму
   // с землёй и машиноместами бессмысленно.
   const ahchBase = areas.reduce((s, a) => (a.ahch > 0 ? s + a.total : s), 0);
@@ -431,7 +437,6 @@ export function computeKpi(
     today,
   );
   const aging = computeDebtAging(pastCharges, today);
-  const overdueAmt = aging.overdue;
   const currentMonthUnpaid = curMonthCharges.reduce(
     (s, c) => s + Math.max(Number(c.total) - Number(c.paid_total), 0),
     0,
@@ -448,8 +453,6 @@ export function computeKpi(
 
   return {
     totalArea,
-    premisesArea: premises?.total ?? 0,
-    premisesOccupancy: premises?.occupancy ?? null,
     areas,
     incomes,
     propsCount: filtered.properties.length,
@@ -457,7 +460,6 @@ export function computeKpi(
     rentIncome,
     avgRate,
     avgRates,
-    overdueAmt,
     aging,
     currentMonthUnpaid,
     expSoon,
@@ -474,10 +476,7 @@ export function computeContourDebt(
   filtered: FilteredDashboardData,
   today: Date = new Date(),
 ): Map<string, number> {
-  const contourByContract = new Map<string, string>();
-  for (const c of filtered.contracts) {
-    contourByContract.set(c.id, contourOfType(c.property?.type));
-  }
+  const { byContract: contourByContract } = contourIndex(filtered);
   const { past } = splitByCurrentMonth(filtered.charges, today);
   const out = new Map<string, number>();
   for (const ch of past) {
@@ -523,20 +522,12 @@ export function computeContourYear(
 ): Map<string, ContourMonthPoint[]> {
   const monthList: string[] = [];
   for (let i = months - 1; i >= 0; i--) {
-    monthList.push(monthKeyLocal(today.getFullYear(), today.getMonth() - i));
+    monthList.push(monthKey(new Date(today.getFullYear(), today.getMonth() - i, 1)));
   }
   const inWindow = new Set(monthList);
 
   // Контур каждого договора и начисления — для денег берём исходные договоры.
-  const contourByContract = new Map<string, string>();
-  for (const c of filtered.contracts) {
-    contourByContract.set(c.id, contourOfType(c.property?.type));
-  }
-  const contourByCharge = new Map<string, string>();
-  for (const ch of filtered.charges) {
-    const label = contourByContract.get(ch.contract_id);
-    if (label) contourByCharge.set(ch.id, label);
-  }
+  const { byContract: contourByContract, byCharge: contourByCharge } = contourIndex(filtered);
 
   const money = new Map<
     string,
@@ -557,14 +548,14 @@ export function computeContourYear(
   };
 
   for (const p of filtered.payments) {
-    const month = (p.paid_at || "").slice(0, 7);
+    const month = monthKeyOf(p.paid_at || "");
     if (!inWindow.has(month)) continue;
     const contour = contourByCharge.get(p.charge_id);
     if (!contour) continue;
     cell(contour, month).income += Number(p.amount);
   }
   for (const ch of filtered.charges) {
-    const month = (ch.period_start || "").slice(0, 7);
+    const month = monthKeyOf(ch.period_start || "");
     if (!inWindow.has(month)) continue;
     const contour = contourByContract.get(ch.contract_id);
     if (!contour) continue;
@@ -646,12 +637,6 @@ export function computeContourYear(
   return result;
 }
 
-/** Ключ месяца "YYYY-MM" из года и (возможно отрицательного) индекса месяца. */
-function monthKeyLocal(year: number, monthIndex: number): string {
-  const d = new Date(year, monthIndex, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export type AgingBucket = {
   label: string;
   amount: number;
@@ -688,12 +673,12 @@ export function monthPaymentsToPast(
   charges: { id: string; period_start: string }[],
   today: Date = new Date(),
 ): { monthTotal: number; toPastPeriods: number } {
-  const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const periodOf = new Map(charges.map((c) => [c.id, (c.period_start || "").slice(0, 7)]));
+  const ym = monthKey(today);
+  const periodOf = new Map(charges.map((c) => [c.id, monthKeyOf(c.period_start || "")]));
   let monthTotal = 0;
   let toPastPeriods = 0;
   for (const p of payments) {
-    if ((p.paid_at || "").slice(0, 7) !== ym) continue;
+    if (monthKeyOf(p.paid_at || "") !== ym) continue;
     monthTotal += Number(p.amount);
     const period = periodOf.get(p.charge_id);
     if (period !== undefined && period < ym) toPastPeriods += Number(p.amount);
@@ -705,11 +690,11 @@ export function splitByCurrentMonth<T extends { period_start: string }>(
   charges: T[],
   today: Date = new Date(),
 ): { current: T[]; past: T[] } {
-  const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const ym = monthKey(today);
   const current: T[] = [];
   const past: T[] = [];
   for (const c of charges) {
-    ((c.period_start || "").slice(0, 7) === ym ? current : past).push(c);
+    (monthKeyOf(c.period_start || "") === ym ? current : past).push(c);
   }
   return { current, past };
 }
@@ -796,7 +781,7 @@ export function computeCollectionRate(charges: { total: number; paid_total: numb
   return { billed, collected, rate: billed > 0 ? (collected / billed) * 100 : null };
 }
 
-/** Тон подсветки занятости: ≥90 — ok, ≥70 — warn, ниже — danger. */
+/** Тон подсветки процента (занятость, собираемость): ≥90 — ok, ≥70 — warn, ниже — danger. */
 export function occupancyTone(v: number): "ok" | "warn" | "danger" {
   if (v >= 90) return "ok";
   if (v >= 70) return "warn";

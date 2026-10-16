@@ -4,6 +4,7 @@
  * поэтому покрыт тестами и переиспользуется на сервере.
  */
 import { z } from "zod";
+import { toISO } from "./format";
 
 export const AI_TOOL_NAMES = [
   "tenant_debts",
@@ -172,11 +173,9 @@ export function resolvePeriod(
   today: Date = new Date(),
 ): { from: string; to: string } {
   if (from && to) return { from, to };
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const monthRange = (y: number, m: number) => ({
-    from: iso(new Date(y, m, 1)),
-    to: iso(new Date(y, m + 1, 0)),
+    from: toISO(new Date(y, m, 1)),
+    to: toISO(new Date(y, m + 1, 0)),
   });
 
   const p = (period ?? "").toLowerCase().replace(/ё/g, "е").trim();
@@ -201,15 +200,15 @@ export function resolvePeriod(
     const q = Math.floor(today.getMonth() / 3) - (prev ? 1 : 0);
     const base = new Date(year, q * 3, 1);
     return {
-      from: iso(base),
-      to: iso(new Date(base.getFullYear(), base.getMonth() + 3, 0)),
+      from: toISO(base),
+      to: toISO(new Date(base.getFullYear(), base.getMonth() + 3, 0)),
     };
   }
   if (p.includes("недел")) {
     const day = (today.getDay() + 6) % 7; // понедельник — начало недели
     const start = new Date(y, today.getMonth(), today.getDate() - day - (prev ? 7 : 0));
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-    return { from: iso(start), to: iso(end) };
+    return { from: toISO(start), to: toISO(end) };
   }
   // «прошлый месяц» и просто «месяц»/пустая строка.
   return monthRange(y, today.getMonth() - (prev ? 1 : 0));
