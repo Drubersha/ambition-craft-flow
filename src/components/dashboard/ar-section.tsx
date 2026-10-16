@@ -22,7 +22,13 @@ import {
   monthKeyOf,
   monthKeysBetween,
 } from "@/lib/format";
-import { computeCollectionRate, type Charge, type Contract, type Payment } from "@/lib/dashboard";
+import {
+  computeCollectionRate,
+  type Charge,
+  type Contract,
+  type Payment,
+  occupancyTone,
+} from "@/lib/dashboard";
 import { EmptyText, Kpi } from "./ui";
 
 export function ArSection({
@@ -182,7 +188,7 @@ export function ArSection({
               icon={Percent}
               label="Сбор платежей"
               value={`${collectionRate.toFixed(1)}%`}
-              tone={collectionRate >= 90 ? "ok" : collectionRate >= 70 ? "warn" : "danger"}
+              tone={occupancyTone(collectionRate)}
             />
           </div>
           <div style={{ width: "100%", height: 190 }}>
