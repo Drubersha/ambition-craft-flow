@@ -17,7 +17,7 @@ import type {
   PaymentIn,
   PropertyIn,
 } from "./import-1c.schema";
-import { toISO } from "./format";
+import { monthKeysBetween, toISO } from "./format";
 
 export type Row = Record<string, unknown>;
 
@@ -877,28 +877,11 @@ function planBalances(ctx: Ctx) {
   }
 }
 
-/** Месяцы ГГГГ-ММ от from до to включительно. */
-function monthsBetween(from: string, to: string): string[] {
-  const out: string[] = [];
-  let [y, m] = from.slice(0, 7).split("-").map(Number);
-  const end = to.slice(0, 7);
-  for (let i = 0; i < 240; i++) {
-    const key = `${y}-${String(m).padStart(2, "0")}`;
-    out.push(key);
-    if (key >= end) break;
-    m++;
-    if (m > 12) {
-      m = 1;
-      y++;
-    }
-  }
-  return out;
-}
-
 /** Документы файла по месяцам окна: по этой таблице видно, полная ли выгрузка. */
 export function computeCoverage(file: ImportFile): CoverageMonth[] {
   const rows = new Map<string, CoverageMonth>();
-  for (const month of monthsBetween(file.period.from, file.period.to))
+  const localDate = (iso: string) => new Date(iso + "T00:00:00");
+  for (const month of monthKeysBetween(localDate(file.period.from), localDate(file.period.to)))
     rows.set(month, { month, charges: 0, charges_total: 0, payments: 0, payments_total: 0 });
   const bump = (date: string, kind: "charges" | "payments", amount: number) => {
     const r = rows.get(date.slice(0, 7));
