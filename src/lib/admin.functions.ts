@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getAdminRoles, requireAdminRoles, type AdminRole } from "@/lib/auth-roles.server";
+import { PASSWORD_MIN } from "./account.functions";
 
 export type { AdminRole } from "@/lib/auth-roles.server";
 
@@ -156,8 +157,8 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdminRoles(context.supabase, context.userId);
     const email = data.email.trim().toLowerCase();
-    if (!email || !data.password || data.password.length < 8)
-      throw new Error("Email и пароль (≥8 символов) обязательны");
+    if (!email || !data.password || data.password.length < PASSWORD_MIN)
+      throw new Error(`Email и пароль (≥${PASSWORD_MIN} символов) обязательны`);
     const baseRole: "owner" | "tenant" = data.role === "tenant" ? "tenant" : "owner";
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
@@ -272,8 +273,8 @@ export const adminCreateCompanionAccount = createServerFn({ method: "POST" })
       return { ok: true, userId: data.sourceUserId, role: newRole, sameAccount: true };
     }
 
-    if (!data.password || data.password.length < 8)
-      throw new Error("Пароль ≥8 символов обязателен");
+    if (!data.password || data.password.length < PASSWORD_MIN)
+      throw new Error(`Пароль ≥${PASSWORD_MIN} символов обязателен`);
     const { data: srcProfile } = await supabaseAdmin
       .from("profiles")
       .select("full_name")

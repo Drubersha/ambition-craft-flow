@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmButton } from "@/components/confirm-button";
 import { humanError } from "@/lib/human-error";
+import { PASSWORD_MIN } from "@/lib/account.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   component: UsersPage,
@@ -264,7 +265,7 @@ function CreateUserDialog({
           <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
             Отмена
           </Button>
-          <Button onClick={submit} disabled={pending || !email || password.length < 8}>
+          <Button onClick={submit} disabled={pending || !email || password.length < PASSWORD_MIN}>
             Создать
           </Button>
         </DialogFooter>

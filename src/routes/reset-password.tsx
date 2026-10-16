@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/brand-logo";
 import { PasswordInput } from "@/components/password-input";
 import { humanError } from "@/lib/human-error";
-
-const PASSWORD_MIN = 8;
+import { passwordChecks } from "@/lib/account.functions";
+import { PasswordRequirements } from "@/components/password-requirements";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
@@ -19,19 +19,6 @@ export const Route = createFileRoute("/reset-password")({
     meta: [{ title: "Новый пароль — LeasePlease" }, { name: "robots", content: "noindex" }],
   }),
 });
-
-function Requirement({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <li
-      className={
-        "flex items-center gap-1.5 text-xs " + (ok ? "text-success" : "text-muted-foreground")
-      }
-    >
-      {ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-      {label}
-    </li>
-  );
-}
 
 /**
  * Страница из письма «Восстановление пароля». Supabase-клиент сам разбирает
@@ -68,9 +55,7 @@ function ResetPasswordPage() {
 
   const checks = useMemo(
     () => ({
-      length: password.length >= PASSWORD_MIN,
-      letter: /[a-zA-Zа-яА-ЯёЁ]/.test(password),
-      digit: /\d/.test(password),
+      ...passwordChecks(password),
       match: confirm.length > 0 && confirm === password,
     }),
     [password, confirm],
@@ -141,12 +126,10 @@ function ResetPasswordPage() {
                   disabled={busy}
                 />
               </div>
-              <ul className="space-y-1 rounded-md border bg-muted/30 p-3">
-                <Requirement ok={checks.length} label={`Не короче ${PASSWORD_MIN} символов`} />
-                <Requirement ok={checks.letter} label="Содержит букву" />
-                <Requirement ok={checks.digit} label="Содержит цифру" />
-                <Requirement ok={checks.match} label="Пароли совпадают" />
-              </ul>
+              <PasswordRequirements
+                password={password}
+                extra={[{ ok: checks.match, label: "Пароли совпадают" }]}
+              />
               <Button type="submit" className="w-full" disabled={!valid || busy}>
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {busy ? "Сохранение…" : "Сохранить пароль"}

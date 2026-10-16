@@ -9,28 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { LandlordRequisitesCard } from "@/components/landlord-requisites-card";
-import { Check, KeyRound, Loader2, Mail, X } from "lucide-react";
+import { KeyRound, Loader2, Mail } from "lucide-react";
 import { ROLE_LABELS, useDemoIdentity } from "@/lib/demo-identity";
-import { changePassword, PASSWORD_MIN } from "@/lib/account.functions";
+import { changePassword, passwordChecks } from "@/lib/account.functions";
+import { PasswordRequirements } from "@/components/password-requirements";
 import { PasswordInput } from "@/components/password-input";
 import { humanError } from "@/lib/human-error";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
-
-function Requirement({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <li
-      className={
-        "flex items-center gap-1.5 text-xs " + (ok ? "text-primary" : "text-muted-foreground")
-      }
-    >
-      {ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-      {label}
-    </li>
-  );
-}
 
 function ChangePasswordCard({ isDemo }: { isDemo: boolean }) {
   const change = useServerFn(changePassword);
@@ -41,9 +29,7 @@ function ChangePasswordCard({ isDemo }: { isDemo: boolean }) {
 
   const checks = useMemo(
     () => ({
-      length: newPassword.length >= PASSWORD_MIN,
-      letter: /[a-zA-Zа-яА-ЯёЁ]/.test(newPassword),
-      digit: /\d/.test(newPassword),
+      ...passwordChecks(newPassword),
       match: confirm.length > 0 && confirm === newPassword,
       differs: newPassword.length > 0 && newPassword !== currentPassword,
     }),
@@ -124,13 +110,13 @@ function ChangePasswordCard({ isDemo }: { isDemo: boolean }) {
                 disabled={busy}
               />
             </div>
-            <ul className="space-y-1 rounded-md border bg-muted/30 p-3">
-              <Requirement ok={checks.length} label={`Не короче ${PASSWORD_MIN} символов`} />
-              <Requirement ok={checks.letter} label="Содержит букву" />
-              <Requirement ok={checks.digit} label="Содержит цифру" />
-              <Requirement ok={checks.differs} label="Отличается от текущего" />
-              <Requirement ok={checks.match} label="Пароли совпадают" />
-            </ul>
+            <PasswordRequirements
+              password={newPassword}
+              extra={[
+                { ok: checks.differs, label: "Отличается от текущего" },
+                { ok: checks.match, label: "Пароли совпадают" },
+              ]}
+            />
             <Button type="submit" disabled={!valid || busy}>
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {busy ? "Сохранение…" : "Изменить пароль"}
