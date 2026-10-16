@@ -161,6 +161,13 @@ describe("diffRow", () => {
     );
     expect(patch).toEqual({});
   });
+  it("treats objects with a different key order as equal (jsonb reorders keys)", () => {
+    const { patch } = diffRow(
+      { offset_info: { description: "x", basis_doc_id: "1", nested: { b: 1, a: [1, 2] } } },
+      { offset_info: { nested: { a: [1, 2], b: 1 }, basis_doc_id: "1", description: "x" } },
+    );
+    expect(patch).toEqual({});
+  });
   it("reports changed fields with their previous values", () => {
     const { patch, before } = diffRow({ rate: 900, area: 45 }, { rate: 950, area: 45 });
     expect(patch).toEqual({ rate: 950 });
@@ -246,6 +253,18 @@ describe("buildPlan on the sample", () => {
     expect(c?.row.rate).toBe(950);
     expect(c?.before?.rate).toBe(900);
     expect(plan.counts.tenants.created).toBe(2);
+  });
+
+  it("does not double-count a hand-made payment linked by natural key", () => {
+    const file = loadSample();
+    const first = materialize(buildPlan(OWNER, file, empty()), empty());
+    // Платёж, заведённый руками до интеграции: та же дата, сумма и начисление, но без GUID.
+    const manual = first.payments.find((p) => p.doc_type === "bank_in")!;
+    manual.external_id = null;
+    const plan = buildPlan(OWNER, file, first);
+    expect(plan.counts.payments.linked).toBe(1);
+    expect(plan.counts.payments.created).toBe(0);
+    expect(plan.balanceMismatches).toEqual([]);
   });
 
   it("voids imported documents that vanished from the window and applies cancellations", () => {
