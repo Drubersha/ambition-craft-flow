@@ -30,6 +30,13 @@ import { Copy, Download, KeyRound, Plus } from "lucide-react";
 import { humanError } from "@/lib/human-error";
 import { formatDate } from "@/lib/format";
 import {
+  VOID_LIMIT_ABS,
+  VOID_LIMIT_RATIO,
+  type CoverageMonth,
+  type Plan,
+  type VoidGuard,
+} from "@/lib/import-1c";
+import {
   createImportToken,
   listImportBatches,
   listImportHistory,
@@ -67,17 +74,7 @@ function statusBadge(b: ImportBatchRow) {
   return <Badge variant="outline">{b.status}</Badge>;
 }
 
-type Counts = Record<
-  string,
-  {
-    received: number;
-    created: number;
-    updated: number;
-    linked: number;
-    unchanged: number;
-    voided: number;
-  }
->;
+type Counts = Plan["counts"];
 
 function countsLine(report: ImportBatchRow["report"]): string {
   const counts = (report?.counts ?? null) as unknown as Counts | null;
@@ -295,9 +292,10 @@ function HowToCard() {
           . Окно документов — 6 месяцев; справочники — целиком; ключ — GUID 1С.
         </div>
         <div className="text-muted-foreground">
-          Защита от неполного файла: если в файле нет больше 10 (или больше 20 %) ранее загруженных
-          документов окна, приёмник ответит 409 и ничего не запишет. После проверки такой файл
-          отправляют повторно с <code className="text-xs">?confirm_voids=1</code>.
+          Защита от неполного файла: если в файле нет больше {VOID_LIMIT_ABS} (или больше{" "}
+          {Math.round(VOID_LIMIT_RATIO * 100)} %) ранее загруженных документов окна, приёмник
+          ответит 409 и ничего не запишет. После проверки такой файл отправляют повторно с{" "}
+          <code className="text-xs">?confirm_voids=1</code>.
         </div>
       </CardContent>
     </Card>
@@ -328,30 +326,8 @@ function BatchDetails({ batch }: { batch: ImportBatchRow }) {
         }[]
       | undefined) ?? [];
   const counts = (report.counts as Counts | undefined) ?? null;
-  const coverage =
-    (report.coverage as
-      | {
-          month: string;
-          charges: number;
-          charges_total: number;
-          payments: number;
-          payments_total: number;
-        }[]
-      | undefined) ?? [];
-  const guard = (report.void_guard ?? null) as {
-    triggered: boolean;
-    absent: number;
-    imported_in_window: number;
-    limit_abs: number;
-    limit_ratio: number;
-    preview: {
-      table: string;
-      external_id: string | null;
-      number: string | null;
-      date: string | null;
-      amount: number;
-    }[];
-  } | null;
+  const coverage = (report.coverage as CoverageMonth[] | undefined) ?? [];
+  const guard = (report.void_guard ?? null) as VoidGuard | null;
   const guardNote = batch.dry_run
     ? "При записи такой файл будет отклонён."
     : batch.status === "needs_confirmation"
